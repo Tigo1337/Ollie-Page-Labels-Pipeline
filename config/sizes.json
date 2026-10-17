@@ -1,0 +1,8 @@
+[
+  {"id": "mini",   "label": "Mini (pencils)",        "shape": "rrect",  "w": 35, "h": 9,  "r": 2},
+  {"id": "small",  "label": "Small",                 "shape": "rrect",  "w": 45, "h": 13, "r": 3},
+  {"id": "medium", "label": "Medium (bottles)",      "shape": "rrect",  "w": 60, "h": 16, "r": 4},
+  {"id": "large",  "label": "Large (lunch boxes)",   "shape": "rrect",  "w": 90, "h": 25, "r": 5},
+  {"id": "round",  "label": "Round (shoes, caps)",   "shape": "circle", "w": 30, "h": 30, "r": 15},
+  {"id": "square", "label": "Square (books, boxes)", "shape": "rrect",  "w": 38, "h": 38, "r": 4}
+]

@@ -1,0 +1,19 @@
+[
+  {"id": 1,  "name": "Fredoka",        "repo_dir": "ofl/fredoka",        "file": "Fredoka[wdth,wght].ttf",     "weight": 600,  "mini_ok": true},
+  {"id": 2,  "name": "Baloo 2",        "repo_dir": "ofl/baloo2",         "file": "Baloo2[wght].ttf",           "weight": 700,  "mini_ok": true},
+  {"id": 3,  "name": "Nunito",         "repo_dir": "ofl/nunito",         "file": "Nunito[wght].ttf",           "weight": 800,  "mini_ok": true},
+  {"id": 4,  "name": "Quicksand",      "repo_dir": "ofl/quicksand",      "file": "Quicksand[wght].ttf",        "weight": 700,  "mini_ok": true},
+  {"id": 5,  "name": "Comfortaa",      "repo_dir": "ofl/comfortaa",      "file": "Comfortaa[wght].ttf",        "weight": 700,  "mini_ok": true},
+  {"id": 6,  "name": "Andika",         "repo_dir": "ofl/andika",         "file": "Andika-Bold.ttf",            "weight": null, "mini_ok": true},
+  {"id": 7,  "name": "Lilita One",     "repo_dir": "ofl/lilitaone",      "file": "LilitaOne-Regular.ttf",      "weight": null, "mini_ok": true},
+  {"id": 8,  "name": "Luckiest Guy",   "repo_dir": "apache/luckiestguy", "file": "LuckiestGuy-Regular.ttf",    "weight": null, "mini_ok": true},
+  {"id": 9,  "name": "Chewy",          "repo_dir": "apache/chewy",       "file": "Chewy-Regular.ttf",          "weight": null, "mini_ok": true},
+  {"id": 10, "name": "Bubblegum Sans", "repo_dir": "ofl/bubblegumsans",  "file": "BubblegumSans-Regular.ttf",  "weight": null, "mini_ok": true},
+  {"id": 11, "name": "Sniglet",        "repo_dir": "ofl/sniglet",        "file": "Sniglet-ExtraBold.ttf",      "weight": null, "mini_ok": true},
+  {"id": 12, "name": "Grandstander",   "repo_dir": "ofl/grandstander",   "file": "Grandstander[wght].ttf",     "weight": 800,  "mini_ok": true},
+  {"id": 13, "name": "Patrick Hand",   "repo_dir": "ofl/patrickhand",    "file": "PatrickHand-Regular.ttf",    "weight": null, "mini_ok": true},
+  {"id": 14, "name": "Gochi Hand",     "repo_dir": "ofl/gochihand",      "file": "GochiHand-Regular.ttf",      "weight": null, "mini_ok": false},
+  {"id": 15, "name": "Schoolbell",     "repo_dir": "apache/schoolbell",  "file": "Schoolbell-Regular.ttf",     "weight": null, "mini_ok": false},
+  {"id": 16, "name": "Caveat Brush",   "repo_dir": "ofl/caveatbrush",    "file": "CaveatBrush-Regular.ttf",    "weight": null, "mini_ok": false},
+  {"id": 17, "name": "Pacifico",       "repo_dir": "ofl/pacifico",       "file": "Pacifico-Regular.ttf",       "weight": null, "mini_ok": false}
+]

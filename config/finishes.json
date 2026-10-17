@@ -1,0 +1,5 @@
+[
+  {"id": "matte",       "label": "Matte",       "media": "white inkjet printable vinyl", "laminate": "matte clear overlaminate",       "notch": false, "cost_per_sheet": null},
+  {"id": "gloss",       "label": "Glossy",      "media": "white inkjet printable vinyl", "laminate": "gloss clear overlaminate",       "notch": true,  "cost_per_sheet": null},
+  {"id": "holographic", "label": "Holographic", "media": "white inkjet printable vinyl", "laminate": "holographic clear overlaminate", "notch": true,  "cost_per_sheet": null}
+]

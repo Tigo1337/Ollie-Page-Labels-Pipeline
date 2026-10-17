@@ -1,0 +1,22 @@
+[
+  {"id": "dino", "name": "Dino Stomp", "fill": "#1F5C38", "stroke": "#FFFFFF", "char_end": 0.2, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}},
+  {"id": "unicorn", "name": "Unicorn Dreams", "fill": "#7A3E9D", "stroke": "#FFFFFF", "char_end": 0.23, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}},
+  {"id": "fox", "name": "Forest Fox", "fill": "#8A3B12", "stroke": "#FFFFFF", "char_end": 0.25, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}},
+  {"id": "panda", "name": "Bamboo Panda", "fill": "#2F4F2F", "stroke": "#FFFFFF", "char_end": 0.25, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}},
+  {"id": "axolotl", "name": "Axolotl Pond", "fill": "#1F5F7A", "stroke": "#FFFFFF", "char_end": 0.3, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}},
+  {"id": "bunny", "name": "Carrot Bunny", "fill": "#B03A64", "stroke": "#FFFFFF", "char_end": 0.17, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}},
+  {"id": "space-cat", "name": "Space Cat", "fill": "#FFFFFF", "stroke": "#1B1F4F", "char_end": 0.23, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}},
+  {"id": "shark", "name": "Shark Splash", "fill": "#1D4E89", "stroke": "#FFFFFF", "char_end": 0.27, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}},
+  {"id": "dragon", "name": "Little Dragon", "fill": "#5B2C83", "stroke": "#FFFFFF", "char_end": 0.21, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}},
+  {"id": "penguin", "name": "Snowy Penguin", "fill": "#1F3B63", "stroke": "#FFFFFF", "char_end": 0.21, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}},
+  {"id": "frog", "name": "Lily Pad Frog", "fill": "#2E6B2E", "stroke": "#FFFFFF", "char_end": 0.23, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}},
+  {"id": "octopus", "name": "Ocean Octopus", "fill": "#1F6E70", "stroke": "#FFFFFF", "char_end": 0.22, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}},
+  {"id": "bee", "name": "Busy Bee", "fill": "#6B4A00", "stroke": "#FFFFFF", "char_end": 0.26, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}},
+  {"id": "rocket", "name": "Rocket Launch", "fill": "#FFFFFF", "stroke": "#141C3D", "char_end": 0.24, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}},
+  {"id": "excavator", "name": "Little Digger", "fill": "#7A4A00", "stroke": "#FFFFFF", "char_end": 0.32, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}},
+  {"id": "strawberry", "name": "Strawberry Picnic", "fill": "#B0243C", "stroke": "#FFFFFF", "char_end": 0.2, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}},
+  {"id": "ice-cream", "name": "Ice Cream Party", "fill": "#C2376B", "stroke": "#FFFFFF", "char_end": 0.2, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}},
+  {"id": "soccer", "name": "Soccer Star", "fill": "#1E5C2A", "stroke": "#FFFFFF", "char_end": 0.26, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}},
+  {"id": "rainbow-clouds", "name": "Rainbow Sky", "fill": "#4A5BB0", "stroke": "#FFFFFF", "char_end": 0.31, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}},
+  {"id": "daisy-checker", "name": "Daisy Checker", "fill": "#6A3E9E", "stroke": "#FFFFFF", "char_end": 0.29, "stroke_ratio": null, "cap_frac": 0.52, "presets": {}}
+]

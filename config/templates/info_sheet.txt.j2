@@ -1,0 +1,62 @@
+{#- ======================================================================
+    Info sheet template (Jinja2). Edit freely.
+    Silhouette Studio interface labels (FRENCH UI) are collected here so
+    they can be corrected in one place.  >>> PLEASE CONFIRM THESE <<<
+    ====================================================================== -#}
+{%- set studio = {
+  "file_menu":        "Fichier",
+  "open":             "Ouvrir…",
+  "merge":            "Fusionner…",
+  "page_setup":       "Configuration de la page",
+  "page_size":        "Format de page",
+  "letter":           "Lettre",
+  "reg_marks":        "Repères d'enregistrement",
+  "mark_style":       "Style",
+  "type1":            "Type 1",
+  "inset":            "Retrait",
+  "length":           "Longueur",
+  "thickness":        "Épaisseur",
+  "transform":        "Transformer",
+  "position":         "Position",
+  "send":             "Envoyer",
+  "material":         "Matériau",
+  "action_cut":       "Couper",
+  "blade_depth":      "Profondeur de lame",
+  "force":            "Force",
+  "test_cut":         "Test de découpe",
+} -%}
+PRODUCTION INFO SHEET
+=====================
+{{ title }}
+Generated {{ generated }}
+Orders: {{ orders | join(", ") }}
+
+{% for f in finishes -%}
+-------------------------------------------------------------------
+FINISH: {{ f.label }}  ({{ f.sheets }} sheet{{ "s" if f.sheets != 1 }}, {{ f.labels }} labels)
+Media: {{ f.media }}    Laminate: {{ f.laminate }}
+Print file: {{ f.pdf }}
+{% if f.notch %}Laminate notch file: {{ notch_dxf }}  (place at X 0 mm, Y 0 mm)
+{% endif %}
+  Page | Labels | Cut file (DXF)                       |     X mm |     Y mm |     W mm |     H mm
+{% for p in f.pages -%}
+  {{ "%4d"|format(p.n) }} | {{ "%6d"|format(p.count) }} | {{ "%-36s"|format(p.dxf) }} | {{ "%8.2f"|format(p.x) }} | {{ "%8.2f"|format(p.y) }} | {{ "%8.2f"|format(p.w) }} | {{ "%8.2f"|format(p.h) }}
+{% endfor %}
+{% endfor -%}
+-------------------------------------------------------------------
+SILHOUETTE STUDIO SET-UP (once)
+  • {{ studio.page_setup }} → {{ studio.page_size }}: {{ studio.letter }} (215.9 × 279.4 mm), portrait.
+  • {{ studio.reg_marks }}: on, {{ studio.mark_style }} = {{ studio.type1 }},
+    {{ studio.inset }} {{ mark_inset }} mm, {{ studio.length }} {{ mark_length }} mm, {{ studio.thickness }} {{ mark_thickness }} mm.
+
+PRODUCTION STEPS (for each sheet)
+  1. Print the page at 100 % (actual size, no "fit to page"), one sheet at a time.
+  2. Let the ink dry, ideally overnight (dye ink).
+  3. Laminate the sheet.{% if any_notch %} For {{ notch_finishes | join(" and ") }}: notch the laminate
+     first — cut the three {{ notch }} × {{ notch }} mm corner squares off the laminate
+     ({{ notch_dxf }}) so the Cameo can read the marks.{% endif %}
+  4. Load the sheet on the mat. In Silhouette Studio: {{ studio.file_menu }} → {{ studio.merge }}
+     the page's cut file (DXF), then in {{ studio.transform }} → {{ studio.position }}
+     type the X and Y from the table above. Check W and H match.
+  5. {{ studio.send }}: kiss cut through the laminate and vinyl, not the backing
+     (adjust {{ studio.blade_depth }} / {{ studio.force }}; do a {{ studio.test_cut }} on a new roll).

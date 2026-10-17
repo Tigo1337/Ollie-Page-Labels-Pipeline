@@ -1,0 +1,103 @@
+"""Artwork handling: white-band trimming, crop presets and the automatic layout."""
+from __future__ import annotations
+
+import numpy as np
+from PIL import Image
+
+from .config import Design, Preset, Production, Size
+
+TRIM_THRESHOLD = 245.0
+TRIM_SHAVE_PX = 4
+
+
+class ArtError(ValueError):
+    pass
+
+
+def trim_white_bands(img: Image.Image, threshold: float = TRIM_THRESHOLD,
+                     shave: int = TRIM_SHAVE_PX) -> Image.Image:
+    """Trim the plain white letterbox above and below a wide strip.
+
+    Keeps the rows whose mean greyscale is under `threshold` (from the first such
+    row to the last, so a pale row of sky inside the strip is never dropped), then
+    shaves `shave` px off the top and bottom to remove the soft edge.
+    """
+    grey = np.asarray(img.convert("L"), dtype=np.float32)
+    rows = np.where(grey.mean(axis=1) < threshold)[0]
+    if rows.size == 0:
+        raise ArtError("The wide image looks completely white; no illustrated strip found.")
+    top, bottom = int(rows[0]) + shave, int(rows[-1]) + 1 - shave
+    if bottom - top < 8:
+        raise ArtError("The illustrated strip in the wide image is too thin after trimming.")
+    return img.crop((0, top, img.width, bottom))
+
+
+def bleed_aspect(size: Size, prod: Production) -> float:
+    b = prod.bleed
+    return (size.w + 2 * b) / (size.h + 2 * b)
+
+
+def crop_window(preset: Preset, src_w: int, src_h: int, aspect: float) -> tuple[float, float, float, float]:
+    """Crop window (x0, y0, x1, y1) in source pixels for a preset.
+
+    crop height = h × source height; width follows the label aspect (with bleed).
+    If the width is larger than the source it is clamped and the height recomputed;
+    then the window is clamped inside the image.
+    """
+    ch = max(1e-6, preset.height) * src_h
+    cw = ch * aspect
+    if cw > src_w:
+        cw = float(src_w)
+        ch = cw / aspect
+    if ch > src_h:
+        ch = float(src_h)
+        cw = ch * aspect
+    cx, cy = preset.center[0] * src_w, preset.center[1] * src_h
+    x0 = min(max(cx - cw / 2, 0.0), src_w - cw)
+    y0 = min(max(cy - ch / 2, 0.0), src_h - ch)
+    return x0, y0, x0 + cw, y0 + ch
+
+
+def crop_to_label(img: Image.Image, preset: Preset, size: Size, prod: Production,
+                  out_px: tuple[int, int]) -> Image.Image:
+    win = crop_window(preset, img.width, img.height, bleed_aspect(size, prod))
+    return img.convert("RGB").resize(out_px, Image.Resampling.LANCZOS, box=win)
+
+
+def auto_preset(design: Design, size: Size, prod: Production, src_w: int, src_h: int) -> Preset:
+    """The automatic layout, expressed as a preset so everything downstream is the same."""
+    b = prod.bleed
+    if not size.is_rect:
+        return Preset(source="square", center=(0.5, 0.5), height=1.0, text=(0.14, 0.14, 0.86, 0.40))
+
+    aspect = bleed_aspect(size, prod)
+    # Scale the strip to label height + bleed, anchored left.
+    ch = float(src_h)
+    cw = ch * aspect
+    if cw > src_w:  # strip narrower than the label: fill the width instead
+        cw = float(src_w)
+        ch = cw / aspect
+    center = ((cw / 2) / src_w, 0.5)
+    height = ch / src_h
+    mm_per_px = (size.h + 2 * b) / ch
+    strip_w_mm = src_w * mm_per_px
+    pad = max(1.0, 0.45 * size.r)
+    vpad = pad * 0.7
+    x0 = design.char_end * strip_w_mm - b + 1.0
+    x1 = size.w - pad
+    x0 = min(max(x0, pad), x1 - 0.25 * size.w)  # keep a usable box on narrow strips
+    return Preset(source="wide", center=center, height=height,
+                  text=(x0 / size.w, vpad / size.h, x1 / size.w, 1 - vpad / size.h))
+
+
+def resolve_preset(design: Design, size: Size, prod: Production,
+                   src_dims: dict[str, tuple[int, int]]) -> tuple[Preset, bool]:
+    """Saved preset if there is one, else the automatic one. Returns (preset, is_auto)."""
+    p = design.presets.get(size.id)
+    if p is not None:
+        return p, False
+    src = size.default_source
+    if src not in src_dims:
+        raise ArtError(f"Design '{design.id}' has no {src} artwork.")
+    w, h = src_dims[src]
+    return auto_preset(design, size, prod, w, h), True

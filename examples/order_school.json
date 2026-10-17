@@ -1,0 +1,10 @@
+{
+  "order_id": "3301",
+  "customer": "Example buyer",
+  "lang": "en",
+  "lines": [
+    {"design": "dino", "pack": "school", "finish": "holographic", "name": "Maximilien", "line2": "", "font": 1},
+    {"design": "unicorn", "pack": "starter", "finish": "matte", "name": "Zoë", "line2": "", "font": 4},
+    {"design": "space-cat", "pack": "large14", "finish": "matte", "name": "Alexandre", "line2": "Tremblay-Gagnon", "font": 3}
+  ]
+}

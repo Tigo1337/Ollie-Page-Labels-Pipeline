@@ -1,0 +1,10 @@
+[
+  {"id": "mini60",   "label": "60 Mini labels",            "contents": {"mini": 60}},
+  {"id": "small48",  "label": "48 Small labels",           "contents": {"small": 48}},
+  {"id": "medium30", "label": "30 Medium labels",          "contents": {"medium": 30}},
+  {"id": "large14",  "label": "14 Large labels",           "contents": {"large": 14}},
+  {"id": "round24",  "label": "24 Round labels",           "contents": {"round": 24}},
+  {"id": "square12", "label": "12 Square labels",          "contents": {"square": 12}},
+  {"id": "starter",  "label": "Starter pack (52)",         "contents": {"mini": 25, "small": 16, "medium": 6, "round": 5}},
+  {"id": "school",   "label": "Back-to-school pack (132)", "contents": {"mini": 60, "small": 36, "medium": 16, "large": 8, "round": 12}}
+]

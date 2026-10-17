@@ -1,0 +1,12 @@
+[project]
+name = "label-pipeline"
+version = "0.1.0"
+description = "Etsy name-label orders to print-and-cut production files"
+requires-python = ">=3.11"
+dependencies = ["pillow>=10.1", "numpy>=1.26", "reportlab>=4.0", "fonttools>=4.47", "jinja2>=3.1"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pypdfium2>=4.25", "ezdxf>=1.1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

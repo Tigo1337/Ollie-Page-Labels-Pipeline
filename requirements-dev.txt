@@ -1,0 +1,4 @@
+-r requirements.txt
+pytest>=8
+pypdfium2>=4.25
+ezdxf>=1.1
