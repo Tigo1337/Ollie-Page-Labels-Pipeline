@@ -45,12 +45,16 @@ Print file: {{ f.pdf }}
 {% endfor -%}
 -------------------------------------------------------------------
 SILHOUETTE STUDIO SET-UP (once)
+  The print PDF already contains the registration marks, so print it from any PDF
+  viewer. Studio only needs to know where the marks are:
   • {{ studio.page_setup }} → {{ studio.page_size }}: {{ studio.letter }} (215.9 × 279.4 mm), portrait.
   • {{ studio.reg_marks }}: on, {{ studio.mark_style }} = {{ studio.type1 }},
     {{ studio.inset }} {{ mark_inset }} mm, {{ studio.length }} {{ mark_length }} mm, {{ studio.thickness }} {{ mark_thickness }} mm.
+  • Before the first real job, run the calibration sheet (python -m engine calibrate)
+    on plain paper and check every cut stays inside its black ring.
 
 PRODUCTION STEPS (for each sheet)
-  1. Print the page at 100 % (actual size, no "fit to page"), one sheet at a time.
+  1. Print the page from the PDF at 100 % (actual size, no "fit to page"), one sheet at a time.
   2. Let the ink dry, ideally overnight (dye ink).
   3. Laminate the sheet.{% if any_notch %} For {{ notch_finishes | join(" and ") }}: notch the laminate
      first — cut the three {{ notch }} × {{ notch }} mm corner squares off the laminate

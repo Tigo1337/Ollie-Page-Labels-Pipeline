@@ -44,3 +44,12 @@ def test_notches_are_34mm_squares_at_three_mark_corners(ws):
         assert max(xs) - min(xs) == pytest.approx(34) and max(ys) - min(ys) == pytest.approx(34)
     corners = {(min(p[0] for p in s) == 0, min(p[1] for p in s) == 0) for s in sq}
     assert corners == {(True, True), (False, True), (True, False)}
+
+
+def test_calibration_sheet(ws, tmp_path):
+    from engine.calibration import write_calibration
+    info = write_calibration(ws.catalog.production, tmp_path)
+    paths = parse_dxf_polylines((tmp_path / "calibration_cut.dxf").read_text())
+    assert len(paths) == 6
+    assert info["x"] == pytest.approx(14.0) and info["y"] == pytest.approx(14.0)
+    assert (tmp_path / "calibration_print.pdf").stat().st_size > 0

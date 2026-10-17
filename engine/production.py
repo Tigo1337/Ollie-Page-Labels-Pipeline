@@ -69,6 +69,15 @@ def notch_paths(prod: Production) -> list[list[tuple[float, float]]]:
     return [[(x0, y0), (x1, y0), (x1, y1), (x0, y1)] for x0, y0, x1, y1 in prod.notch_rects()]
 
 
+def draw_marks_pdf(c: rl_canvas.Canvas, prod: Production) -> None:
+    if not prod.print_marks:
+        return
+    c.setFillColorRGB(0, 0, 0)
+    for x0, y0, x1, y1 in prod.mark_rects():
+        c.rect(x0 * PT_PER_MM, (prod.page_h - y1) * PT_PER_MM, (x1 - x0) * PT_PER_MM, (y1 - y0) * PT_PER_MM,
+               stroke=0, fill=1)
+
+
 class Producer:
     def __init__(self, renderer: Renderer, ui: UIFonts, texts: dict, template_dir: Path,
                  strategy: str | None = None):
@@ -170,7 +179,8 @@ class Producer:
 
     # ------------------------------------------------------------------
     def write_pdf(self, sheets: list[Sheet], labels: dict[str, RenderedLabel], path: Path) -> None:
-        """True size: every label image is drawn at its bleed-box size in mm. Nothing else is printed."""
+        """True size: every label image is drawn at its bleed-box size in mm, plus the
+        registration marks (when `print_marks` is on). Nothing else is printed."""
         prod = self.cat.production
         b = prod.bleed
         c = rl_canvas.Canvas(str(path), pagesize=(prod.page_w * PT_PER_MM, prod.page_h * PT_PER_MM),
@@ -188,6 +198,7 @@ class Producer:
                 x = (p.x - b) * PT_PER_MM
                 y = (prod.page_h - (p.y - b) - bh) * PT_PER_MM
                 c.drawImage(rd, x, y, width=bw * PT_PER_MM, height=bh * PT_PER_MM)
+            draw_marks_pdf(c, prod)
             c.showPage()
         c.save()
 
@@ -210,6 +221,9 @@ class Producer:
             page.paste(self._hatch(px(x1 - x0, dpi), px(y1 - y0, dpi), int(3 * k)),
                        (int(round(x0 * k)), int(round(y0 * k))))
         d = ImageDraw.Draw(page, "RGBA")
+        if prod.print_marks:
+            for x0, y0, x1, y1 in prod.mark_rects():
+                d.rectangle([x0 * k, y0 * k, x1 * k - 1, y1 * k - 1], fill=(0, 0, 0, 255))
         if notch:
             for x0, y0, x1, y1 in prod.notch_rects():
                 d.rectangle([x0 * k, y0 * k, x1 * k - 1, y1 * k - 1], outline=(0, 90, 255, 255), width=2)

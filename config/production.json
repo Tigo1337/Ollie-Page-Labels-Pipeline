@@ -7,6 +7,8 @@
   "mark_inset": 10.0,
   "mark_length": 20.0,
   "mark_thickness": 1.0,
+  "mark_square": 5.0,
+  "print_marks": true,
   "bleed": 1.25,
   "gap": 3.0,
   "safe": 1.0,

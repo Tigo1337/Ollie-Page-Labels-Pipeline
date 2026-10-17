@@ -22,6 +22,8 @@ class Production:
     mark_inset: float = 10.0
     mark_length: float = 20.0
     mark_thickness: float = 1.0
+    mark_square: float = 5.0      # side of the filled Type 1 square (top-left)
+    print_marks: bool = True      # draw the Type 1 marks into the print PDF
     bleed: float = 1.25
     gap: float = 3.0
     safe: float = 1.0
@@ -36,6 +38,23 @@ class Production:
         """Registration-mark keep-out squares (x0, y0, x1, y1), page mm, y down."""
         k, W, H = self.keepout, self.page_w, self.page_h
         return [(0.0, 0.0, k, k), (W - k, 0.0, W, k), (0.0, H - k, k, H)]
+
+    def mark_rects(self) -> list[tuple[float, float, float, float]]:
+        """Silhouette Type 1 registration marks as filled rectangles (page mm, y down).
+
+        Top-left: a filled square. Top-right and bottom-left: L-shaped corners whose
+        outer edges sit `mark_inset` from the page edges, arms `mark_length` long and
+        `mark_thickness` thick, pointing into the page.
+        """
+        i, L, t, s, W, H = (self.mark_inset, self.mark_length, self.mark_thickness, self.mark_square,
+                            self.page_w, self.page_h)
+        return [
+            (i, i, i + s, i + s),                      # top-left square
+            (W - i - L, i, W - i, i + t),              # top-right, horizontal arm
+            (W - i - t, i, W - i, i + L),              # top-right, vertical arm
+            (i, H - i - t, i + L, H - i),              # bottom-left, horizontal arm
+            (i, H - i - L, i + t, H - i),              # bottom-left, vertical arm
+        ]
 
     def notch_rects(self) -> list[tuple[float, float, float, float]]:
         n, W, H = self.notch, self.page_w, self.page_h

@@ -71,11 +71,23 @@ def test_pdf_and_dxf_line_up(ws, produced):
             bad = [p for p in outward_samples(path, 1.5) if at(p)]
             assert not bad, f"ink found 1.5 mm outside the cut line at {bad[:3]}"
             checked += 1
-        # nothing printed in the margins or the keep-out squares
+        # the only ink in the margins and keep-out squares is the registration marks
+        marks = np.zeros_like(ink)
+        for x0, y0, x1, y1 in prod.mark_rects():
+            marks[int(round(y0 * k)) - 2:int(round(y1 * k)) + 2, int(round(x0 * k)) - 2:int(round(x1 * k)) + 2] = True
+        stray = ink & ~marks
         m = int(prod.margin * k) - 1
-        assert not ink[:m].any() and not ink[-m:].any() and not ink[:, :m].any() and not ink[:, -m:].any()
+        assert not stray[:m].any() and not stray[-m:].any() and not stray[:, :m].any() and not stray[:, -m:].any()
         for x0, y0, x1, y1 in prod.keepout_rects():
-            assert not ink[int(y0 * k):int(y1 * k) - 1, int(x0 * k):int(x1 * k) - 1].any()
+            assert not stray[int(y0 * k):int(y1 * k) - 1, int(x0 * k):int(x1 * k) - 1].any()
+        # and the marks are there, solid black, where Silhouette Studio expects them
+        for x0, y0, x1, y1 in prod.mark_rects():
+            cx, cy = (x0 + x1) / 2 * k, (y0 + y1) / 2 * k
+            assert img[int(cy), int(cx)].max() < 40
+            for ex, ey in ((x0 - 0.3, cy / k), (x1 + 0.3, cy / k), (cx / k, y0 - 0.3), (cx / k, y1 + 0.3)):
+                edge_px = img[int(round(ey * k)), int(round(ex * k))]
+                inside_other = any(a <= ex <= c and b <= ey <= d for a, b, c, d in prod.mark_rects())
+                assert inside_other or edge_px.min() > 200, f"mark edge not at {ex:.2f},{ey:.2f}"
     assert checked == 132 + 12
 
 

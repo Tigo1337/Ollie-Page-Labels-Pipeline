@@ -6,6 +6,7 @@
   fontchart                   font chart PNG
   review DESIGN               design review sheet PNG
   packs                       labels per sheet and sheets per pack
+  calibrate                   test sheet to check print/cut alignment on plain paper
 """
 from __future__ import annotations
 
@@ -98,6 +99,14 @@ def cmd_packs(args) -> int:
     return 0
 
 
+def cmd_calibrate(args) -> int:
+    from .calibration import write_calibration
+    from .config import load_catalog
+    info = write_calibration(load_catalog(args.config).production, Path(args.out))
+    print(f"calibration files in {args.out}: cut file at X {info['x']:.2f} Y {info['y']:.2f} mm")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m engine", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -116,6 +125,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--font", type=int, default=1); p.add_argument("--finish", default="matte")
     p.set_defaults(fn=cmd_review)
     p = sub.add_parser("packs"); p.set_defaults(fn=cmd_packs)
+    p = sub.add_parser("calibrate"); p.add_argument("--out", default="calibration")
+    p.set_defaults(fn=cmd_calibrate)
 
     args = ap.parse_args(argv)
     try:
