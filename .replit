@@ -8,3 +8,6 @@ deploymentTarget = "vm"
 [[ports]]
 localPort = 8000
 externalPort = 80
+
+[nix]
+packages = ["freetype", "glibcLocales", "lcms2", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "openjpeg", "postgresql", "tcl", "tk", "zlib"]
