@@ -3,10 +3,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-python -m pip install -q -r requirements.txt
-if [ -n "${REPL_ID:-}" ]; then
-  python -m pip install -q replit-object-storage || echo "replit-object-storage not installed; using local storage"
-fi
+# Python dependencies are installed by Replit's package manager, not at startup:
+# the Nix-managed system Python environment is immutable.
 
 # Build the frontend when it is missing or older than its sources.
 if [ ! -f frontend/dist/index.html ] || \
@@ -14,4 +12,4 @@ if [ ! -f frontend/dist/index.html ] || \
   (cd frontend && npm install --no-audit --no-fund && npm run build)
 fi
 
-exec python -m uvicorn app.main:_app_factory --factory --host 0.0.0.0 --port "${PORT:-8000}"
+exec python -m uvicorn app.main:_app_factory --factory --host 0.0.0.0 --port "${PORT:-5000}"

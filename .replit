@@ -6,8 +6,32 @@ run = ["bash", "scripts/start.sh"]
 deploymentTarget = "vm"
 
 [[ports]]
-localPort = 8000
+localPort = 5000
 externalPort = 80
 
 [nix]
 packages = ["freetype", "glibcLocales", "lcms2", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "openjpeg", "postgresql", "tcl", "tk", "zlib"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "bash scripts/start.sh"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"

@@ -14,7 +14,9 @@ production files for an Epson ET-2980 (US Letter) and a Silhouette Cameo 5.
 ## Running the app (Replit)
 
 1. Import this GitHub repo into Replit and press **Run** (`scripts/start.sh`: installs
-   the Python packages, builds the React frontend if needed, starts FastAPI on port 8000).
+   builds the React frontend if needed, starts FastAPI on port 5000).
+   Python packages must first be installed through Replit's package manager
+   (see `requirements.txt`; optional storage package: `replit-object-storage`).
 2. In **Secrets** add `LABELS_API_SECRET` (the password for the app). Without it the
    app is open to anyone who has the URL and shows a warning banner.
 3. **Object Storage:** create a bucket in the Replit Object Storage tool. Artwork,
