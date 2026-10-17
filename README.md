@@ -7,7 +7,7 @@ production files for an Epson ET-2980 (US Letter) and a Silhouette Cameo 5.
 
 - **Phase 1 – engine + CLI** ✅
 - **Phase 2 – web app + design library** ✅ (plus a first "Make labels" screen)
-- Phase 3 – crop editor
+- **Phase 3 – crop editor** ✅
 - Phase 4 – orders
 - Phase 5 – batching + polish
 

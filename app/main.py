@@ -36,6 +36,7 @@ def create_app(settings: Settings | None = None, start_font_download: bool = Tru
     repo = Repo(make_session_factory(settings.database_url), store)
     if repo.seed(settings.config_dir):
         log.info("Seeded the database from %s", settings.config_dir)
+    repo.ensure_defaults()
     svc = EngineService(repo, store, settings.cache_dir, settings.config_dir)
 
     app = FastAPI(title="Label Pipeline", docs_url="/api/docs", openapi_url="/api/openapi.json")

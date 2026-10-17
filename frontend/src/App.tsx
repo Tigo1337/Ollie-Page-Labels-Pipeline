@@ -5,6 +5,8 @@ import MakePage from "./pages/MakePage";
 import DesignsPage from "./pages/DesignsPage";
 import DesignPage from "./pages/DesignPage";
 import FontsPage from "./pages/FontsPage";
+import CropEditor from "./pages/CropEditor";
+import SettingsPage from "./pages/SettingsPage";
 
 interface AppCtx {
   catalog: Catalog;
@@ -76,11 +78,13 @@ export default function App() {
   if (!auth.ok) return <Login onDone={checkAuth} />;
   if (!catalog) return <div className="page muted">Loading…</div>;
 
-  const [top, arg] = route;
+  const [top, arg, sub] = route;
   let page;
-  if (top === "designs" && arg) page = <DesignPage id={arg} />;
+  if (top === "designs" && arg && sub === "crop") page = <CropEditor id={arg} />;
+  else if (top === "designs" && arg) page = <DesignPage id={arg} />;
   else if (top === "designs") page = <DesignsPage />;
   else if (top === "fonts") page = <FontsPage />;
+  else if (top === "settings") page = <SettingsPage />;
   else page = <MakePage />;
 
   const link = (href: string, label: string, active: boolean) => (
@@ -94,6 +98,7 @@ export default function App() {
           {link("#/", "Make labels", !top || top === "make")}
           {link("#/designs", "Designs", top === "designs")}
           {link("#/fonts", "Fonts", top === "fonts")}
+          {link("#/settings", "Settings", top === "settings")}
         </nav>
         {auth.required && (
           <button className="link" onClick={() => api.post("/api/logout").then(checkAuth)}>Log out</button>

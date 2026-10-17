@@ -101,3 +101,22 @@ def resolve_preset(design: Design, size: Size, prod: Production,
         raise ArtError(f"Design '{design.id}' has no {src} artwork yet. Upload it in the design library.")
     w, h = src_dims[src]
     return auto_preset(design, size, prod, w, h), True
+
+
+def validate_preset(p: Preset, src_dims: dict[str, tuple[int, int]]) -> Preset:
+    """Plain-language checks for a preset coming from the crop editor."""
+    if p.source not in ("wide", "square"):
+        raise ArtError("A crop must use the 'wide' or the 'square' image.")
+    if p.source not in src_dims:
+        raise ArtError(f"This design has no {p.source} artwork yet.")
+    cx, cy = p.center
+    if not (0 <= cx <= 1 and 0 <= cy <= 1):
+        raise ArtError("The crop centre must be inside the image.")
+    if not 0.02 <= p.height <= 1.0 + 1e-6:
+        raise ArtError("The crop is too small or too large.")
+    x0, y0, x1, y1 = p.text
+    if not (-1e-6 <= x0 < x1 <= 1 + 1e-6 and -1e-6 <= y0 < y1 <= 1 + 1e-6):
+        raise ArtError("The name box must sit inside the label.")
+    if (x1 - x0) < 0.05 or (y1 - y0) < 0.05:
+        raise ArtError("The name box is too small.")
+    return p

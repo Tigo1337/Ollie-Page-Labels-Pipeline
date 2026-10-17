@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from app.main import create_app
 from app.settings import REPO, Settings
 from engine.assets import font_dir_name
+from engine.render import LabelSpec
 from engine.testart import make_square, make_wide
 
 
@@ -121,3 +122,55 @@ def test_make_labels_end_to_end(client):
     assert r.status_code == 200
     names = [f["name"] for f in r.json()["files"]]
     assert all(n.isascii() for n in names)
+
+
+def test_crop_presets_are_saved_and_used_by_orders(client):
+    data = art_zip(["shark"], client.app.state.svc.catalog)
+    client.post("/api/designs/import-zip", files={"file": ("a.zip", data, "application/zip")})
+    r = client.get("/api/designs/shark/presets").json()
+    large = next(s for s in r["sizes"] if s["size"] == "large")
+    assert large["is_auto"] and large["preset"] == large["auto"] and r["art"]["wide"] == [2752, 680]
+
+    before = client.post("/api/preview", json={"design": "shark", "size": "large", "name": "Léo"}).json()
+    preset = {"source": "wide", "center": [0.6, 0.5], "height": 0.6, "text": [0.35, 0.15, 0.95, 0.85]}
+    assert client.put("/api/designs/shark/presets/large", json=preset).status_code == 200
+    after = client.post("/api/preview", json={"design": "shark", "size": "large", "name": "Léo"}).json()
+    assert after["preset"] == preset and not after["preset_is_auto"] and after["image"] != before["image"]
+
+    # the saved crop is what an order prints
+    run = client.post("/api/make", json={"design": "shark", "pack": "large14", "name": "Léo", "font": 1}).json()
+    assert run["request"]["finish"] == "matte"  # shop default
+    lab = client.app.state.svc.renderer.render(LabelSpec("shark", "large", "Léo", "", 1, "matte"))
+    assert lab.preset.to_dict() == preset
+
+    # copy to every rectangular size; round/square untouched
+    assert client.post("/api/designs/shark/presets/large/copy-to-rect").json()["copied_to"] == ["mini", "small", "medium"]
+    sizes = {s["size"]: s for s in client.get("/api/designs/shark/presets").json()["sizes"]}
+    assert all(not sizes[s]["is_auto"] for s in ("mini", "small", "medium", "large"))
+    assert sizes["round"]["is_auto"] and sizes["square"]["is_auto"]
+
+    # reset goes back to automatic
+    assert client.delete("/api/designs/shark/presets/mini").status_code == 200
+    assert client.get("/api/designs/shark/presets").json()["sizes"][0]["is_auto"]
+
+
+def test_bad_presets_are_refused_plainly(client):
+    bad = {"source": "wide", "center": [0.5, 0.5], "height": 0.6, "text": [0.9, 0.1, 0.2, 0.9]}
+    r = client.put("/api/designs/shark/presets/small", json=bad)
+    assert r.status_code == 400 and "name box" in r.json()["detail"]
+    r = client.put("/api/designs/bunny/presets/small", json={**bad, "text": [0.3, 0.1, 0.9, 0.9]})
+    assert r.status_code == 400 and "no wide artwork" in r.json()["detail"]
+    r = client.put("/api/designs/shark/presets/small", json={"source": "wide"})
+    assert r.status_code == 400
+
+
+def test_shop_default_finish(client):
+    assert client.get("/api/shop").json() == {"default_finish": "matte"}
+    assert client.patch("/api/shop", json={"default_finish": "gloss"}).json()["default_finish"] == "gloss"
+    data = art_zip(["bee"], client.app.state.svc.catalog)
+    client.post("/api/designs/import-zip", files={"file": ("a.zip", data, "application/zip")})
+    run = client.post("/api/make", json={"design": "bee", "pack": "mini60", "name": "Zoë", "font": 1}).json()
+    assert "gloss" in run["summary"]["finishes"]
+    assert any(f["kind"] == "notch" for f in run["files"])
+    assert client.patch("/api/shop", json={"default_finish": "shiny"}).status_code == 400
+    client.patch("/api/shop", json={"default_finish": "matte"})

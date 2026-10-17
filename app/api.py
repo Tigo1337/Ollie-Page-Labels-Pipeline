@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from PIL import Image
 from pydantic import BaseModel, Field
 
+from engine.art import auto_preset, validate_preset
 from engine.config import Preset
 from engine.orders import Order, OrderLine, validate_line
 from engine.packing import labels_per_sheet, sheets_for
@@ -201,6 +202,82 @@ def design_thumb(design_id: str, request: Request, name: str = "Léo", size: str
     return png_response(img)
 
 
+# ---------------------------------------------------------------- crop presets
+@router.get("/designs/{design_id}/presets")
+def get_presets(design_id: str, request: Request):
+    """Saved or automatic preset for every size, plus what the crop editor needs to draw them."""
+    s = svc(request)
+    with s.lock:
+        cat = s.catalog
+        design = s.renderer.design(design_id)
+        dims = s.assets.art_sources(design_id)
+        out = []
+        for sid, size in cat.sizes.items():
+            saved = design.presets.get(sid)
+            auto = None
+            if size.default_source in dims:
+                w, h = dims[size.default_source]
+                auto = auto_preset(design, size, cat.production, w, h).to_dict()
+            out.append({"size": sid, "preset": saved.to_dict() if saved else auto, "auto": auto,
+                        "is_auto": saved is None})
+    return {"sizes": out, "art": {k: list(v) for k, v in dims.items()}, "bleed": cat.production.bleed,
+            "safe": cat.production.safe}
+
+
+@router.put("/designs/{design_id}/presets/{size_id}")
+def save_preset(design_id: str, size_id: str, body: dict, request: Request):
+    s = svc(request)
+    with s.lock:
+        if size_id not in s.catalog.sizes:
+            raise NotFound(f"Unknown size '{size_id}'.")
+        try:
+            preset = Preset.from_dict(body)
+        except (KeyError, TypeError, ValueError) as e:
+            raise ValueError("That crop could not be read.") from e
+        validate_preset(preset, s.assets.art_sources(design_id))
+    repo(request).set_preset(design_id, size_id, preset)
+    return {"ok": True, "preset": preset.to_dict()}
+
+
+@router.delete("/designs/{design_id}/presets/{size_id}")
+def reset_preset(design_id: str, size_id: str, request: Request):
+    repo(request).set_preset(design_id, size_id, None)
+    return {"ok": True}
+
+
+@router.post("/designs/{design_id}/presets/{size_id}/copy-to-rect")
+def copy_preset_to_rect(design_id: str, size_id: str, request: Request):
+    """Copy one size's saved crop to every rectangular size (fractions, so each keeps its own shape)."""
+    s = svc(request)
+    with s.lock:
+        cat = s.catalog
+        preset = s.renderer.design(design_id).presets.get(size_id)
+    if preset is None:
+        raise ValueError("Save this size's crop first, then copy it.")
+    targets = [sid for sid, size in cat.sizes.items() if size.is_rect and sid != size_id]
+    for sid in targets:
+        repo(request).set_preset(design_id, sid, preset)
+    return {"ok": True, "copied_to": targets}
+
+
+# ---------------------------------------------------------------- shop settings
+@router.get("/shop")
+def get_shop(request: Request):
+    return repo(request).setting("shop")
+
+
+@router.patch("/shop")
+def update_shop(body: dict, request: Request):
+    r = repo(request)
+    shop = dict(r.setting("shop"))
+    if "default_finish" in body:
+        if body["default_finish"] not in svc(request).catalog.finishes:
+            raise ValueError(f"Unknown finish '{body['default_finish']}'.")
+        shop["default_finish"] = body["default_finish"]
+    r.set_setting("shop", shop)
+    return shop
+
+
 # ---------------------------------------------------------------- previews
 class PreviewBody(BaseModel):
     design: str
@@ -280,7 +357,7 @@ class MakeBody(BaseModel):
     order_id: str = ""
     design: str
     pack: str
-    finish: str
+    finish: str = ""      # empty = the shop's default finish
     name: str
     line2: str = ""
     font: int = 1
@@ -290,7 +367,9 @@ class MakeBody(BaseModel):
 @router.post("/make")
 def make(body: MakeBody, request: Request):
     s = svc(request)
-    line = OrderLine(body.design, body.pack, body.finish, body.name, body.line2, body.font)
+    finish = body.finish or repo(request).setting("shop")["default_finish"]
+    body = body.model_copy(update={"finish": finish})
+    line = OrderLine(body.design, body.pack, finish, body.name, body.line2, body.font)
     with s.lock:
         errs = validate_line(line, s.catalog)
     if errs:

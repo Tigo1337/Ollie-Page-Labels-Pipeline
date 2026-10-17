@@ -23,6 +23,7 @@ export default function DesignPage({ id }: { id: string }) {
         <ArtPanel design={d} source="square" onChange={refresh}
           help="Square image (about 2048 × 2048) for round and square labels." />
       </div>
+      <CropSummary design={d} />
       <SettingsPanel design={d} onSaved={refresh} />
       <ReviewPanel design={d} fonts={catalog.fonts.map((f) => ({ id: f.id, name: f.name }))}
         finishes={catalog.finishes.map((f) => ({ id: f.id, label: f.label }))} />
@@ -175,6 +176,23 @@ function ReviewPanel({ design, fonts, finishes }: { design: Design; fonts: { id:
             try { await api.get(url); } catch (e) { setErr((e as Error).message); }
           }} />
       )}
+    </section>
+  );
+}
+
+function CropSummary({ design }: { design: Design }) {
+  const { catalog } = useApp();
+  const saved = catalog.sizes.filter((s) => design.presets[s.id]);
+  return (
+    <section className="card row-between">
+      <div>
+        <h3>Crop &amp; name position</h3>
+        <p className="muted">
+          {saved.length === 0 ? "All sizes use the automatic layout." :
+            `Saved: ${saved.map((s) => s.label).join(", ")}. ${catalog.sizes.length - saved.length} size(s) automatic.`}
+        </p>
+      </div>
+      <a className="button primary" href={`#/designs/${encodeURIComponent(design.id)}/crop`}>Open crop editor</a>
     </section>
   );
 }

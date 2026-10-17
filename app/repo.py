@@ -22,7 +22,8 @@ from engine.config import (Catalog, Design, Finish, FontSpec, Pack, Preset, Prod
 from .db import DesignRow, PresetRow, Setting
 from .storage import BlobStore
 
-SETTING_KEYS = ("production", "sizes", "packs", "finishes", "fonts", "texts")
+SETTING_KEYS = ("production", "sizes", "packs", "finishes", "fonts", "texts", "shop")
+SHOP_DEFAULTS = {"default_finish": "matte"}
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
 MAX_IMAGE_PIXELS = 40_000_000
 
@@ -67,6 +68,18 @@ class Repo:
             s.commit()
         self._bump()
         return True
+
+    def ensure_defaults(self) -> None:
+        """Add settings introduced after a database was first seeded."""
+        with self.Session() as s:
+            row = s.get(Setting, "shop")
+            if row is None:
+                s.add(Setting(key="shop", value=dict(SHOP_DEFAULTS)))
+            else:
+                missing = {k: v for k, v in SHOP_DEFAULTS.items() if k not in row.value}
+                if missing:
+                    row.value = {**row.value, **missing}
+            s.commit()
 
     # -- settings ------------------------------------------------------------
     def setting(self, key: str):

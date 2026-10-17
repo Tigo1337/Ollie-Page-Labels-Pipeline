@@ -13,8 +13,11 @@ const KIND_LABEL: Record<string, string> = {
 export default function MakePage() {
   const { catalog } = useApp();
   const designs = useAsync(() => api.get<Design[]>("/api/designs"), []);
+  const shop = useAsync(() => api.get<{ default_finish: string }>("/api/shop"), []);
+  const finishId = shop.data?.default_finish ?? "matte";
+  const finishLabel = catalog.finishes.find((f) => f.id === finishId)?.label ?? finishId;
   const [form, setForm] = useState({
-    order_id: "", design: "", pack: "starter", finish: "matte", font: 1, name: "", line2: "", lang: "en",
+    order_id: "", design: "", pack: "starter", finish: "", font: 1, name: "", line2: "", lang: "en",
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -33,7 +36,7 @@ export default function MakePage() {
   const sizeLabel = (id: string) => catalog.sizes.find((s) => s.id === id)?.label ?? id;
 
   // live preview + glyph check (debounce a string key so it only fires when inputs change)
-  const liveKey = useDebounced(JSON.stringify({ design: form.design, name: form.name, line2: form.line2, font: form.font, finish: form.finish, pack: form.pack }));
+  const liveKey = useDebounced(JSON.stringify({ design: form.design, name: form.name, line2: form.line2, font: form.font, finish: finishId, pack: form.pack }));
   const [glyph, setGlyph] = useState<GlyphCheck | null>(null);
   const [previews, setPreviews] = useState<{ size: string; p: Preview }[]>([]);
   const [previewErr, setPreviewErr] = useState("");
@@ -106,14 +109,9 @@ export default function MakePage() {
             {pack && (
               <small className="muted">
                 {Object.entries(pack.contents).map(([s, q]) => `${q} × ${sizeLabel(s)}`).join(", ")}
-                {" · "}{pack.sheets} sheet{pack.sheets === 1 ? "" : "s"}
+                {" · "}{pack.sheets} sheet{pack.sheets === 1 ? "" : "s"} · {finishLabel} (<a href="#/settings">change</a>)
               </small>
             )}
-          </label>
-          <label>Finish
-            <select value={form.finish} onChange={set("finish")}>
-              {catalog.finishes.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
-            </select>
           </label>
           <label>Font
             <select value={form.font} onChange={set("font")}>
