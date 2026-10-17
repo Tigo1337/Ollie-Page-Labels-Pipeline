@@ -1,12 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, Design, PresetData, Preview, Size } from "../api";
 import { useApp } from "../App";
+import { snapEdge, snapSpan } from "../snap";
 import { ErrorBox, Spinner, useAsync, useDebounced, Warnings } from "../ui";
 
 interface SizePreset { size: string; preset: PresetData | null; auto: PresetData | null; is_auto: boolean }
 interface PresetsResp { sizes: SizePreset[]; art: Record<string, [number, number]>; bleed: number; safe: number }
 
 const TEST_NAMES = ["Léo", "Maximilien"];
+const GRID_STEPS = [0.5, 1, 2];
+const SNAP_TOL_PX = 8;   // how close (screen px) an edge must be to a guide to jump onto it
+
+function loadPref<T>(key: string, fallback: T): T {
+  try {
+    const v = localStorage.getItem(key);
+    return v === null ? fallback : (JSON.parse(v) as T);
+  } catch {
+    return fallback;
+  }
+}
+function savePref(key: string, v: unknown) {
+  try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* private mode */ }
+}
 const MAX_STAGE_W = 760;
 const MAX_STAGE_H = 480;
 
@@ -154,6 +169,18 @@ function Editor(props: {
 
   const svgRef = useRef<SVGSVGElement>(null);
   const drag = useRef<Drag | null>(null);
+
+  // snapping: a millimetre grid plus magnetic guides (label centre, safe-zone edges)
+  const [snap, setSnapState] = useState<boolean>(() => loadPref("crop.snap", true));
+  const [gridMm, setGridState] = useState<number>(() => loadPref("crop.grid", 1));
+  const setSnap = (v: boolean) => { setSnapState(v); savePref("crop.snap", v); };
+  const setGrid = (v: number) => { setGridState(v); savePref("crop.grid", v); };
+  const [hit, setHit] = useState<{ x?: number; y?: number }>({});
+  const guides = {
+    x: [safe, size.w / 2, size.w - safe],
+    y: [safe, size.h / 2, size.h - safe],
+  };
+  const tol = SNAP_TOL_PX / k;
   const pt = (e: React.PointerEvent) => {
     const r = svgRef.current!.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
@@ -173,13 +200,27 @@ function Editor(props: {
       const y0 = clamp(dr.y0 + (q.y - dr.py) / scale, 0, sh - win.ch);
       onChange({ ...p, center: [round((x0 + win.cw / 2) / sw), round((y0 + win.ch / 2) / sh)] });
     } else if (dr.kind === "box") {
-      const dx = (q.x - dr.px) / k / size.w, dy = (q.y - dr.py) / k / size.h;
+      // work in label mm so the grid is physical and the same on every size
       const [a, bb, c, dd] = dr.text;
-      const mx = clamp(dx, -a, 1 - c), my = clamp(dy, -bb, 1 - dd);
-      onChange({ ...p, text: [round(a + mx), round(bb + my), round(c + mx), round(dd + my)] });
+      let x0 = a * size.w + (q.x - dr.px) / k, x1 = c * size.w + (q.x - dr.px) / k;
+      let y0 = bb * size.h + (q.y - dr.py) / k, y1 = dd * size.h + (q.y - dr.py) / k;
+      const free = !snap || e.altKey;
+      const sx = free ? { delta: 0 } : snapSpan(x0, x1, guides.x, gridMm, tol);
+      const sy = free ? { delta: 0 } : snapSpan(y0, y1, guides.y, gridMm, tol);
+      x0 += sx.delta; x1 += sx.delta; y0 += sy.delta; y1 += sy.delta;
+      const mx = clamp(0, -x0, size.w - x1), my = clamp(0, -y0, size.h - y1);
+      setHit({ x: mx === 0 ? sx.guide : undefined, y: my === 0 ? sy.guide : undefined });
+      onChange({ ...p, text: [round((x0 + mx) / size.w), round((y0 + my) / size.h), round((x1 + mx) / size.w), round((y1 + my) / size.h)] });
     } else {
-      const fx = clamp((q.x - W.x) / k - b, 0, size.w) / size.w;
-      const fy = clamp((q.y - W.y) / k - b, 0, size.h) / size.h;
+      const free = !snap || e.altKey;
+      let ex = clamp((q.x - W.x) / k - b, 0, size.w);
+      let ey = clamp((q.y - W.y) / k - b, 0, size.h);
+      const sx = free ? { value: ex } : snapEdge(ex, guides.x, gridMm, tol);
+      const sy = free ? { value: ey } : snapEdge(ey, guides.y, gridMm, tol);
+      ex = clamp(sx.value, 0, size.w);
+      ey = clamp(sy.value, 0, size.h);
+      setHit({ x: sx.guide, y: sy.guide });
+      const fx = ex / size.w, fy = ey / size.h;
       let [a, bb, c, dd] = dr.text;
       const min = 0.06;
       if (dr.corner === 0 || dr.corner === 3) a = Math.min(fx, c - min); else c = Math.max(fx, a + min);
@@ -187,7 +228,7 @@ function Editor(props: {
       onChange({ ...p, text: [round(a), round(bb), round(c), round(dd)] });
     }
   };
-  const end = () => { drag.current = null; };
+  const end = () => { drag.current = null; setHit({}); };
 
   const setHeight = (h: number) => onChange(normalise({ ...p, height: clamp(h, 0.05, hMax) }, sw, sh, aspect));
   const wheel = useCallback((e: WheelEvent) => {
@@ -253,6 +294,12 @@ function Editor(props: {
               </button>
             ))}
           </div>
+          <div className="actions snap-controls">
+            <label className="inline"><input type="checkbox" checked={snap} onChange={(e) => setSnap(e.target.checked)} /> Snap name box</label>
+            <select value={gridMm} disabled={!snap} onChange={(e) => setGrid(Number(e.target.value))} aria-label="Grid size">
+              {GRID_STEPS.map((g) => <option key={g} value={g}>{g} mm grid</option>)}
+            </select>
+          </div>
           <label className="zoom">Zoom
             <input type="range" min={0.05} max={hMax} step={0.001} value={hMax + 0.05 - Math.min(p.height, hMax)}
               onChange={(e) => setHeight(hMax + 0.05 - Number(e.target.value))} />
@@ -267,18 +314,39 @@ function Editor(props: {
               onPointerDown={(e) => start(e, { kind: "crop", px: pt(e).x, py: pt(e).y, x0: win.x0, y0: win.y0 })} />
             <g className="cut-line">{cut}</g>
             <g className="safe-line">{safeShape}</g>
+            {snap && (
+              <g className="grid" pointerEvents="none">
+                {Array.from({ length: Math.floor(size.w / gridMm) + 1 }, (_, i) => i * gridMm).map((x) => (
+                  <line key={`gx${x}`} x1={lx(x)} x2={lx(x)} y1={ly(0)} y2={ly(size.h)} />
+                ))}
+                {Array.from({ length: Math.floor(size.h / gridMm) + 1 }, (_, i) => i * gridMm).map((y) => (
+                  <line key={`gy${y}`} x1={lx(0)} x2={lx(size.w)} y1={ly(y)} y2={ly(y)} />
+                ))}
+                <line className="centre" x1={lx(size.w / 2)} x2={lx(size.w / 2)} y1={ly(0)} y2={ly(size.h)} />
+                <line className="centre" x1={lx(0)} x2={lx(size.w)} y1={ly(size.h / 2)} y2={ly(size.h / 2)} />
+              </g>
+            )}
             <rect className="name-box" x={box.x} y={box.y} width={box.w} height={box.h}
               onPointerDown={(e) => start(e, { kind: "box", px: pt(e).x, py: pt(e).y, text: p.text })} />
             {[[box.x, box.y], [box.x + box.w, box.y], [box.x + box.w, box.y + box.h], [box.x, box.y + box.h]].map(([x, y], i) => (
               <rect key={i} className="handle" x={x - 6} y={y - 6} width={12} height={12}
                 onPointerDown={(e) => start(e, { kind: "corner", corner: i as 0 | 1 | 2 | 3, text: p.text })} />
             ))}
+            <g className="snap-hit" pointerEvents="none">
+              {hit.x !== undefined && <line x1={lx(hit.x)} x2={lx(hit.x)} y1={ly(-b)} y2={ly(size.h + b)} />}
+              {hit.y !== undefined && <line x1={lx(-b)} x2={lx(size.w + b)} y1={ly(hit.y)} y2={ly(hit.y)} />}
+            </g>
           </svg>
         </div>
         <p className="muted small legend">
           <span className="key cut" /> cut line <span className="key bleed" /> crop window (label + 1.25 mm bleed)
           <span className="key safe" /> 1 mm safe zone <span className="key name" /> name box
         </p>
+        {snap && (
+          <p className="muted small">
+            The name box snaps to the {gridMm} mm grid, the label centre (orange) and the safe zone. Hold Alt to move it freely.
+          </p>
+        )}
         <div className="actions">
           <button className="primary" onClick={props.onSave} disabled={!props.dirty && !props.isAuto}>
             {props.isAuto && !props.dirty ? "Save this automatic layout" : "Save preset"}

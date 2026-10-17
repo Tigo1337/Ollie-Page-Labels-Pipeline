@@ -121,3 +121,9 @@ label small { font-weight: 400; }
 .key.name { border-top: 2px dashed #3fa0ff; }
 .crop-preview { margin: 10px 0; }
 .crop-preview img { max-width: 100%; }
+.grid line { stroke: rgba(40,40,90,0.22); stroke-width: 0.6; }
+.grid line.centre { stroke: rgba(255,170,0,0.75); stroke-width: 1; stroke-dasharray: 4 3; }
+.snap-hit line { stroke: #ff2bd6; stroke-width: 1.5; }
+label.inline { flex-direction: row; align-items: center; gap: 6px; font-weight: 400; }
+label.inline input { width: auto; }
+.snap-controls select { padding: 4px 6px; }
