@@ -1,0 +1,10 @@
+modules = ["python-3.11", "nodejs-20"]
+run = "bash scripts/start.sh"
+
+[deployment]
+run = ["bash", "scripts/start.sh"]
+deploymentTarget = "vm"
+
+[[ports]]
+localPort = 8000
+externalPort = 80

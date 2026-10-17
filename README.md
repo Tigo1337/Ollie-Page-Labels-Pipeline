@@ -5,11 +5,30 @@ production files for an Epson ET-2980 (US Letter) and a Silhouette Cameo 5.
 
 ## Status
 
-- **Phase 1 – engine + CLI** ✅ (this commit)
-- Phase 2 – design library (web app)
+- **Phase 1 – engine + CLI** ✅
+- **Phase 2 – web app + design library** ✅ (plus a first "Make labels" screen)
 - Phase 3 – crop editor
 - Phase 4 – orders
 - Phase 5 – batching + polish
+
+## Running the app (Replit)
+
+1. Import this GitHub repo into Replit and press **Run** (`scripts/start.sh`: installs
+   the Python packages, builds the React frontend if needed, starts FastAPI on port 8000).
+2. In **Secrets** add `LABELS_API_SECRET` (the password for the app). Without it the
+   app is open to anyone who has the URL and shows a warning banner.
+3. **Object Storage:** create a bucket in the Replit Object Storage tool. Artwork,
+   fonts and generated files go there. Outside Replit they go to `data/blobs/`.
+4. **Database:** SQLite in `data/app.db` by default. For a Replit *deployment*
+   (whose disk is not persistent) add a Replit PostgreSQL database: the app picks up
+   `DATABASE_URL` automatically.
+5. Fonts are downloaded automatically on first start (see the Fonts page).
+
+Environment variables: `LABELS_API_SECRET`, `LABELS_DATA_DIR`, `LABELS_STORAGE`
+(`auto` | `replit` | `local`), `LABELS_DATABASE_URL` / `DATABASE_URL`, `PORT`.
+
+Local development: `pip install -r requirements-dev.txt`, `bash scripts/start.sh`
+(or `uvicorn app.main:_app_factory --factory --reload` plus `cd frontend && npm run dev`).
 
 ## Layout
 
@@ -27,6 +46,10 @@ engine/            pure-Python rendering engine (no web dependencies)
   cli.py           python -m engine ...
 config/            seed data: production numbers, sizes, packs, finishes, fonts,
                    designs, proof wording (en/fr), info-sheet template
+app/               FastAPI app: storage interface (repo.py), blob storage, auth,
+                   engine wiring, API routes (api.py)
+frontend/          React + Vite + TypeScript UI, built into frontend/dist
+scripts/start.sh   one run command
 tests/             pytest suite (alignment, packing, text fit, golden, speed…)
 examples/          sample order JSON
 ```

@@ -98,6 +98,6 @@ def resolve_preset(design: Design, size: Size, prod: Production,
         return p, False
     src = size.default_source
     if src not in src_dims:
-        raise ArtError(f"Design '{design.id}' has no {src} artwork.")
+        raise ArtError(f"Design '{design.id}' has no {src} artwork yet. Upload it in the design library.")
     w, h = src_dims[src]
     return auto_preset(design, size, prod, w, h), True

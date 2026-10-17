@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import datetime as _dt
 import json
+import re
+import unicodedata
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -56,7 +58,10 @@ class ProductionResult:
 
 
 def safe_name(s: str) -> str:
-    return "".join(c if c.isalnum() or c in "-_." else "-" for c in s).strip("-") or "order"
+    """ASCII-only file name part ("Émilie Rose" -> "Emilie-Rose")."""
+    ascii_ = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
+    out = "".join(c if c.isalnum() or c in "-_." else "-" for c in ascii_)
+    return re.sub(r"-{2,}", "-", out).strip("-.") or "order"
 
 
 def sheet_paths(sheet: Sheet, cat: Catalog) -> list[list[tuple[float, float]]]:
