@@ -23,13 +23,13 @@ def test_dxf_is_r12_mm_closed_polylines_on_cut(ws, tmp_path):
     # y flipped: top edge of the medium label (y = 30) is at page_h - 30
     ys = [v.dxf.location.y for v in ents[0].vertices]
     assert max(ys) == pytest.approx(cat.production.page_h - 30)
-    assert min(ys) == pytest.approx(cat.production.page_h - 30 - 16)
+    assert min(ys) == pytest.approx(cat.production.page_h - 30 - cat.sizes["medium"].h)
     assert parse_dxf_polylines(p.read_text())[0][0][0] == pytest.approx(paths[0][0][0])
 
 
 def test_svg_paths_red_02mm_viewbox_in_mm(ws):
     cat = ws.catalog
-    s = svg([cut_path(cat.sizes["mini"], 15, 15)], cat.production.page_w, cat.production.page_h)
+    s = svg([cut_path(cat.sizes["pencil"], 15, 15)], cat.production.page_w, cat.production.page_h)
     assert 'viewBox="0 0 215.9 279.4"' in s and 'width="215.9mm"' in s
     assert 'stroke="#FF0000"' in s and 'stroke-width="0.2"' in s
     assert len(re.findall("<path ", s)) == 1

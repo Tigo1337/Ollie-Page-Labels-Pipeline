@@ -1,0 +1,13 @@
+{
+  "_comment": "Sheet geometry (mm), single source of truth for marks, keep-outs, trim line and layouts. All values are in the Studio frame: landscape Letter, origin top-left, y down. Changing anything here changes the geometry hash, so `python -m engine layouts` writes new layout versions (-v2 ...) and every Studio template must be rebuilt. See reference/sheet-layout-plan.md.",
+  "paper": {"w": 279.4, "h": 215.9, "frame": "studio_landscape", "pdf_rotate": 270},
+  "registration": {"style": "type1", "marks": 3, "inset": 10.0, "length": 10.0, "thickness": 1.0, "padding": 1.5},
+  "corner_ink_keepout": 21.5,
+  "corner_cut_keepout": 23.5,
+  "laminate_notch": 22.0,
+  "edge_margin": 10.0,
+  "trim": {"x": 139.7, "margin_each_side": 5.0, "ticks_mm": 6.0, "dashed_guide": true},
+  "gap": 2.5,
+  "bleed": 1.25,
+  "dpi": 600
+}

@@ -21,7 +21,7 @@ from reportlab.pdfgen import canvas as rl_canvas
 
 from . import cutfiles
 from .config import Catalog, Production
-from .geometry import PT_PER_MM, bbox, cut_path, mm_to_px, px
+from .geometry import PT_PER_MM, bbox, cut_paths, mm_to_px, px
 from .orders import Expanded, Order, OrderError, expand
 from .packing import Sheet, get_strategy
 from .render import RenderedLabel, Renderer
@@ -66,8 +66,8 @@ def safe_name(s: str) -> str:
 
 def sheet_paths(sheet: Sheet, cat: Catalog) -> list[list[tuple[float, float]]]:
     prod = cat.production
-    return [cut_path(cat.sizes[p.job.size], p.x, p.y, prod.rrect_segments, prod.circle_segments)
-            for p in sheet.placements]
+    return [path for p in sheet.placements
+            for path in cut_paths(cat.sizes[p.job.size], p.x, p.y, prod.rrect_segments, prod.circle_segments)]
 
 
 def notch_paths(prod: Production) -> list[list[tuple[float, float]]]:

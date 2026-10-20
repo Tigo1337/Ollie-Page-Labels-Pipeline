@@ -1,24 +1,39 @@
 {
  "finishes": {
   "matte": {
-   "sheets": 1,
-   "labels": 52
+   "sheets": 2,
+   "labels": 86
   },
   "gloss": {
-   "sheets": 10,
-   "labels": 432
+   "sheets": 14,
+   "labels": 378
   }
  },
  "pages": [
   {
    "finish": "matte",
    "n": 1,
-   "count": 52,
+   "count": 71,
    "bbox": [
     13.25,
     13.25,
-    189.0,
-    225.0
+    187.0,
+    248.2
+   ],
+   "proof_px": [
+    1275,
+    1650
+   ]
+  },
+  {
+   "finish": "matte",
+   "n": 2,
+   "count": 15,
+   "bbox": [
+    13.25,
+    13.25,
+    167.4,
+    59.8
    ],
    "proof_px": [
     1275,
@@ -28,12 +43,12 @@
   {
    "finish": "gloss",
    "n": 1,
-   "count": 34,
+   "count": 32,
    "bbox": [
     13.25,
     13.25,
-    162.0,
-    228.0
+    172.0,
+    242.0
    ],
    "proof_px": [
     1275,
@@ -43,12 +58,12 @@
   {
    "finish": "gloss",
    "n": 2,
-   "count": 90,
+   "count": 35,
    "bbox": [
     13.25,
     13.25,
     187.0,
-    246.0
+    238.4
    ],
    "proof_px": [
     1275,
@@ -58,12 +73,12 @@
   {
    "finish": "gloss",
    "n": 3,
-   "count": 92,
+   "count": 58,
    "bbox": [
     13.25,
     13.25,
     187.0,
-    237.0
+    248.2
    ],
    "proof_px": [
     1275,
@@ -73,12 +88,12 @@
   {
    "finish": "gloss",
    "n": 4,
-   "count": 34,
+   "count": 56,
    "bbox": [
     13.25,
     13.25,
-    186.0,
-    244.0
+    187.0,
+    247.6
    ],
    "proof_px": [
     1275,
@@ -88,12 +103,12 @@
   {
    "finish": "gloss",
    "n": 5,
-   "count": 23,
+   "count": 54,
    "bbox": [
     13.25,
     13.25,
-    186.0,
-    251.0
+    177.0,
+    247.0
    ],
    "proof_px": [
     1275,
@@ -103,12 +118,12 @@
   {
    "finish": "gloss",
    "n": 6,
-   "count": 15,
+   "count": 17,
    "bbox": [
     13.25,
-    37.25,
-    183.0,
-    221.0
+    13.25,
+    177.0,
+    252.0
    ],
    "proof_px": [
     1275,
@@ -118,41 +133,11 @@
   {
    "finish": "gloss",
    "n": 7,
-   "count": 55,
+   "count": 10,
    "bbox": [
     13.25,
     13.25,
-    189.0,
-    237.0
-   ],
-   "proof_px": [
-    1275,
-    1650
-   ]
-  },
-  {
-   "finish": "gloss",
-   "n": 8,
-   "count": 53,
-   "bbox": [
-    13.25,
-    13.25,
-    189.0,
-    237.0
-   ],
-   "proof_px": [
-    1275,
-    1650
-   ]
-  },
-  {
-   "finish": "gloss",
-   "n": 9,
-   "count": 22,
-   "bbox": [
-    13.25,
-    13.25,
-    161.0,
+    128.0,
     243.0
    ],
    "proof_px": [
@@ -162,13 +147,103 @@
   },
   {
    "finish": "gloss",
-   "n": 10,
-   "count": 14,
+   "n": 8,
+   "count": 15,
    "bbox": [
     13.25,
     13.25,
-    161.0,
-    161.0
+    130.0,
+    252.0
+   ],
+   "proof_px": [
+    1275,
+    1650
+   ]
+  },
+  {
+   "finish": "gloss",
+   "n": 9,
+   "count": 19,
+   "bbox": [
+    13.25,
+    13.25,
+    130.0,
+    239.0
+   ],
+   "proof_px": [
+    1275,
+    1650
+   ]
+  },
+  {
+   "finish": "gloss",
+   "n": 10,
+   "count": 19,
+   "bbox": [
+    13.25,
+    13.25,
+    130.0,
+    251.8
+   ],
+   "proof_px": [
+    1275,
+    1650
+   ]
+  },
+  {
+   "finish": "gloss",
+   "n": 11,
+   "count": 16,
+   "bbox": [
+    13.25,
+    13.25,
+    130.0,
+    252.6
+   ],
+   "proof_px": [
+    1275,
+    1650
+   ]
+  },
+  {
+   "finish": "gloss",
+   "n": 12,
+   "count": 16,
+   "bbox": [
+    13.25,
+    13.25,
+    130.0,
+    252.6
+   ],
+   "proof_px": [
+    1275,
+    1650
+   ]
+  },
+  {
+   "finish": "gloss",
+   "n": 13,
+   "count": 16,
+   "bbox": [
+    13.25,
+    13.25,
+    130.0,
+    252.6
+   ],
+   "proof_px": [
+    1275,
+    1650
+   ]
+  },
+  {
+   "finish": "gloss",
+   "n": 14,
+   "count": 15,
+   "bbox": [
+    13.25,
+    13.25,
+    130.0,
+    224.2
    ],
    "proof_px": [
     1275,
@@ -179,147 +254,119 @@
  "labels": {
   "[\"dino\", \"large\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"gloss\"]": {
    "px": [
-    2185,
-    650
+    1559,
+    659
    ],
    "cap_mm": [
-    6.53,
-    4.36
+    5.7,
+    3.35
    ]
   },
   "[\"dino\", \"large\", \"Léo\", \"\", 1, \"gloss\"]": {
    "px": [
-    2185,
-    650
+    1559,
+    659
    ],
    "cap_mm": [
-    11.33
+    11.54
    ]
   },
   "[\"dino\", \"large\", \"Maximilien-Alexandre\", \"\", 3, \"gloss\"]": {
    "px": [
-    2185,
-    650
+    1559,
+    659
    ],
    "cap_mm": [
-    4.41
+    2.6
    ]
   },
   "[\"dino\", \"medium\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"gloss\"]": {
    "px": [
-    1476,
-    437
+    1559,
+    508
    ],
    "cap_mm": [
-    4.04,
-    2.67
+    4.93,
+    3.26
    ]
   },
   "[\"dino\", \"medium\", \"Léo\", \"\", 1, \"gloss\"]": {
    "px": [
-    1476,
-    437
+    1559,
+    508
    ],
    "cap_mm": [
-    6.98
+    8.55
    ]
   },
   "[\"dino\", \"medium\", \"Maximilien-Alexandre\", \"\", 3, \"gloss\"]": {
    "px": [
-    1476,
-    437
+    1559,
+    508
    ],
    "cap_mm": [
-    2.91
+    2.97
    ]
   },
-  "[\"dino\", \"mini\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"gloss\"]": {
+  "[\"dino\", \"pencil\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"gloss\"]": {
    "px": [
-    886,
-    272
+    1406,
+    283
    ],
    "cap_mm": [
     2.26,
-    1.16
+    1.45
    ]
   },
-  "[\"dino\", \"mini\", \"Léo\", \"\", 1, \"gloss\"]": {
+  "[\"dino\", \"pencil\", \"Léo\", \"\", 1, \"gloss\"]": {
    "px": [
-    886,
-    272
+    1406,
+    283
    ],
    "cap_mm": [
     3.94
    ]
   },
-  "[\"dino\", \"mini\", \"Maximilien-Alexandre\", \"\", 3, \"gloss\"]": {
+  "[\"dino\", \"pencil\", \"Maximilien-Alexandre\", \"\", 3, \"gloss\"]": {
    "px": [
-    886,
-    272
+    1406,
+    283
    ],
    "cap_mm": [
-    1.65
+    2.94
    ]
   },
   "[\"dino\", \"round\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"gloss\"]": {
    "px": [
-    768,
-    768
+    815,
+    815
    ],
    "cap_mm": [
-    2.31,
-    1.54
+    2.46,
+    1.63
    ]
   },
   "[\"dino\", \"round\", \"Léo\", \"\", 1, \"gloss\"]": {
    "px": [
-    768,
-    768
+    815,
+    815
    ],
    "cap_mm": [
-    4.05
+    4.32
    ]
   },
   "[\"dino\", \"round\", \"Maximilien-Alexandre\", \"\", 3, \"gloss\"]": {
    "px": [
-    768,
-    768
+    815,
+    815
    ],
    "cap_mm": [
-    1.44
+    1.53
    ]
   },
-  "[\"dino\", \"small\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"gloss\"]": {
+  "[\"dino\", \"shoe\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"gloss\"]": {
    "px": [
-    1122,
-    366
-   ],
-   "cap_mm": [
-    3.32,
-    2.11
-   ]
-  },
-  "[\"dino\", \"small\", \"Léo\", \"\", 1, \"gloss\"]": {
-   "px": [
-    1122,
-    366
-   ],
-   "cap_mm": [
-    5.77
-   ]
-  },
-  "[\"dino\", \"small\", \"Maximilien-Alexandre\", \"\", 3, \"gloss\"]": {
-   "px": [
-    1122,
-    366
-   ],
-   "cap_mm": [
-    2.08
-   ]
-  },
-  "[\"dino\", \"square\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"gloss\"]": {
-   "px": [
-    957,
+    1535,
     957
    ],
    "cap_mm": [
@@ -327,63 +374,89 @@
     1.96
    ]
   },
-  "[\"dino\", \"square\", \"Léo\", \"\", 1, \"gloss\"]": {
+  "[\"dino\", \"shoe\", \"Léo\", \"\", 1, \"gloss\"]": {
    "px": [
-    957,
+    1535,
     957
    ],
    "cap_mm": [
     5.12
    ]
   },
-  "[\"dino\", \"square\", \"Maximilien-Alexandre\", \"\", 3, \"gloss\"]": {
+  "[\"dino\", \"shoe\", \"Maximilien-Alexandre\", \"\", 3, \"gloss\"]": {
    "px": [
-    957,
+    1535,
     957
    ],
    "cap_mm": [
-    1.81
+    3.0
    ]
   },
-  "[\"space-cat\", \"medium\", \"Zoë\", \"\", 4, \"matte\"]": {
+  "[\"dino\", \"small\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"gloss\"]": {
    "px": [
-    1476,
-    437
+    1110,
+    359
    ],
    "cap_mm": [
-    6.99
+    3.23,
+    2.05
    ]
   },
-  "[\"space-cat\", \"mini\", \"Zoë\", \"\", 4, \"matte\"]": {
+  "[\"dino\", \"small\", \"Léo\", \"\", 1, \"gloss\"]": {
    "px": [
-    886,
-    272
+    1110,
+    359
    ],
    "cap_mm": [
-    3.94
+    5.59
    ]
   },
-  "[\"space-cat\", \"round\", \"Zoë\", \"\", 4, \"matte\"]": {
+  "[\"dino\", \"small\", \"Maximilien-Alexandre\", \"\", 3, \"gloss\"]": {
    "px": [
-    768,
-    768
+    1110,
+    359
    ],
    "cap_mm": [
-    4.03
+    2.08
    ]
   },
   "[\"space-cat\", \"small\", \"Zoë\", \"\", 4, \"matte\"]": {
    "px": [
-    1122,
-    366
+    1110,
+    359
    ],
    "cap_mm": [
-    5.75
+    5.6
+   ]
+  },
+  "[\"space-cat\", \"tag\", \"Zoë\", \"\", 4, \"matte\"]": {
+   "px": [
+    659,
+    359
+   ],
+   "cap_mm": [
+    3.56
    ]
   }
  },
  "pdf_pages": {
   "golden_gloss_print.pdf": [
+   [
+    612.0,
+    792.0
+   ],
+   [
+    612.0,
+    792.0
+   ],
+   [
+    612.0,
+    792.0
+   ],
+   [
+    612.0,
+    792.0
+   ],
    [
     612.0,
     792.0
@@ -429,6 +502,10 @@
    [
     612.0,
     792.0
+   ],
+   [
+    612.0,
+    792.0
    ]
   ]
  },
@@ -437,6 +514,18 @@
   "golden_gloss_p10_cut.dxf",
   "golden_gloss_p10_cut.svg",
   "golden_gloss_p10_proof.png",
+  "golden_gloss_p11_cut.dxf",
+  "golden_gloss_p11_cut.svg",
+  "golden_gloss_p11_proof.png",
+  "golden_gloss_p12_cut.dxf",
+  "golden_gloss_p12_cut.svg",
+  "golden_gloss_p12_proof.png",
+  "golden_gloss_p13_cut.dxf",
+  "golden_gloss_p13_cut.svg",
+  "golden_gloss_p13_proof.png",
+  "golden_gloss_p14_cut.dxf",
+  "golden_gloss_p14_cut.svg",
+  "golden_gloss_p14_proof.png",
   "golden_gloss_p1_cut.dxf",
   "golden_gloss_p1_cut.svg",
   "golden_gloss_p1_proof.png",
@@ -471,6 +560,9 @@
   "golden_matte_p1_cut.dxf",
   "golden_matte_p1_cut.svg",
   "golden_matte_p1_proof.png",
+  "golden_matte_p2_cut.dxf",
+  "golden_matte_p2_cut.svg",
+  "golden_matte_p2_proof.png",
   "golden_matte_print.pdf",
   "golden_summary.json"
  ]

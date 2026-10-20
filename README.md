@@ -34,7 +34,10 @@ Local development: `pip install -r requirements-dev.txt`, `bash scripts/start.sh
 
 ```
 engine/            pure-Python rendering engine (no web dependencies)
-  config.py        catalogue dataclasses, loads config/*.json
+  config.py        catalogue dataclasses, loads config/*.json (incl. sheet.json geometry)
+  frames.py        Studio frame <-> printed view (the only place frames are converted)
+  layout.py        fixed half-sheet layout optimizer (port of reference/sheet_opt.py)
+  gallery.py       layout preview PNGs
   art.py           white-band trimming, crop presets, automatic layout
   text.py          NFC normalising, glyph check, text fitting
   render.py        one label at 600 dpi (+ render cache)
@@ -44,8 +47,10 @@ engine/            pure-Python rendering engine (no web dependencies)
   proofs.py        customer proof, holographic preview, review sheet, font chart
   fonts_download.py  Google Fonts downloader (+ licence files)
   cli.py           python -m engine ...
-config/            seed data: production numbers, sizes, packs, finishes, fonts,
-                   designs, proof wording (en/fr), info-sheet template
+config/            seed data: sheet geometry (sheet.json), production numbers, sizes, packs,
+                   finishes, fonts, designs, proof wording (en/fr), info-sheet template
+layouts/           published fixed layouts, chels-<size>-v<N>.json (never edited in place)
+reference/         prototype code and specs the engine is ported from
 app/               FastAPI app: storage interface (repo.py), blob storage, auth,
                    engine wiring, API routes (api.py)
 frontend/          React + Vite + TypeScript UI, built into frontend/dist
@@ -61,6 +66,8 @@ pip install -r requirements-dev.txt
 python -m engine fonts                 # download the 17 fonts into data/fonts
 python -m engine demo-art              # placeholder art for designs that have none
 python -m engine packs                 # labels per sheet / sheets per pack
+python -m engine layouts               # fixed half-sheet layouts + counts (writes -v2… only on a geometry change)
+python -m engine layout-gallery --out out/layouts   # one preview PNG per layout
 python -m engine order examples/order_school.json --out out/   # [--lang fr]
 python -m engine review axolotl --out review.png
 python -m engine fontchart --out font_chart.png

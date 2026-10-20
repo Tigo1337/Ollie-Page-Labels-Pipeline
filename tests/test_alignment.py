@@ -35,8 +35,11 @@ def outward_samples(path, d):
 @pytest.fixture(scope="module")
 def produced(ws, tmp_path_factory):
     out = tmp_path_factory.mktemp("align")
-    lines = [OrderLine("solid", "school", "matte", "Léo", "", 1),
-             OrderLine("solid", "square12", "matte", "Zoë", "", 1)]
+    # every single-label size (the shoe pair's two labels share a bleed, so it is checked by the
+    # layout template tests instead)
+    lines = [OrderLine("solid", "starter", "matte", "Léo", "", 1), OrderLine("solid", "daycare", "matte", "Zoë", "", 1),
+             OrderLine("solid", "medium30", "matte", "Léo", "", 1), OrderLine("solid", "large22", "matte", "Léo", "", 1),
+             OrderLine("solid", "round40", "matte", "Zoë", "", 1)]
     res = ws.producer.run([Order("align", lines)], out, customer_proofs=False)
     return res, out
 
@@ -88,7 +91,7 @@ def test_pdf_and_dxf_line_up(ws, produced):
                 edge_px = img[int(round(ey * k)), int(round(ex * k))]
                 inside_other = any(a <= ex <= c and b <= ey <= d for a, b, c, d in prod.mark_rects())
                 assert inside_other or edge_px.min() > 200, f"mark edge not at {ex:.2f},{ey:.2f}"
-    assert checked == 132 + 12
+    assert checked == 61 + 86 + 30 + 22 + 40
 
 
 def test_info_sheet_xy_is_cut_bbox(ws, produced):

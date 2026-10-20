@@ -47,10 +47,18 @@ def circle_points(cx: float, cy: float, radius: float, seg: int = 96) -> list[Po
 
 
 def cut_path(size: Size, x: float, y: float, rrect_seg: int = 12, circle_seg: int = 96) -> list[Point]:
-    """Cut path for a label whose cut bounding box has its top-left corner at (x, y)."""
+    """Cut path for a label whose cut bounding box has its top-left corner at (x, y).
+    (A pair has two cut paths: use `cut_paths`.)"""
     if size.shape == "circle":
         return circle_points(x + size.w / 2, y + size.h / 2, size.w / 2, circle_seg)
     return rrect_points(x, y, size.w, size.h, size.r, rrect_seg)
+
+
+def cut_paths(size: Size, x: float, y: float, rrect_seg: int = 12, circle_seg: int = 96) -> list[list[Point]]:
+    """Every cut path of one cell (unrotated, top-left at (x, y)): one, or two for a pair."""
+    if size.shape == "pair":
+        return [rrect_points(x + lx, y + ly, lw, lh, size.r, rrect_seg) for lx, ly, lw, lh in size.label_rects()]
+    return [cut_path(size, x, y, rrect_seg, circle_seg)]
 
 
 def offset_shape(size: Size, d: float) -> tuple[float, float, float]:
@@ -65,7 +73,13 @@ def point_in_shape(size: Size, px_: float, py: float, inset: float = 0.0) -> boo
     if size.shape == "circle":
         R = size.w / 2 - inset
         return math.hypot(px_ - size.w / 2, py - size.h / 2) <= R + 1e-9
-    w, h, r = size.w - 2 * inset, size.h - 2 * inset, max(0.0, size.r - inset)
+    if size.shape == "pair":
+        return any(_in_rrect(px_ - lx, py - ly, lw, lh, size.r, inset) for lx, ly, lw, lh in size.label_rects())
+    return _in_rrect(px_, py, size.w, size.h, size.r, inset)
+
+
+def _in_rrect(px_: float, py: float, w0: float, h0: float, r0: float, inset: float) -> bool:
+    w, h, r = w0 - 2 * inset, h0 - 2 * inset, max(0.0, r0 - inset)
     x, y = px_ - inset, py - inset
     if x < -1e-9 or y < -1e-9 or x > w + 1e-9 or y > h + 1e-9:
         return False
@@ -98,6 +112,11 @@ def shape_mask(size: Size, grow: float, canvas_mm: tuple[float, float], origin_m
     box = [x0 * k, y0 * k, (x0 + w) * k - 1, (y0 + h) * k - 1]
     if size.shape == "circle":
         d.ellipse(box, fill=255)
+    elif size.shape == "pair":
+        for lx, ly, lw, lh in size.label_rects():
+            bx, by = x0 + lx, y0 + ly          # this label's grown box on the canvas
+            d.rounded_rectangle([bx * k, by * k, (bx + lw + 2 * grow) * k - 1, (by + lh + 2 * grow) * k - 1],
+                                radius=max(0.0, size.r + grow) * k, fill=255)
     else:
         d.rounded_rectangle(box, radius=r * k, fill=255)
     if s > 1:

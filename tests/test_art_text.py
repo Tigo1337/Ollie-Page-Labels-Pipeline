@@ -66,7 +66,7 @@ def test_auto_preset_rect_is_left_anchored(ws):
 
 def test_auto_preset_round_square(ws):
     cat = ws.catalog
-    for sid in ("round", "square"):
+    for sid in ("round", "shoe"):
         p = auto_preset(cat.designs["dino"], cat.sizes[sid], cat.production, 2048, 2048)
         assert p.source == "square" and p.text == (0.14, 0.14, 0.86, 0.40)
 
@@ -76,7 +76,7 @@ def test_saved_preset_is_used_and_survives_same_shape_art(ws):
     lab = ws.renderer.render(LabelSpec("fox", "small", "Léo", "", 1), preset=preset)
     assert lab.preset == preset
     k = lab.dpi / 25.4
-    assert lab.text_box_px[0] == pytest.approx((ws.catalog.production.bleed + 0.3 * 45) * k)
+    assert lab.text_box_px[0] == pytest.approx((ws.catalog.production.bleed + 0.3 * ws.catalog.sizes["small"].w) * k)
 
 # ---------------------------------------------------------------- text
 
@@ -84,7 +84,7 @@ def test_normalise():
     assert normalise_name("  Zoë   Marie ") == "Zoë Marie"
 
 
-@pytest.mark.parametrize("size", ["mini", "small", "medium", "large", "round", "square"])
+@pytest.mark.parametrize("size", ["pencil", "small", "medium", "large", "tag", "round", "shoe"])
 @pytest.mark.parametrize("name,line2", [("Maximilien-Alexandre", ""), ("Léo", ""),
                                         ("Alexandre", "Tremblay-Gagnon")])
 def test_text_fits_inside_box_and_safe_zone(ws, size, name, line2):
@@ -116,16 +116,16 @@ def test_text_pixels_inside_box(ws):
 
 
 def test_readability_and_mini_warnings(ws):
-    lab = ws.renderer.render(LabelSpec("dino", "mini", "Maximilien-Alexandre", "", 17))
-    assert any("Pacifico" in w and "Mini" in w for w in lab.warnings)
+    lab = ws.renderer.render(LabelSpec("dino", "pencil", "Maximilien-Alexandre", "", 17))
+    assert any("Pacifico" in w and "Skinny" in w for w in lab.warnings)
     assert any("cap height" in w for w in lab.warnings) == (lab.min_cap_mm < 1.7)
-    lab = ws.renderer.render(LabelSpec("dino", "mini", "Christopher-Alexandre", "Tremblay-Gagnon", 1))
+    lab = ws.renderer.render(LabelSpec("dino", "pencil", "Christopher-Alexandre", "Tremblay-Gagnon", 1))
     assert lab.min_cap_mm < 1.7 and any("cap height" in w for w in lab.warnings)
 
 
 def test_glyph_check_catches_missing_characters(ws):
     with pytest.raises(GlyphError) as e:
-        ws.renderer.render(LabelSpec("dino", "mini", "Nguyễn", "", 1))
+        ws.renderer.render(LabelSpec("dino", "pencil", "Nguyễn", "", 1))
     assert "ễ" in e.value.missing
     alt_ids = {f.id for f in e.value.alternatives}
     assert 2 in alt_ids and 1 not in alt_ids
@@ -140,4 +140,4 @@ def test_glyph_check_line2(ws):
 
 def test_empty_name(ws):
     with pytest.raises(RenderError):
-        ws.renderer.render(LabelSpec("dino", "mini", "   ", "", 1))
+        ws.renderer.render(LabelSpec("dino", "pencil", "   ", "", 1))

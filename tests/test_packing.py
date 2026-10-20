@@ -85,7 +85,7 @@ def test_rows_never_mix_sizes_and_names_stay_together():
 
 
 def test_partial_sheet_starts_top_left():
-    jobs = jobs_for({"mini": 7})
+    jobs = jobs_for({"small": 7})
     sheet = STRATEGIES["tidy-rows"].pack(jobs, CAT.sizes, PROD)[0]
     first = min(sheet.placements, key=lambda p: (p.y, p.x))
     assert first.y - PROD.bleed == pytest.approx(PROD.margin)
@@ -103,5 +103,6 @@ def test_tidy_columns_line_up():
 
 
 def test_labels_per_sheet_numbers():
+    # old free packer (12 mm margin, 36 mm keep-outs); replaced by the fixed layouts in phase 3
     per = {sid: labels_per_sheet(s, PROD) for sid, s in CAT.sizes.items()}
-    assert per == {"mini": 99, "small": 55, "medium": 34, "large": 15, "round": 34, "square": 22}
+    assert per == {"pencil": 54, "small": 58, "medium": 19, "large": 16, "tag": 90, "round": 32, "shoe": 10}

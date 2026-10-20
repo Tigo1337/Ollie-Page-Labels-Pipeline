@@ -15,6 +15,7 @@ from .geometry import mm_to_px, px, rect_in_shape, shape_mask
 from .text import FittedLine, FontLibrary, draw_line, fit_line, normalise_name
 
 ENGINE_VERSION = "1"
+MINI_SIZES = ("pencil", "tag")  # fonts with mini_ok: false get a warning on these
 
 
 class RenderError(ValueError):
@@ -166,8 +167,8 @@ class Renderer:
         if min(cap_mm) < prod.min_cap_mm:
             warnings.append(f"Small text: cap height {min(cap_mm):.2f} mm on {size.label} "
                             f"for \"{' / '.join(texts)}\" (minimum {prod.min_cap_mm} mm).")
-        if size.id == "mini" and not font.spec.mini_ok:
-            warnings.append(f"Font {font.spec.id} ({font.spec.name}) is hard to read on Mini labels.")
+        if size.id in MINI_SIZES and not font.spec.mini_ok:
+            warnings.append(f"Font {font.spec.id} ({font.spec.name}) is hard to read on {size.label} labels.")
         return RenderedLabel(spec=spec, image=canvas, dpi=dpi, bleed_mm=(bw_mm, bh_mm), preset=preset,
                              preset_is_auto=is_auto, lines=lines, cap_mm=cap_mm, warnings=warnings,
                              text_box_px=box)

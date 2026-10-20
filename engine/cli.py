@@ -7,6 +7,8 @@
   review DESIGN               design review sheet PNG
   packs                       labels per sheet and sheets per pack
   calibrate                   test sheet to check print/cut alignment on plain paper
+  layouts                     build the fixed half-sheet layouts (new versions only) + counts table
+  layout-gallery --out DIR    one preview PNG per layout (printed view)
 """
 from __future__ import annotations
 
@@ -107,6 +109,38 @@ def cmd_calibrate(args) -> int:
     return 0
 
 
+def _layouts_dir(args) -> Path:
+    return Path(args.layouts) if args.layouts else REPO / "layouts"
+
+
+def cmd_layouts(args) -> int:
+    from .config import load_catalog
+    from .layout import rebuild
+    cat = load_catalog(args.config)
+    rows = rebuild(cat.sheet, cat.sizes, _layouts_dir(args))
+    print(f"{'layout':<18} {'size':<24} {'arrangement':<11} {'per half':>9} {'per sheet':>10}  rows")
+    for r in rows:
+        lay, size = r.layout, cat.sizes[r.layout.size]
+        unit = " pr" if size.shape == "pair" else ""
+        note = {"new": "  (new file)", "unchanged": "",
+                "differs": "  WARNING: the optimizer now gives different cells; published file kept"}[r.status]
+        print(f"{lay.layout_id:<18} {size.dims_label:<24} {lay.arrangement:<11} {lay.per_half:>6}{unit:<3} "
+              f"{lay.per_sheet:>7}{unit:<3}  {' + '.join(map(str, lay.rows))}{note}")
+    return 1 if any(r.status == "differs" for r in rows) else 0
+
+
+def cmd_layout_gallery(args) -> int:
+    from .config import load_catalog
+    from .gallery import write_gallery
+    from .layout import current_layout
+    cat = load_catalog(args.config)
+    lays = [(current_layout(cat.sheet, s, _layouts_dir(args)), s) for s in cat.sizes.values()]
+    font = Path(args.data) / "fonts" / "_ui" / "Nunito-UI-bold.ttf"
+    for p in write_gallery(lays, cat.sheet, Path(args.out), dpi=args.dpi, font_path=font if font.exists() else None):
+        print(p)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m engine", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -127,6 +161,11 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("packs"); p.set_defaults(fn=cmd_packs)
     p = sub.add_parser("calibrate"); p.add_argument("--out", default="calibration")
     p.set_defaults(fn=cmd_calibrate)
+    p = sub.add_parser("layouts"); p.add_argument("--layouts", help="layouts folder (default: layouts/)")
+    p.set_defaults(fn=cmd_layouts)
+    p = sub.add_parser("layout-gallery"); p.add_argument("--out", default="out/layouts")
+    p.add_argument("--layouts"); p.add_argument("--dpi", type=int, default=150)
+    p.set_defaults(fn=cmd_layout_gallery)
 
     args = ap.parse_args(argv)
     try:

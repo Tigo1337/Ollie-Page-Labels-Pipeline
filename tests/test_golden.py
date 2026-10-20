@@ -22,8 +22,8 @@ def golden_order():
     lines = []
     for name, l2, font in (("Léo", "", 1), ("Maximilien-Alexandre", "", 3), ("Alexandre", "Tremblay-Gagnon", 7)):
         lines.append(OrderLine("dino", "school", "gloss", name, l2, font))
-        lines.append(OrderLine("dino", "square12", "gloss", name, l2, font))
-    lines.append(OrderLine("space-cat", "starter", "matte", "Zoë", "", 4))
+        lines.append(OrderLine("dino", "large22", "gloss", name, l2, font))
+    lines.append(OrderLine("space-cat", "daycare", "matte", "Zoë", "", 4))
     return Order("golden", lines)
 
 
@@ -62,13 +62,13 @@ def test_golden_every_size(ws, tmp_path):
             assert abs(a - b) <= 0.05, (k, a, b)
 
 
-def test_132_label_pack_under_10_seconds(ws, tmp_path):
+def test_school_pack_under_10_seconds(ws, tmp_path):
     w = fresh_ws(ws)  # empty render cache
     order = Order("speed", [OrderLine("fox", "school", "holographic", "Maximilien", "", 2)])
     t = time.perf_counter()
     res = w.producer.run([order], tmp_path)
     dt = time.perf_counter() - t
-    assert res.summary["finishes"]["holographic"]["labels"] == 132
+    assert res.summary["finishes"]["holographic"]["labels"] == 104  # 96 labels + 8 shoe pairs
     assert dt < 10, f"took {dt:.1f} s"
 
 

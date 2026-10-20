@@ -1,0 +1,33 @@
+{
+ "_doc": "Fixed half-sheet layout. Never edit a published layout: a geometry change makes a new version. Cells are [X, Y, W, H, rotated] in mm, Studio frame (landscape Letter, origin top-left, y down); 'top'/'bottom' are the halves as the printed sheet is held (printed top = Studio right half, X > trim). bottom[i] mirrors top[i] about the trim line.",
+ "layout_id": "chels-shoe-v1",
+ "size": "shoe",
+ "version": 1,
+ "geometry_hash": "1107ad3dbb3a533f3ed4265d8d7056dbc94c5841aede383cd2defc95922812f5",
+ "frame": "studio",
+ "arrangement": "normal",
+ "per_half": 8,
+ "per_sheet": 16,
+ "rows": [2, 3, 3],
+ "size_geometry": {"shape": "pair", "w": 62.5, "h": 38, "r": 4, "pair": {"each_w": 30, "gap": 2.5}},
+ "top": [
+  [228.55, 44.2, 38, 62.5, false],
+  [228.55, 109.2, 38, 62.5, false],
+  [188.05, 11.7, 38, 62.5, false],
+  [188.05, 76.7, 38, 62.5, false],
+  [188.05, 141.7, 38, 62.5, false],
+  [147.55, 11.7, 38, 62.5, false],
+  [147.55, 76.7, 38, 62.5, false],
+  [147.55, 141.7, 38, 62.5, false]
+ ],
+ "bottom": [
+  [12.85, 44.2, 38, 62.5, false],
+  [12.85, 109.2, 38, 62.5, false],
+  [53.35, 11.7, 38, 62.5, false],
+  [53.35, 76.7, 38, 62.5, false],
+  [53.35, 141.7, 38, 62.5, false],
+  [93.85, 11.7, 38, 62.5, false],
+  [93.85, 76.7, 38, 62.5, false],
+  [93.85, 141.7, 38, 62.5, false]
+ ]
+}

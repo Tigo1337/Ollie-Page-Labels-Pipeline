@@ -51,9 +51,9 @@ def test_requires_secret(tmp_path):
 
 def test_seeded_catalog(client):
     cat = client.get("/api/catalog").json()
-    assert [s["id"] for s in cat["sizes"]] == ["mini", "small", "medium", "large", "round", "square"]
+    assert [s["id"] for s in cat["sizes"]] == ["pencil", "small", "medium", "large", "tag", "round", "shoe"]
     school = next(p for p in cat["packs"] if p["id"] == "school")
-    assert school["total"] == 132 and school["sheets"] == 3
+    assert school["total"] == 104 and school["sheets"] == 4  # old packer until the half-sheet batching (phase 3)
     assert len(client.get("/api/designs").json()) == 20
 
 
@@ -95,7 +95,7 @@ def test_review_sheet_png(client):
 
 
 def test_plain_errors(client):
-    r = client.post("/api/preview", json={"design": "bee", "size": "mini", "name": "Léo"})
+    r = client.post("/api/preview", json={"design": "bee", "size": "pencil", "name": "Léo"})
     assert r.status_code == 400 and "no wide artwork" in r.json()["detail"]
     r = client.post("/api/make", json={"design": "dino", "pack": "nope", "finish": "matte", "name": "A"})
     assert r.status_code == 400 and "Unknown pack" in r.json()["detail"]
@@ -117,7 +117,7 @@ def test_make_labels_end_to_end(client):
     got = client.get(f"/api/runs/{run['id']}/files/{z}")
     assert got.status_code == 200 and zipfile.ZipFile(io.BytesIO(got.content)).namelist()
     assert client.get("/api/runs").json()[0]["id"] == run["id"]
-    r = client.post("/api/make", json={"design": "axolotl", "pack": "mini60", "finish": "matte",
+    r = client.post("/api/make", json={"design": "axolotl", "pack": "pencil60", "finish": "matte",
                                        "name": "Émilie", "font": 1})
     assert r.status_code == 200
     names = [f["name"] for f in r.json()["files"]]
@@ -138,19 +138,19 @@ def test_crop_presets_are_saved_and_used_by_orders(client):
     assert after["preset"] == preset and not after["preset_is_auto"] and after["image"] != before["image"]
 
     # the saved crop is what an order prints
-    run = client.post("/api/make", json={"design": "shark", "pack": "large14", "name": "Léo", "font": 1}).json()
+    run = client.post("/api/make", json={"design": "shark", "pack": "large22", "name": "Léo", "font": 1}).json()
     assert run["request"]["finish"] == "matte"  # shop default
     lab = client.app.state.svc.renderer.render(LabelSpec("shark", "large", "Léo", "", 1, "matte"))
     assert lab.preset.to_dict() == preset
 
     # copy to every rectangular size; round/square untouched
-    assert client.post("/api/designs/shark/presets/large/copy-to-rect").json()["copied_to"] == ["mini", "small", "medium"]
+    assert client.post("/api/designs/shark/presets/large/copy-to-rect").json()["copied_to"] == ["pencil", "small", "medium", "tag"]
     sizes = {s["size"]: s for s in client.get("/api/designs/shark/presets").json()["sizes"]}
-    assert all(not sizes[s]["is_auto"] for s in ("mini", "small", "medium", "large"))
-    assert sizes["round"]["is_auto"] and sizes["square"]["is_auto"]
+    assert all(not sizes[s]["is_auto"] for s in ("pencil", "small", "medium", "large", "tag"))
+    assert sizes["round"]["is_auto"] and sizes["shoe"]["is_auto"]
 
     # reset goes back to automatic
-    assert client.delete("/api/designs/shark/presets/mini").status_code == 200
+    assert client.delete("/api/designs/shark/presets/pencil").status_code == 200
     assert client.get("/api/designs/shark/presets").json()["sizes"][0]["is_auto"]
 
 
@@ -169,7 +169,7 @@ def test_shop_default_finish(client):
     assert client.patch("/api/shop", json={"default_finish": "gloss"}).json()["default_finish"] == "gloss"
     data = art_zip(["bee"], client.app.state.svc.catalog)
     client.post("/api/designs/import-zip", files={"file": ("a.zip", data, "application/zip")})
-    run = client.post("/api/make", json={"design": "bee", "pack": "mini60", "name": "Zoë", "font": 1}).json()
+    run = client.post("/api/make", json={"design": "bee", "pack": "pencil60", "name": "Zoë", "font": 1}).json()
     assert "gloss" in run["summary"]["finishes"]
     assert any(f["kind"] == "notch" for f in run["files"])
     assert client.patch("/api/shop", json={"default_finish": "shiny"}).status_code == 400
