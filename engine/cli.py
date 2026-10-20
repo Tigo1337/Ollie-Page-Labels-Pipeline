@@ -5,7 +5,8 @@
   order ORDER.json            produce all files for an order (or several, = a batch)
   fontchart                   font chart PNG
   review DESIGN               design review sheet PNG
-  packs                       labels per sheet and sheets per pack
+  packs                       labels per half / sheet, and halves / sheets per pack
+  pack-samples --out DIR      a sample bundle for every pack × finish (demo art)
   calibration LAYOUT_ID       calibration PDF for one layout (marks + cut outlines, no art)
   layouts                     build the fixed half-sheet layouts (new versions only) + counts table
   layout-gallery --out DIR    one preview PNG per layout (printed view)
@@ -57,17 +58,23 @@ def cmd_order(args) -> int:
     orders = [Order.load(p) for p in args.order]
     out = Path(args.out)
     t = time.time()
-    res = ws.producer.run(orders, out, lang=args.lang)
+    res = ws.producer.run(orders, out, lang=args.lang, unpaired=args.unpaired)
     dt = time.time() - t
-    for f, s in res.summary["finishes"].items():
-        print(f"{f}: {s['labels']} labels on {s['sheets']} sheet(s)")
-    for p in res.pages:
-        print(f"  {p.finish} page {p.n}: {p.count} labels, cut box X {p.x:.2f} Y {p.y:.2f} "
-              f"W {p.w:.2f} H {p.h:.2f} mm")
-    for w in res.warnings:
-        print(f"WARNING: {w}")
+    print_run(res)
     print(f"{len(res.files)} files + {res.zip_path.name} in {out} ({dt:.1f} s)")
     return 0
+
+
+def print_run(res) -> None:
+    for f, s in res.summary["finishes"].items():
+        print(f"{f}: {s['labels']} labels on {s['sheets']} sheet(s)")
+    for sh in res.summary["sheets"]:
+        bottom = sh["bottom"]["tag"] + (" (bonus)" if sh["bottom"]["bonus"] else "") if sh["bottom"] else "(blank)"
+        print(f"  sheet {sh['n']}: {sh['layout_id']} {sh['finish']}  haut: {sh['top']['tag']}  |  bas: {bottom}")
+    for w in res.summary["waiting"]:
+        print(f"  WAITING: {w['tag']}")
+    for w in res.warnings:
+        print(f"WARNING: {w}")
 
 
 def cmd_fontchart(args) -> int:
@@ -91,14 +98,39 @@ def cmd_packs(args) -> int:
     from .config import load_catalog
     from .proofs import pack_table
     cat = load_catalog(args.config)
-    per, sheets = pack_table(cat)
-    print("Labels per full sheet")
-    for sid, n in per.items():
-        print(f"  {cat.sizes[sid].label:<24} {cat.sizes[sid].dims_label:<14} {n:>4}")
-    print("\nSheets per pack (per finish)")
-    for pid, n in sheets.items():
-        p = cat.packs[pid]
-        print(f"  {p.label:<28} {p.total:>4} labels  {n} sheet(s)")
+    per, packs = pack_table(cat, _layouts_dir(args))
+    print("Labels per layout")
+    for sid, x in per.items():
+        unit = " pairs" if x["pairs"] else ""
+        print(f"  {cat.sizes[sid].label:<38} {x['layout_id']:<17} {x['per_half']:>4}{unit} per half "
+              f"{x['per_sheet']:>4}{unit} per sheet")
+    print("\nPacks (halves; sheets of material when batched / when printed alone)")
+    for pid, x in packs.items():
+        halves = ", ".join(f"{n} {s}" for s, n in x["halves_by_size"].items())
+        print(f"  {cat.packs[pid].label:<42} {x['halves']} halves ({halves})  "
+              f"{x['batched']:g} / {x['alone']} sheet(s)")
+    return 0
+
+
+def cmd_pack_samples(args) -> int:
+    """For every pack × finish, a sample order with demo art, produced as a bundle."""
+    from .assets import LocalAssets
+    from .orders import Order, OrderLine
+    from .testart import write_design_art
+    ws = _ws(args)
+    la = LocalAssets(args.data)
+    design = ws.catalog.designs[args.design]
+    if not la.original_path(design.id, "wide"):
+        write_design_art(design, Path(args.data))
+    out = Path(args.out)
+    packs = args.pack or list(ws.catalog.packs)
+    finishes = args.finish or list(ws.catalog.finishes)
+    for pid in packs:
+        for fid in finishes:
+            order = Order(f"sample-{pid}-{fid}", [OrderLine(design.id, pid, fid, args.name, "", args.font)])
+            res = ws.producer.run([order], out / f"{pid}_{fid}", unpaired=args.unpaired)
+            sheets = res.summary["sheets"]
+            print(f"{pid:<10} {fid:<12} {len(sheets)} sheet(s), {len(res.files)} files -> {res.zip_path}")
     return 0
 
 
@@ -174,13 +206,22 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("demo-art"); p.add_argument("--design", nargs="*"); p.add_argument("--force", action="store_true")
     p.set_defaults(fn=cmd_demo_art)
     p = sub.add_parser("order"); p.add_argument("order", nargs="+", help="order JSON file(s); several = one batch")
-    p.add_argument("--out", default="out"); p.add_argument("--lang", default=None); p.set_defaults(fn=cmd_order)
+    p.add_argument("--out", default="out"); p.add_argument("--lang", default=None)
+    p.add_argument("--unpaired", choices=["bonus", "blank", "wait"], default="bonus",
+                   help="a half without a partner: print it with a bonus copy (default), with a blank half, or wait")
+    p.set_defaults(fn=cmd_order)
     p = sub.add_parser("fontchart"); p.add_argument("--out", default="font_chart.png")
     p.add_argument("--lang", default="en"); p.set_defaults(fn=cmd_fontchart)
     p = sub.add_parser("review"); p.add_argument("design"); p.add_argument("--out")
     p.add_argument("--font", type=int, default=1); p.add_argument("--finish", default="matte")
     p.set_defaults(fn=cmd_review)
-    p = sub.add_parser("packs"); p.set_defaults(fn=cmd_packs)
+    p = sub.add_parser("packs"); p.add_argument("--layouts"); p.set_defaults(fn=cmd_packs)
+    p = sub.add_parser("pack-samples"); p.add_argument("--out", default="out/pack-samples")
+    p.add_argument("--pack", nargs="*"); p.add_argument("--finish", nargs="*")
+    p.add_argument("--design", default="dino"); p.add_argument("--name", default="Léo")
+    p.add_argument("--font", type=int, default=1)
+    p.add_argument("--unpaired", choices=["bonus", "blank", "wait"], default="bonus")
+    p.set_defaults(fn=cmd_pack_samples)
     p = sub.add_parser("calibration"); p.add_argument("layout_id"); p.add_argument("--out", default="out/calibration")
     p.add_argument("--layouts"); p.set_defaults(fn=cmd_calibration)
     p = sub.add_parser("layouts"); p.add_argument("--layouts", help="layouts folder (default: layouts/)")

@@ -66,23 +66,26 @@ def _dashed(d: ImageDraw.ImageDraw, p0, p1, dash: float, fill, width: int = 1) -
                fill=fill, width=width)
 
 
-def render_layout(layout: Layout, size: Size, sheet: Sheet, dpi: int = 150,
-                  font_path: Path | None = None) -> Image.Image:
+def studio_canvas(sheet: Sheet, dpi: int) -> tuple[Image.Image, float]:
+    """A white Studio-frame page at `dpi` and its px per mm."""
     k = mm_to_px(1, dpi)
+    return Image.new("RGB", (int(round(sheet.paper_w * k)), int(round(sheet.paper_h * k))), "white"), k
+
+
+def draw_furniture(d: ImageDraw.ImageDraw, sheet: Sheet, k: float, gutter: bool = True, margin: bool = True) -> None:
+    """Keep-outs (ink hatched, cut outlined), laminate notches, marks and the trim line (Studio frame)."""
     PW, PH = sheet.paper_w, sheet.paper_h
-    img = Image.new("RGB", (int(round(PW * k)), int(round(PH * k))), "white")
-    d = ImageDraw.Draw(img)
 
     def box(x0, y0, x1, y1):
         return (x0 * k, y0 * k, x1 * k, y1 * k)
 
-    # trim gutter and edge margin
     T, tm, e = sheet.trim_x, sheet.trim_margin, sheet.edge_margin
-    d.rectangle(box(T - tm, 0, T + tm, PH), fill=(246, 246, 248))
-    corners = [(e, e), (PW - e, e), (PW - e, PH - e), (e, PH - e)]
-    for a, b_ in zip(corners, corners[1:] + corners[:1]):
-        _dashed(d, (a[0] * k, a[1] * k), (b_[0] * k, b_[1] * k), 2 * k, LIGHT)
-    # keep-outs (ink hatched, cut outlined), laminate notches, marks
+    if gutter:
+        d.rectangle(box(T - tm, 0, T + tm, PH), fill=(246, 246, 248))
+    if margin:
+        corners = [(e, e), (PW - e, e), (PW - e, PH - e), (e, PH - e)]
+        for a, b_ in zip(corners, corners[1:] + corners[:1]):
+            _dashed(d, (a[0] * k, a[1] * k), (b_[0] * k, b_[1] * k), 2 * k, LIGHT)
     for z in sheet.corner_squares(sheet.ink_keepout):
         _hatch(d, box(*z), 2.5 * k)
     for z in sheet.corner_squares(sheet.cut_keepout):
@@ -91,13 +94,20 @@ def render_layout(layout: Layout, size: Size, sheet: Sheet, dpi: int = 150,
         d.rectangle(box(*z), outline=BLUE, width=2)
     for r in mark_rects(sheet):
         d.rectangle(box(*r), fill=(0, 0, 0))
-    # trim line: dashed guide + ticks
     _dashed(d, (T * k, 8 * k), (T * k, (PH - 8) * k), 3 * k, GREY, 1)
     d.line([(T * k, 0), (T * k, sheet.trim_ticks * k)], fill=(0, 0, 0), width=2)
     d.line([(T * k, (PH - sheet.trim_ticks) * k), (T * k, PH * k)], fill=(0, 0, 0), width=2)
 
+
+def draw_cuts(d: ImageDraw.ImageDraw, layout: Layout, size: Size, sheet: Sheet, k: float,
+              bleed_fill: bool = True) -> None:
+    """Every cut line in red (Studio frame); with `bleed_fill`, the bleed in pink underneath."""
     b = sheet.bleed
-    for pass_ in ("bleed", "cut"):                  # all bleed first, so no cut line gets painted over
+
+    def box(x0, y0, x1, y1):
+        return (x0 * k, y0 * k, x1 * k, y1 * k)
+
+    for pass_ in (("bleed", "cut") if bleed_fill else ("cut",)):   # bleed first: no cut line painted over
         for cell in layout.cells:
             for sx, sy, sw, sh in cell_labels(cell, size, sheet):
                 if pass_ == "bleed":
@@ -111,7 +121,21 @@ def render_layout(layout: Layout, size: Size, sheet: Sheet, dpi: int = 150,
                 else:
                     d.rounded_rectangle(box(sx, sy, sx + sw, sy + sh), radius=size.r * k, outline=RED, width=2)
 
-    img = img.transpose(Image.Transpose.ROTATE_90)   # Studio frame -> printed view
+
+def to_printed_view(img: Image.Image) -> Image.Image:
+    """Studio-frame image -> printed view (the same 90° turn as the PDF's /Rotate 270)."""
+    return img.transpose(Image.Transpose.ROTATE_90)
+
+
+def render_layout(layout: Layout, size: Size, sheet: Sheet, dpi: int = 150,
+                  font_path: Path | None = None) -> Image.Image:
+    img, k = studio_canvas(sheet, dpi)
+    d = ImageDraw.Draw(img)
+    draw_furniture(d, sheet, k)
+    draw_cuts(d, layout, size, sheet, k)
+    PW, T = sheet.paper_w, sheet.trim_x
+
+    img = to_printed_view(img)
 
     # header and notes, in the printed view
     head = int(26 * k)

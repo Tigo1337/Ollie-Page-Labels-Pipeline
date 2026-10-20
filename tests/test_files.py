@@ -5,14 +5,14 @@ import pytest
 
 from engine.cutfiles import dxf_r12, parse_dxf_polylines, svg
 from engine.geometry import cut_path
-from engine.production import notch_paths
+from engine.production import laminate_outline
 
 
 def test_dxf_is_r12_mm_closed_polylines_on_cut(ws, tmp_path):
     cat = ws.catalog
     paths = [cut_path(cat.sizes["medium"], 20, 30), cut_path(cat.sizes["round"], 100, 50)]
     p = tmp_path / "x.dxf"
-    p.write_text(dxf_r12(paths, cat.production.page_h, cat.production.page_w))
+    p.write_text(dxf_r12(paths, cat.sheet.paper_h, cat.sheet.paper_w))
     doc = ezdxf.readfile(p)
     assert doc.dxfversion == "AC1009"
     ents = list(doc.modelspace())
@@ -22,28 +22,28 @@ def test_dxf_is_r12_mm_closed_polylines_on_cut(ws, tmp_path):
     assert len(list(ents[1].vertices)) == 96               # 96 per circle
     # y flipped: top edge of the medium label (y = 30) is at page_h - 30
     ys = [v.dxf.location.y for v in ents[0].vertices]
-    assert max(ys) == pytest.approx(cat.production.page_h - 30)
-    assert min(ys) == pytest.approx(cat.production.page_h - 30 - cat.sizes["medium"].h)
+    assert max(ys) == pytest.approx(cat.sheet.paper_h - 30)
+    assert min(ys) == pytest.approx(cat.sheet.paper_h - 30 - cat.sizes["medium"].h)
     assert parse_dxf_polylines(p.read_text())[0][0][0] == pytest.approx(paths[0][0][0])
 
 
 def test_svg_paths_red_02mm_viewbox_in_mm(ws):
     cat = ws.catalog
-    s = svg([cut_path(cat.sizes["pencil"], 15, 15)], cat.production.page_w, cat.production.page_h)
-    assert 'viewBox="0 0 215.9 279.4"' in s and 'width="215.9mm"' in s
+    s = svg([cut_path(cat.sizes["pencil"], 15, 15)], cat.sheet.paper_w, cat.sheet.paper_h)
+    assert 'viewBox="0 0 279.4 215.9"' in s and 'width="279.4mm"' in s
     assert 'stroke="#FF0000"' in s and 'stroke-width="0.2"' in s
     assert len(re.findall("<path ", s)) == 1
 
 
-def test_notches_are_34mm_squares_at_three_mark_corners(ws):
-    prod = ws.catalog.production
-    sq = notch_paths(prod)
-    assert len(sq) == 3
-    for path in sq:
-        xs, ys = [p[0] for p in path], [p[1] for p in path]
-        assert max(xs) - min(xs) == pytest.approx(34) and max(ys) - min(ys) == pytest.approx(34)
-    corners = {(min(p[0] for p in s) == 0, min(p[1] for p in s) == 0) for s in sq}
-    assert corners == {(True, True), (False, True), (True, False)}
+def test_laminate_outline_has_22mm_notches_at_the_mark_corners(ws):
+    import dataclasses
+    sheet = ws.catalog.sheet
+    pts = laminate_outline(sheet)
+    W, H = sheet.paper_w, sheet.paper_h
+    assert pts == [(0, 22), (22, 22), (22, 0), (W - 22, 0), (W - 22, 22), (W, 22),
+                   (W, H), (22, H), (22, H - 22), (0, H - 22)]
+    four = laminate_outline(dataclasses.replace(sheet, marks=4))
+    assert len(four) == 12 and (W - 22, H - 22) in four
 
 
 def test_calibration_sheet(ws, tmp_path):

@@ -47,18 +47,10 @@ def circle_points(cx: float, cy: float, radius: float, seg: int = 96) -> list[Po
 
 
 def cut_path(size: Size, x: float, y: float, rrect_seg: int = 12, circle_seg: int = 96) -> list[Point]:
-    """Cut path for a label whose cut bounding box has its top-left corner at (x, y).
-    (A pair has two cut paths: use `cut_paths`.)"""
+    """Cut path for a label whose cut bounding box has its top-left corner at (x, y)."""
     if size.shape == "circle":
         return circle_points(x + size.w / 2, y + size.h / 2, size.w / 2, circle_seg)
     return rrect_points(x, y, size.w, size.h, size.r, rrect_seg)
-
-
-def cut_paths(size: Size, x: float, y: float, rrect_seg: int = 12, circle_seg: int = 96) -> list[list[Point]]:
-    """Every cut path of one cell (unrotated, top-left at (x, y)): one, or two for a pair."""
-    if size.shape == "pair":
-        return [rrect_points(x + lx, y + ly, lw, lh, size.r, rrect_seg) for lx, ly, lw, lh in size.label_rects()]
-    return [cut_path(size, x, y, rrect_seg, circle_seg)]
 
 
 def offset_shape(size: Size, d: float) -> tuple[float, float, float]:

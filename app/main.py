@@ -16,6 +16,7 @@ from engine.text import FontError, GlyphError
 
 from .db import make_session_factory
 from .engine_service import EngineService
+from .migrate import migrate
 from .repo import NotFound, Repo
 from .settings import Settings, load_settings
 from .storage import BlobNotFound, make_store
@@ -38,7 +39,8 @@ def create_app(settings: Settings | None = None, start_font_download: bool = Tru
     if repo.seed(settings.config_dir):
         log.info("Seeded the database from %s", settings.config_dir)
     repo.ensure_defaults()
-    svc = EngineService(repo, store, settings.cache_dir, settings.config_dir)
+    migrate(repo, settings.config_dir, settings.database_url, settings.data_dir)
+    svc = EngineService(repo, store, settings.cache_dir, settings.config_dir, settings.layouts_dir)
 
     app = FastAPI(title="Label Pipeline", docs_url="/api/docs", openapi_url="/api/openapi.json")
     app.state.settings = settings

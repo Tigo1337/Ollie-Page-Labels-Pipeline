@@ -51,28 +51,35 @@ export const api = {
 
 // ---- types mirrored from the API ----
 export interface Size {
-  id: string; label: string; shape: "rrect" | "circle"; w: number; h: number; r: number;
-  is_rect: boolean; dims: string; per_sheet: number;
+  id: string; label: string; shape: "rrect" | "circle" | "pair"; w: number; h: number; r: number;
+  gap: number | null; pair: { each_w: number; gap: number } | null;
+  is_rect: boolean; dims: string; layout_id: string | null; per_half: number; per_sheet: number;
 }
-export interface Pack { id: string; label: string; contents: Record<string, number>; total: number; sheets: number }
+export interface Pack {
+  id: string; label: string; contents: Record<string, number>; total: number;
+  halves_by_size: Record<string, number>; halves: number; batched: number; alone: number; error?: string;
+}
 export interface Finish { id: string; label: string; media: string; laminate: string; notch: boolean; cost_per_sheet: number | null }
 export interface FontSpec { id: number; name: string; repo_dir: string; file: string; weight: number | null; mini_ok: boolean }
-export interface Catalog { production: Record<string, number | boolean>; sizes: Size[]; packs: Pack[]; finishes: Finish[]; fonts: FontSpec[] }
+export interface Catalog { production: Record<string, number | boolean>; sheet: Record<string, number | boolean>; sizes: Size[]; packs: Pack[]; finishes: Finish[]; fonts: FontSpec[] }
 
 export interface PresetData { source: "wide" | "square"; center: [number, number]; height: number; text: [number, number, number, number] }
 export interface Design {
   id: string; name: string; fill: string; stroke: string; char_end: number; stroke_ratio: number | null;
   effective_stroke_ratio: number; cap_frac: number; position: number; presets: Record<string, PresetData>;
+  review: Record<string, string>; mini_start: number; square_text: [number, number, number, number]; no_character_sizes: string[];
   art: { wide: boolean; square: boolean; wide_size: [number, number] | null; square_size: [number, number] | null;
          wide_version: string | null; square_version: string | null };
 }
 export interface Preview { image: string; cap_mm: number[]; warnings: string[]; preset: PresetData; preset_is_auto: boolean; min_cap_mm: number }
 export interface RunFile { name: string; size: number; kind: string }
+export interface RunHalf { order: string; size: string; name: string; finish: string; index: number; of: number; bonus: boolean; tag: string }
+export interface RunSheet { n: number; finish: string; layout_id: string; size: string; pdf: string; page: number; proof: string; top: RunHalf; bottom: RunHalf | null }
 export interface Run {
   id: string; title: string; prefix: string; created_at: string; request: Record<string, unknown>;
   files: RunFile[]; warnings: string[];
-  summary: { finishes: Record<string, { sheets: number; labels: number }>;
-             pages: { finish: string; n: number; count: number; x: number; y: number; w: number; h: number; proof: string }[] };
+  summary: { finishes: Record<string, { sheets: number; labels: number }>; sheets?: RunSheet[]; waiting?: RunHalf[];
+             templates?: { layout_id: string; studio3: boolean }[] };
 }
 export interface FontStatus { id: number; name: string; installed: boolean; licence: string | null; mini_ok: boolean; weight: number | null; file: string }
 

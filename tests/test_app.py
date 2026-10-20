@@ -56,17 +56,25 @@ def test_seeded_catalog(client):
     cat = client.get("/api/catalog").json()
     assert [s["id"] for s in cat["sizes"]] == ["pencil", "small", "medium", "large", "tag", "round", "shoe"]
     school = next(p for p in cat["packs"] if p["id"] == "school")
-    assert school["total"] == 104 and school["sheets"] == 4  # old packer until the half-sheet batching (phase 3)
-    assert len(client.get("/api/designs").json()) == 20
+    assert (school["halves"], school["batched"], school["alone"]) == (5, 2.5, 5)
+    assert school["halves_by_size"] == {"pencil": 1, "small": 1, "medium": 1, "round": 1, "shoe": 1}
+    tag = next(s for s in cat["sizes"] if s["id"] == "tag")
+    assert (tag["layout_id"], tag["per_half"], tag["per_sheet"]) == ("chels-tag-v1", 55, 110)
+    designs = client.get("/api/designs").json()
+    assert len(designs) == 100
+    assert sorted(d["id"] for d in designs if d["presets"]) == ["airplane", "dino", "fire-truck", "moon-stars",
+                                                                "mushrooms", "sakura", "tractor"]
+    dino = next(d for d in designs if d["id"] == "dino")
+    assert dino["mini_start"] == 0.24 and dino["no_character_sizes"] == ["tag"]
 
 
 def test_bulk_import_and_trim(client):
     cat = client.app.state.svc.catalog
-    data = art_zip(["axolotl", "dino"], cat, extra=[("Label Designs/turtle/turtle_wide.jpg", b"x"),
+    data = art_zip(["axolotl", "dino"], cat, extra=[("Label Designs/zebra-x/zebra-x_wide.jpg", b"x"),
                                                     ("Label Designs/dino/notes.png", b"x")])
     rep = client.post("/api/designs/import-zip", files={"file": ("a.zip", data, "application/zip")}).json()
     assert len(rep["imported"]) == 4
-    assert rep["unknown_folders"] == ["turtle"]
+    assert rep["unknown_folders"] == ["zebra-x"]
     d = client.get("/api/designs/axolotl").json()
     assert d["art"]["wide_size"] == [2752, 688 - 8] and d["art"]["square_size"] == [2048, 2048]
     orig = client.get("/api/designs/axolotl/art/wide?variant=original")
@@ -115,14 +123,17 @@ def test_make_labels_end_to_end(client):
     assert r.status_code == 200, r.text
     run = r.json()
     kinds = {f["kind"] for f in run["files"]}
-    assert {"print", "cut", "page-proof", "customer-proof", "notch", "info", "zip"} <= kinds
+    assert {"print", "template", "page-proof", "customer-proof", "notch", "info", "slip", "zip"} <= kinds
+    assert [sh["layout_id"] for sh in run["summary"]["sheets"]] == ["chels-pencil-v1", "chels-small-v1"]
+    assert all(sh["bottom"]["bonus"] for sh in run["summary"]["sheets"])
     z = next(f["name"] for f in run["files"] if f["kind"] == "zip")
     got = client.get(f"/api/runs/{run['id']}/files/{z}")
     assert got.status_code == 200 and zipfile.ZipFile(io.BytesIO(got.content)).namelist()
     assert client.get("/api/runs").json()[0]["id"] == run["id"]
-    r = client.post("/api/make", json={"design": "axolotl", "pack": "pencil60", "finish": "matte",
-                                       "name": "Émilie", "font": 1})
+    r = client.post("/api/make", json={"design": "axolotl", "pack": "shoe8", "finish": "matte",
+                                       "name": "Émilie", "font": 1, "unpaired": "blank"})
     assert r.status_code == 200
+    assert r.json()["summary"]["sheets"][0]["bottom"] is None
     names = [f["name"] for f in r.json()["files"]]
     assert all(n.isascii() for n in names)
 

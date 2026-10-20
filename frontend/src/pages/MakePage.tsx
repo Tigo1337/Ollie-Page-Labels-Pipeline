@@ -6,9 +6,11 @@ import { ErrorBox, fmtBytes, Spinner, useAsync, useDebounced, Warnings } from ".
 interface GlyphCheck { ok: boolean; message?: string; alternatives?: { id: number; name: string }[] }
 
 const KIND_LABEL: Record<string, string> = {
-  zip: "Everything (ZIP)", print: "Print PDF", cut: "Cut file", "page-proof": "Page proof",
-  "customer-proof": "Customer proof", notch: "Laminate notches", info: "Info sheet", other: "Other",
+  zip: "Everything (ZIP)", print: "Print PDF", template: "Cut template", "page-proof": "Page proof",
+  "customer-proof": "Customer proof", notch: "Laminate notches", info: "Info sheet", slip: "Packing slip",
+  other: "Other",
 };
+const MINI_SIZES = ["pencil", "tag"];
 
 export default function MakePage() {
   const { catalog } = useApp();
@@ -18,6 +20,7 @@ export default function MakePage() {
   const finishLabel = catalog.finishes.find((f) => f.id === finishId)?.label ?? finishId;
   const [form, setForm] = useState({
     order_id: "", design: "", pack: "starter", finish: "", font: 1, name: "", line2: "", lang: "en",
+    unpaired: "bonus",
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -66,7 +69,13 @@ export default function MakePage() {
   }, [liveKey, catalog.packs]);
 
   const fontSpec = catalog.fonts.find((f) => f.id === form.font);
-  const miniWarn = fontSpec && !fontSpec.mini_ok && pack && "mini" in pack.contents;
+  const miniSizes = pack ? MINI_SIZES.filter((s) => s in pack.contents) : [];
+  const miniWarn = fontSpec && !fontSpec.mini_ok && miniSizes.length > 0;
+  const halvesText = pack ? Object.entries(pack.halves_by_size).map(([s, n]) => {
+    const size = catalog.sizes.find((x) => x.id === s);
+    const per = size ? `${size.per_half}${size.shape === "pair" ? " pairs" : ""}` : "?";
+    return `${n} × ${sizeLabel(s)} half (${per})`;
+  }).join(", ") : "";
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,8 +117,11 @@ export default function MakePage() {
             </select>
             {pack && (
               <small className="muted">
-                {Object.entries(pack.contents).map(([s, q]) => `${q} × ${sizeLabel(s)}`).join(", ")}
-                {" · "}{pack.sheets} sheet{pack.sheets === 1 ? "" : "s"} · {finishLabel} (<a href="#/settings">change</a>)
+                {pack.error ? <span className="bad">{pack.error}</span> : <>
+                  {halvesText} · {pack.alone} sheet{pack.alone === 1 ? "" : "s"} on its own
+                  ({pack.batched} of material when batched) · {finishLabel} (<a href="#/settings">change</a>)
+                  · <a href="#/templates">cut templates</a>
+                </>}
               </small>
             )}
           </label>
@@ -127,6 +139,13 @@ export default function MakePage() {
           <label>Order number <small className="muted">(optional)</small>
             <input value={form.order_id} onChange={set("order_id")} placeholder="Etsy order #" />
           </label>
+          <label>Half without a partner
+            <select value={form.unpaired} onChange={set("unpaired")}>
+              <option value="bonus">Print alone, other half = free bonus copy</option>
+              <option value="blank">Print alone, other half blank</option>
+            </select>
+            <small className="muted">A sheet holds two halves of the same size; this order's odd halves are printed now.</small>
+          </label>
           <label>Proof language
             <select value={form.lang} onChange={set("lang")}>
               <option value="en">English</option>
@@ -134,7 +153,7 @@ export default function MakePage() {
             </select>
           </label>
           <div className="span2">
-            {miniWarn && <Warnings items={[`Font ${fontSpec!.id} (${fontSpec!.name}) is hard to read on Mini labels.`]} />}
+            {miniWarn && <Warnings items={[`Font ${fontSpec!.id} (${fontSpec!.name}) is hard to read on ${miniSizes.map(sizeLabel).join(" and ")} labels.`]} />}
             {glyph && !glyph.ok && (
               <ErrorBox message={glyph.message ?? "Missing characters."} />
             )}
@@ -194,7 +213,7 @@ function RunResult({ run }: { run: Run }) {
   const zip = run.files.find((f) => f.kind === "zip");
   const proof = run.files.find((f) => f.kind === "customer-proof");
   const pages = run.files.filter((f) => f.kind === "page-proof");
-  const order = ["zip", "print", "cut", "notch", "info", "customer-proof", "page-proof", "other"];
+  const order = ["zip", "print", "template", "notch", "info", "slip", "customer-proof", "page-proof", "other"];
   const files = [...run.files].sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind) || a.name.localeCompare(b.name));
   return (
     <section className="card">
@@ -228,16 +247,21 @@ function RunResult({ run }: { run: Run }) {
             ))}
           </div>
           <table className="table small">
-            <thead><tr><th>Page</th><th>Labels</th><th>X</th><th>Y</th><th>W</th><th>H</th></tr></thead>
+            <thead><tr><th>Sheet</th><th>Template</th><th>Haut (top)</th><th>Bas (bottom)</th></tr></thead>
             <tbody>
-              {run.summary.pages.map((p) => (
-                <tr key={p.proof}>
-                  <td>{p.finish} {p.n}</td><td>{p.count}</td>
-                  <td>{p.x.toFixed(2)}</td><td>{p.y.toFixed(2)}</td><td>{p.w.toFixed(2)}</td><td>{p.h.toFixed(2)}</td>
+              {(run.summary.sheets ?? []).map((sh) => (
+                <tr key={sh.n}>
+                  <td>{sh.n} · {sh.finish}</td><td><code>{sh.layout_id}</code></td>
+                  <td>{sh.top.tag}</td>
+                  <td>{sh.bottom ? <>{sh.bottom.tag}{sh.bottom.bonus && <strong> · bonus</strong>}</> : <span className="muted">blank</span>}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {(run.summary.waiting ?? []).length > 0 && (
+            <Warnings items={(run.summary.waiting ?? []).map((h) => `Waiting for a partner half: ${h.tag}`)} />
+          )}
+          <p className="muted small">Cut every sheet with its layout's template (<a href="#/templates">Templates</a>); no X / Y to type.</p>
         </div>
       </div>
       <h4>Files</h4>

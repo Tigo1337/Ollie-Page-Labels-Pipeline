@@ -4,7 +4,7 @@ from __future__ import annotations
 import numpy as np
 from PIL import Image
 
-from .config import Design, Preset, Production, Size
+from .config import Design, Preset, Size
 
 TRIM_THRESHOLD = 245.0
 TRIM_SHAVE_PX = 4
@@ -32,9 +32,9 @@ def trim_white_bands(img: Image.Image, threshold: float = TRIM_THRESHOLD,
     return img.crop((0, top, img.width, bottom))
 
 
-def bleed_aspect(size: Size, prod: Production) -> float:
-    b = prod.bleed
-    return (size.w + 2 * b) / (size.h + 2 * b)
+def bleed_aspect(size: Size, bleed: float) -> float:
+    """Width / height of what the crop fills: the label (a pair: the whole pair cell) plus bleed."""
+    return (size.w + 2 * bleed) / (size.h + 2 * bleed)
 
 
 def crop_window(preset: Preset, src_w: int, src_h: int, aspect: float) -> tuple[float, float, float, float]:
@@ -58,27 +58,41 @@ def crop_window(preset: Preset, src_w: int, src_h: int, aspect: float) -> tuple[
     return x0, y0, x0 + cw, y0 + ch
 
 
-def crop_to_label(img: Image.Image, preset: Preset, size: Size, prod: Production,
+def crop_to_label(img: Image.Image, preset: Preset, size: Size, bleed: float,
                   out_px: tuple[int, int]) -> Image.Image:
-    win = crop_window(preset, img.width, img.height, bleed_aspect(size, prod))
+    win = crop_window(preset, img.width, img.height, bleed_aspect(size, bleed))
     return img.convert("RGB").resize(out_px, Image.Resampling.LANCZOS, box=win)
 
 
-def auto_preset(design: Design, size: Size, prod: Production, src_w: int, src_h: int) -> Preset:
-    """The automatic layout, expressed as a preset so everything downstream is the same."""
-    b = prod.bleed
-    if not size.is_rect:
-        return Preset(source="square", center=(0.5, 0.5), height=1.0, text=(0.14, 0.14, 0.86, 0.40))
+def auto_preset(design: Design, size: Size, bleed: float, src_w: int, src_h: int) -> Preset:
+    """The automatic layout, expressed as a preset so everything downstream is the same.
 
-    aspect = bleed_aspect(size, prod)
-    # Scale the strip to label height + bleed, anchored left.
+    * round, shoe pair and tall sizes: the square art covering the label (a pair: the whole
+      pair cell, later split into its two labels), name box = the design's `square_text`
+      (for a pair: fractions of each label);
+    * sizes without the character (`no_character_sizes`, by default the clothing tag): the strip
+      from `mini_start` onwards, and the name fills the label;
+    * other strips: the strip at label height + bleed, anchored left so the character shows,
+      name box from the character's end (`char_end`) to the right edge.
+    """
+    b = bleed
+    if not size.is_rect:
+        return Preset(source="square", center=(0.5, 0.5), height=1.0, text=tuple(design.square_text))  # type: ignore[arg-type]
+
+    aspect = bleed_aspect(size, b)
+    # Scale the strip to label height + bleed.
     ch = float(src_h)
     cw = ch * aspect
     if cw > src_w:  # strip narrower than the label: fill the width instead
         cw = float(src_w)
         ch = cw / aspect
-    center = ((cw / 2) / src_w, 0.5)
     height = ch / src_h
+    if size.id in design.no_character_sizes:
+        x0 = min(design.mini_start * src_w, src_w - cw)
+        pad = max(1.0, 0.4 * size.r)
+        return Preset(source="wide", center=((x0 + cw / 2) / src_w, 0.5), height=height,
+                      text=(pad / size.w, 0.6 * pad / size.h, 1 - pad / size.w, 1 - 0.6 * pad / size.h))
+    center = ((cw / 2) / src_w, 0.5)
     mm_per_px = (size.h + 2 * b) / ch
     strip_w_mm = src_w * mm_per_px
     pad = max(1.0, 0.45 * size.r)
@@ -90,7 +104,7 @@ def auto_preset(design: Design, size: Size, prod: Production, src_w: int, src_h:
                   text=(x0 / size.w, vpad / size.h, x1 / size.w, 1 - vpad / size.h))
 
 
-def resolve_preset(design: Design, size: Size, prod: Production,
+def resolve_preset(design: Design, size: Size, bleed: float,
                    src_dims: dict[str, tuple[int, int]]) -> tuple[Preset, bool]:
     """Saved preset if there is one, else the automatic one. Returns (preset, is_auto)."""
     p = design.presets.get(size.id)
@@ -100,7 +114,7 @@ def resolve_preset(design: Design, size: Size, prod: Production,
     if src not in src_dims:
         raise ArtError(f"Design '{design.id}' has no {src} artwork yet. Upload it in the design library.")
     w, h = src_dims[src]
-    return auto_preset(design, size, prod, w, h), True
+    return auto_preset(design, size, bleed, w, h), True
 
 
 def validate_preset(p: Preset, src_dims: dict[str, tuple[int, int]]) -> Preset:

@@ -158,7 +158,7 @@ def customer_proof_image(r: Renderer, ui: UIFonts, texts: dict, order: Order, la
         items = []
         for spec in specs:
             size = cat.sizes[spec.size]
-            im = cut_out(r.render(spec), size, cat.production.bleed, ppm, holo=spec.finish == "holographic")
+            im = cut_out(r.render(spec), size, cat.sheet.bleed, ppm, holo=spec.finish == "holographic")
             label = T.get("size_labels", {}).get(size.id, size.label)
             caption = T["proof_caption"].format(size=label, dims=size.dims_label,
                                                 finish=T["finishes"].get(spec.finish, spec.finish))
@@ -227,7 +227,7 @@ def review_sheet(r: Renderer, ui: UIFonts, design_id: str, font_id: int = 1, fin
             spec = LabelSpec(design_id, sid, name, l2, font_id, finish)
             try:
                 lab = r.render(spec, preset=preset)
-                im = cut_out(lab, size, cat.production.bleed, ppm, holo=finish == "holographic")
+                im = cut_out(lab, size, cat.sheet.bleed, ppm, holo=finish == "holographic")
                 small = lab.min_cap_mm < cat.production.min_cap_mm
                 caps = [(f"{size.label} - caps {' / '.join(f'{c:.1f}' for c in lab.cap_mm)} mm",
                          RED if small else CAPTION)]
@@ -290,8 +290,17 @@ def font_chart(r: Renderer, ui: UIFonts, texts: dict, lang: str = "en", width: i
     return img
 
 
-def pack_table(cat: Catalog) -> tuple[dict[str, int], dict[str, int]]:
-    from .packing import labels_per_sheet, sheets_for
-    per = {sid: labels_per_sheet(s, cat.production) for sid, s in cat.sizes.items()}
-    sheets = {pid: sheets_for(p.contents, cat.sizes, cat.production) for pid, p in cat.packs.items()}
-    return per, sheets
+def pack_table(cat: Catalog, layouts_dir) -> tuple[dict[str, dict], dict[str, dict]]:
+    """Labels per half / per sheet for each size (from its fixed layout), and per pack: the halves
+    it uses and the sheets it takes (batched with other orders, or printed on its own)."""
+    from .layout import current_layout
+    from .packing import pack_halves, pack_sheets
+    per = {}
+    for sid, s in cat.sizes.items():
+        lay = current_layout(cat.sheet, s, layouts_dir)
+        per[sid] = {"layout_id": lay.layout_id, "per_half": lay.per_half, "per_sheet": lay.per_sheet,
+                    "pairs": s.shape == "pair"}
+    packs = {}
+    for pid, p in cat.packs.items():
+        packs[pid] = {"halves_by_size": pack_halves(p, cat, layouts_dir), **pack_sheets(p, cat, layouts_dir)}
+    return per, packs

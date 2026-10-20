@@ -8,8 +8,9 @@ production files for an Epson ET-2980 (US Letter) and a Silhouette Cameo 5.
 - **Phase 1 – engine + CLI** ✅
 - **Phase 2 – web app + design library** ✅ (plus a first "Make labels" screen)
 - **Phase 3 – crop editor** ✅
-- Phase 4 – orders
-- Phase 5 – batching + polish
+- **Fixed half-sheet layouts** (reference/layout-update-prompt.md) ✅ phases 1–4: layouts,
+  cut templates, half-sheet batching and bundles, new sizes and the database migration
+- Orders screen (CSV import, status tracking), pricing helper – to do
 
 ## Running the app (Replit)
 
@@ -48,9 +49,9 @@ engine/            pure-Python rendering engine (no web dependencies)
   art.py           white-band trimming, crop presets, automatic layout
   text.py          NFC normalising, glyph check, text fitting
   render.py        one label at 600 dpi (+ render cache)
-  packing.py       sheet packing strategies (tidy-rows default, compact-rows)
+  packing.py       half-sheet batching (pairs halves of the same layout and finish)
   cutfiles.py      R12 DXF + SVG writers
-  production.py    print PDF, cut files, page proofs, info sheet, ZIP
+  production.py    bundle: print PDFs per finish × layout, templates, page proofs, info sheet, packing slip, ZIP
   proofs.py        customer proof, holographic preview, review sheet, font chart
   fonts_download.py  Google Fonts downloader (+ licence files)
   cli.py           python -m engine ...
@@ -74,7 +75,8 @@ examples/          sample order JSON
 pip install -r requirements-dev.txt
 python -m engine fonts                 # download the 17 fonts into data/fonts
 python -m engine demo-art              # placeholder art for designs that have none
-python -m engine packs                 # labels per sheet / sheets per pack
+python -m engine packs                 # labels per half / sheet, halves and sheets per pack
+python -m engine pack-samples --out out/samples      # a bundle for every pack × finish (demo art)
 python -m engine layouts               # fixed half-sheet layouts + counts (writes -v2… only on a geometry change)
 python -m engine layout-gallery --out out/layouts   # one preview PNG per layout
 python -m engine templates             # templates/*.svg|dxf|json|_calibration.pdf + docs/studio-template-setup.md
@@ -90,6 +92,13 @@ Real artwork goes in `data/designs/<id>/<id>_wide.jpg` and `<id>_square.jpg`
 
 ## Production numbers
 
-All in `config/production.json` (mm): Letter page, 12 mm margin, 36 mm
-keep-out squares at TL/TR/BL, 1.25 mm bleed, 3 mm gap between cut lines,
-1 mm text safe zone, 600 dpi, 1.7 mm minimum cap height, 34 mm laminate notch.
+Sheet geometry is in `config/sheet.json` (mm, Silhouette Studio's landscape frame): Type 1 marks
+(3 marks, inset 10, length 10, thickness 1), 21.5 mm ink / 23.5 mm cut keep-outs on all four
+corners, 22 mm laminate notch (every finish), 10 mm edge margin, trim line at Studio X 139.7 with
+5 mm clear each side, 2.5 mm gap (2.0 mm between round labels), 1.25 mm bleed, 600 dpi.
+`config/production.json` keeps the 1 mm text safe zone, the 1.7 mm minimum cap height and the
+150 dpi proof resolution.
+
+Every size has one fixed layout (`layouts/`) with two identical halves per sheet; a pack is a whole
+number of halves, two halves of the same size and finish make a sheet, and every sheet of a layout
+is cut with that layout's template (`templates/`, built once in Studio: `docs/studio-template-setup.md`).

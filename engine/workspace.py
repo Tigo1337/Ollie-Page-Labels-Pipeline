@@ -28,7 +28,7 @@ class Workspace:
 
 def open_workspace(config_dir: str | Path = REPO / "config", data_dir: str | Path = REPO / "data",
                    catalog: Catalog | None = None, assets: Assets | None = None,
-                   strategy: str | None = None) -> Workspace:
+                   strategy: str | None = None, layouts_dir: str | Path = REPO / "layouts") -> Workspace:
     config_dir, data_dir = Path(config_dir), Path(data_dir)
     cat = catalog or load_catalog(config_dir)
     assets = assets or LocalAssets(data_dir)
@@ -36,5 +36,6 @@ def open_workspace(config_dir: str | Path = REPO / "config", data_dir: str | Pat
     renderer = Renderer(cat, assets, fonts)
     ui = UIFonts(ui_font_paths(assets.font_path(cat.fonts[UI_FONT_ID]), data_dir / "fonts" / "_ui"))
     texts = json.loads((config_dir / "texts.json").read_text(encoding="utf-8"))
-    producer = Producer(renderer, ui, texts, config_dir / "templates", strategy)
+    producer = Producer(renderer, ui, texts, config_dir / "templates", strategy, layouts_dir=Path(layouts_dir),
+                        config_dir=config_dir)
     return Workspace(cat, assets, fonts, renderer, ui, texts, producer)

@@ -80,11 +80,11 @@ class SheetPDF:
             self._line(T, s.edge_margin - 2, T, s.paper_h - s.edge_margin + 2)
         c.restoreState()
 
-    def header(self, text: str) -> None:
+    def header(self, text: str, font: str = "Helvetica") -> None:
         c = self.c
         c.saveState()
         c.setFillColorRGB(0.4, 0.4, 0.45)
-        c.setFont("Helvetica", 7)
+        c.setFont(font, 7)
         c.drawString(HEADER_AT[0] * PT, (self.H - HEADER_AT[1]) * PT, text)
         c.restoreState()
 

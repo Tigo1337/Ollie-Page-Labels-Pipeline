@@ -16,50 +16,16 @@ Source = Literal["wide", "square"]
 
 @dataclass(frozen=True)
 class Production:
-    page_w: float = 215.9
-    page_h: float = 279.4
-    margin: float = 12.0
-    keepout: float = 36.0
-    mark_inset: float = 10.0
-    mark_length: float = 20.0
-    mark_thickness: float = 1.0
-    mark_square: float = 5.0      # side of the filled Type 1 square (top-left)
-    print_marks: bool = True      # draw the Type 1 marks into the print PDF
-    bleed: float = 1.25
-    gap: float = 3.0
-    safe: float = 1.0
-    dpi: int = 600
+    """Production numbers that are not sheet geometry (that lives in config/sheet.json)."""
+    safe: float = 1.0             # text at least this far inside the cut line (mm)
     proof_dpi: int = 150
-    min_cap_mm: float = 1.7
-    notch: float = 34.0
-    rrect_segments: int = 12
-    circle_segments: int = 96
+    min_cap_mm: float = 1.7       # readability warning below this capital-letter height
 
-    def keepout_rects(self) -> list[tuple[float, float, float, float]]:
-        """Registration-mark keep-out squares (x0, y0, x1, y1), page mm, y down."""
-        k, W, H = self.keepout, self.page_w, self.page_h
-        return [(0.0, 0.0, k, k), (W - k, 0.0, W, k), (0.0, H - k, k, H)]
-
-    def mark_rects(self) -> list[tuple[float, float, float, float]]:
-        """Silhouette Type 1 registration marks as filled rectangles (page mm, y down).
-
-        Top-left: a filled square. Top-right and bottom-left: L-shaped corners whose
-        outer edges sit `mark_inset` from the page edges, arms `mark_length` long and
-        `mark_thickness` thick, pointing into the page.
-        """
-        i, L, t, s, W, H = (self.mark_inset, self.mark_length, self.mark_thickness, self.mark_square,
-                            self.page_w, self.page_h)
-        return [
-            (i, i, i + s, i + s),                      # top-left square
-            (W - i - L, i, W - i, i + t),              # top-right, horizontal arm
-            (W - i - t, i, W - i, i + L),              # top-right, vertical arm
-            (i, H - i - t, i + L, H - i),              # bottom-left, horizontal arm
-            (i, H - i - L, i + t, H - i),              # bottom-left, vertical arm
-        ]
-
-    def notch_rects(self) -> list[tuple[float, float, float, float]]:
-        n, W, H = self.notch, self.page_w, self.page_h
-        return [(0.0, 0.0, n, n), (W - n, 0.0, W, n), (0.0, H - n, n, H)]
+    @staticmethod
+    def from_dict(d: dict) -> "Production":
+        """Ignores keys from older versions (page size, margins, marks: now in sheet.json)."""
+        known = {f for f in Production.__dataclass_fields__}
+        return Production(**{k: v for k, v in d.items() if k in known})
 
 
 @dataclass(frozen=True)
@@ -228,6 +194,9 @@ class Design:
     stroke_ratio: float | None = None  # None = 0.20 for a light stroke, 0.14 for a dark one
     cap_frac: float = 0.52
     presets: dict[str, Preset] = field(default_factory=dict)
+    mini_start: float = 0.24           # where sizes without the character start along the wide strip
+    square_text: tuple[float, float, float, float] = (0.14, 0.14, 0.86, 0.40)  # name box on square art
+    no_character_sizes: tuple[str, ...] = ("tag",)
 
     @property
     def effective_stroke_ratio(self) -> float:
@@ -282,14 +251,9 @@ def load_catalog(config_dir: str | Path) -> Catalog:
         return json.loads((d / name).read_text(encoding="utf-8"))
 
     prod_raw = {k: v for k, v in rd("production.json").items() if not k.startswith("_")}
-    designs = {}
-    for x in rd("designs.json"):
-        presets = {k: Preset.from_dict(v) for k, v in (x.get("presets") or {}).items()}
-        designs[x["id"]] = Design(id=x["id"], name=x["name"], fill=x["fill"], stroke=x["stroke"],
-                                  char_end=float(x["char_end"]), stroke_ratio=x.get("stroke_ratio"),
-                                  cap_frac=float(x.get("cap_frac", 0.52)), presets=presets)
+    designs = {x["id"]: design_from_dict(x) for x in rd("designs.json")}
     return Catalog(
-        production=Production(**prod_raw),
+        production=Production.from_dict(prod_raw),
         sizes={x["id"]: Size(**x) for x in rd("sizes.json")},
         packs={x["id"]: Pack(**x) for x in rd("packs.json")},
         finishes={x["id"]: Finish(**x) for x in rd("finishes.json")},
@@ -299,7 +263,23 @@ def load_catalog(config_dir: str | Path) -> Catalog:
     )
 
 
+def design_from_dict(x: dict) -> Design:
+    presets = {k: Preset.from_dict(v) for k, v in (x.get("presets") or {}).items()}
+    extra = {}
+    if x.get("mini_start") is not None:
+        extra["mini_start"] = float(x["mini_start"])
+    if x.get("square_text") is not None:
+        extra["square_text"] = tuple(float(v) for v in x["square_text"])
+    if x.get("no_character_sizes") is not None:
+        extra["no_character_sizes"] = tuple(x["no_character_sizes"])
+    return Design(id=x["id"], name=x["name"], fill=x["fill"], stroke=x["stroke"], char_end=float(x["char_end"]),
+                  stroke_ratio=x.get("stroke_ratio"), cap_frac=float(x.get("cap_frac", 0.52)), presets=presets,
+                  **extra)
+
+
 def design_to_dict(d: Design) -> dict:
     out = asdict(d)
     out["presets"] = {k: v.to_dict() for k, v in d.presets.items()}
+    out["square_text"] = list(d.square_text)
+    out["no_character_sizes"] = list(d.no_character_sizes)
     return out

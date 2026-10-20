@@ -23,6 +23,7 @@ from .db import DesignRow, PresetRow, Setting
 from .storage import BlobStore
 
 SETTING_KEYS = ("production", "sizes", "packs", "finishes", "fonts", "texts", "shop")
+GEOMETRY_VERSION = 2   # 2 = fixed half-sheet layouts (sheet.json); see app/migrate.py
 SHOP_DEFAULTS = {"default_finish": "matte"}
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
 MAX_IMAGE_PIXELS = 40_000_000
@@ -61,10 +62,14 @@ class Repo:
                 if isinstance(val, dict):
                     val = {k: v for k, v in val.items() if not k.startswith("_")}
                 s.add(Setting(key=key, value=val))
+            s.add(Setting(key="geometry_version", value={"version": GEOMETRY_VERSION}))
             cat = load_catalog(config_dir)
             for i, d in enumerate(cat.designs.values()):
-                s.add(DesignRow(id=d.id, name=d.name, fill=d.fill, stroke=d.stroke, char_end=d.char_end,
-                                stroke_ratio=d.stroke_ratio, cap_frac=d.cap_frac, position=i))
+                s.add(design_row_from(d, i))
+            s.flush()
+            for d in cat.designs.values():
+                for sid, pr in d.presets.items():
+                    s.add(PresetRow(design_id=d.id, size_id=sid, data=pr.to_dict()))
             s.commit()
         self._bump()
         return True
@@ -111,7 +116,7 @@ class Repo:
         for p in presets:
             by_design.setdefault(p.design_id, {})[p.size_id] = Preset.from_dict(p.data)
         return Catalog(
-            production=Production(**vals["production"]),
+            production=Production.from_dict(vals["production"]),
             sizes={x["id"]: Size(**x) for x in vals["sizes"]},
             packs={x["id"]: Pack(**x) for x in vals["packs"]},
             finishes={x["id"]: Finish(**x) for x in vals["finishes"]},
@@ -121,8 +126,15 @@ class Repo:
 
     @staticmethod
     def _design(row: DesignRow, presets: dict[str, Preset]) -> Design:
+        extra: dict = {}
+        if row.mini_start is not None:
+            extra["mini_start"] = row.mini_start
+        if row.square_text is not None:
+            extra["square_text"] = tuple(row.square_text)
+        if row.no_character_sizes is not None:
+            extra["no_character_sizes"] = tuple(row.no_character_sizes)
         return Design(id=row.id, name=row.name, fill=row.fill, stroke=row.stroke, char_end=row.char_end,
-                      stroke_ratio=row.stroke_ratio, cap_frac=row.cap_frac, presets=presets)
+                      stroke_ratio=row.stroke_ratio, cap_frac=row.cap_frac, presets=presets, **extra)
 
     def art_index(self) -> dict[str, dict[str, tuple[str, int, int]]]:
         """{design: {source: (version, w, h)}} for designs that have artwork."""
@@ -150,9 +162,10 @@ class Repo:
     def design_json(self, row: DesignRow) -> dict:
         cat_design = self._design(row, {})
         with self.Session() as s:
-            presets = {p.size_id: p.data for p in s.scalars(select(PresetRow).where(PresetRow.design_id == row.id))}
+            rows = list(s.scalars(select(PresetRow).where(PresetRow.design_id == row.id)))
+        presets = {p.size_id: p.data for p in rows}
         d = design_to_dict(cat_design)
-        d.update(presets=presets, position=row.position,
+        d.update(presets=presets, review={p.size_id: p.review for p in rows if p.review}, position=row.position,
                  effective_stroke_ratio=cat_design.effective_stroke_ratio,
                  art={"wide": row.wide_version is not None, "square": row.square_version is not None,
                       "wide_size": [row.wide_w, row.wide_h] if row.wide_version else None,
@@ -162,7 +175,8 @@ class Repo:
         return d
 
     EDITABLE = {"name": str, "fill": str, "stroke": str, "char_end": float, "stroke_ratio": float,
-                "cap_frac": float, "position": int}
+                "cap_frac": float, "position": int, "mini_start": float,
+                "square_text": lambda v: [float(x) for x in v], "no_character_sizes": lambda v: [str(x) for x in v]}
 
     def update_design(self, design_id: str, fields: dict) -> DesignRow:
         with self.Session() as s:
@@ -286,8 +300,16 @@ class Repo:
                 s.add(PresetRow(design_id=design_id, size_id=size_id, data=preset.to_dict()))
             else:
                 row.data = preset.to_dict()
+                row.review = None          # saved again in the crop editor: reviewed
             s.commit()
         self._bump()
+
+
+def design_row_from(d: Design, position: int) -> DesignRow:
+    return DesignRow(id=d.id, name=d.name, fill=d.fill, stroke=d.stroke, char_end=d.char_end,
+                     stroke_ratio=d.stroke_ratio, cap_frac=d.cap_frac, position=position,
+                     mini_start=d.mini_start, square_text=list(d.square_text),
+                     no_character_sizes=list(d.no_character_sizes))
 
 
 HEX_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
@@ -304,6 +326,10 @@ def validate_field(k: str, v) -> None:
         raise ValueError("Stroke ratio must be between 0 and 0.5.")
     if k == "name" and not str(v).strip():
         raise ValueError("The design name cannot be empty.")
+    if k == "mini_start" and not 0 <= v < 0.9:
+        raise ValueError("mini_start must be between 0 and 0.9.")
+    if k == "square_text" and not (len(v) == 4 and 0 <= v[0] < v[2] <= 1 and 0 <= v[1] < v[3] <= 1):
+        raise ValueError("square_text must be [x0, y0, x1, y1] fractions with x0 < x1 and y0 < y1.")
 
 
 def open_image(data: bytes, filename: str = "") -> Image.Image:

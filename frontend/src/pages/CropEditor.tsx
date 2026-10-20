@@ -4,7 +4,7 @@ import { useApp } from "../App";
 import { snapEdge, snapSpan } from "../snap";
 import { ErrorBox, Spinner, useAsync, useDebounced, Warnings } from "../ui";
 
-interface SizePreset { size: string; preset: PresetData | null; auto: PresetData | null; is_auto: boolean }
+interface SizePreset { size: string; preset: PresetData | null; auto: PresetData | null; is_auto: boolean; review: string | null }
 interface PresetsResp { sizes: SizePreset[]; art: Record<string, [number, number]>; bleed: number; safe: number }
 
 const TEST_NAMES = ["Léo", "Maximilien"];
@@ -118,11 +118,14 @@ export default function CropEditor({ id }: { id: string }) {
           return (
             <button key={s.id} className={s.id === sizeId ? "tab active" : "tab"} onClick={() => chooseSize(s.id)}>
               {s.label}<br />
-              <small className={e?.is_auto ? "muted" : "ok"}>{e?.is_auto ? "automatic" : "saved"}</small>
+              {e?.review
+                ? <small className="bad">à revoir</small>
+                : <small className={e?.is_auto ? "muted" : "ok"}>{e?.is_auto ? "automatic" : "saved"}</small>}
             </button>
           );
         })}
       </div>
+      {entry?.review && <Warnings items={[`${size.label}: ${entry.review}. Check the crop and save it again.`]} />}
       {edit ? (
         <Editor key={sizeId} size={size} preset={edit} art={art} bleed={presets.data.bleed} safe={presets.data.safe}
           design={d}
@@ -164,8 +167,12 @@ function Editor(props: {
   // label mm -> display px
   const lx = (mm: number) => W.x + (b + mm) * k;
   const ly = (mm: number) => W.y + (b + mm) * k;
+  // the name box is a fraction of one label: for a shoe pair, the left label (the right one mirrors it)
+  const pair = size.shape === "pair" && size.pair ? size.pair : null;
+  const LW = pair ? pair.each_w : size.w, LH = size.h;
+  const rightX = pair ? pair.each_w + pair.gap : 0;
   const [tx0, ty0, tx1, ty1] = p.text;
-  const box = { x: lx(tx0 * size.w), y: ly(ty0 * size.h), w: (tx1 - tx0) * size.w * k, h: (ty1 - ty0) * size.h * k };
+  const box = { x: lx(tx0 * LW), y: ly(ty0 * LH), w: (tx1 - tx0) * LW * k, h: (ty1 - ty0) * LH * k };
 
   const svgRef = useRef<SVGSVGElement>(null);
   const drag = useRef<Drag | null>(null);
@@ -177,8 +184,8 @@ function Editor(props: {
   const setGrid = (v: number) => { setGridState(v); savePref("crop.grid", v); };
   const [hit, setHit] = useState<{ x?: number; y?: number }>({});
   const guides = {
-    x: [safe, size.w / 2, size.w - safe],
-    y: [safe, size.h / 2, size.h - safe],
+    x: [safe, LW / 2, LW - safe],
+    y: [safe, LH / 2, LH - safe],
   };
   const tol = SNAP_TOL_PX / k;
   const pt = (e: React.PointerEvent) => {
@@ -202,25 +209,25 @@ function Editor(props: {
     } else if (dr.kind === "box") {
       // work in label mm so the grid is physical and the same on every size
       const [a, bb, c, dd] = dr.text;
-      let x0 = a * size.w + (q.x - dr.px) / k, x1 = c * size.w + (q.x - dr.px) / k;
-      let y0 = bb * size.h + (q.y - dr.py) / k, y1 = dd * size.h + (q.y - dr.py) / k;
+      let x0 = a * LW + (q.x - dr.px) / k, x1 = c * LW + (q.x - dr.px) / k;
+      let y0 = bb * LH + (q.y - dr.py) / k, y1 = dd * LH + (q.y - dr.py) / k;
       const free = !snap || e.altKey;
       const sx = free ? { delta: 0 } : snapSpan(x0, x1, guides.x, gridMm, tol);
       const sy = free ? { delta: 0 } : snapSpan(y0, y1, guides.y, gridMm, tol);
       x0 += sx.delta; x1 += sx.delta; y0 += sy.delta; y1 += sy.delta;
-      const mx = clamp(0, -x0, size.w - x1), my = clamp(0, -y0, size.h - y1);
+      const mx = clamp(0, -x0, LW - x1), my = clamp(0, -y0, LH - y1);
       setHit({ x: mx === 0 ? sx.guide : undefined, y: my === 0 ? sy.guide : undefined });
-      onChange({ ...p, text: [round((x0 + mx) / size.w), round((y0 + my) / size.h), round((x1 + mx) / size.w), round((y1 + my) / size.h)] });
+      onChange({ ...p, text: [round((x0 + mx) / LW), round((y0 + my) / LH), round((x1 + mx) / LW), round((y1 + my) / LH)] });
     } else {
       const free = !snap || e.altKey;
-      let ex = clamp((q.x - W.x) / k - b, 0, size.w);
-      let ey = clamp((q.y - W.y) / k - b, 0, size.h);
+      let ex = clamp((q.x - W.x) / k - b, 0, LW);
+      let ey = clamp((q.y - W.y) / k - b, 0, LH);
       const sx = free ? { value: ex } : snapEdge(ex, guides.x, gridMm, tol);
       const sy = free ? { value: ey } : snapEdge(ey, guides.y, gridMm, tol);
-      ex = clamp(sx.value, 0, size.w);
-      ey = clamp(sy.value, 0, size.h);
+      ex = clamp(sx.value, 0, LW);
+      ey = clamp(sy.value, 0, LH);
       setHit({ x: sx.guide, y: sy.guide });
-      const fx = ex / size.w, fy = ey / size.h;
+      const fx = ex / LW, fy = ey / LH;
       let [a, bb, c, dd] = dr.text;
       const min = 0.06;
       if (dr.corner === 0 || dr.corner === 3) a = Math.min(fx, c - min); else c = Math.max(fx, a + min);
@@ -250,12 +257,13 @@ function Editor(props: {
   };
 
   // cut line and safe zone inside the window
+  const labelXs = pair ? [0, rightX] : [0];
   const cut = size.shape === "circle"
     ? <circle cx={lx(size.w / 2)} cy={ly(size.h / 2)} r={(size.w / 2) * k} />
-    : <rect x={lx(0)} y={ly(0)} width={size.w * k} height={size.h * k} rx={size.r * k} />;
+    : <>{labelXs.map((x0) => <rect key={x0} x={lx(x0)} y={ly(0)} width={LW * k} height={LH * k} rx={size.r * k} />)}</>;
   const safeShape = size.shape === "circle"
     ? <circle cx={lx(size.w / 2)} cy={ly(size.h / 2)} r={(size.w / 2 - safe) * k} />
-    : <rect x={lx(safe)} y={ly(safe)} width={(size.w - 2 * safe) * k} height={(size.h - 2 * safe) * k} rx={Math.max(0, size.r - safe) * k} />;
+    : <>{labelXs.map((x0) => <rect key={x0} x={lx(x0 + safe)} y={ly(safe)} width={(LW - 2 * safe) * k} height={(LH - 2 * safe) * k} rx={Math.max(0, size.r - safe) * k} />)}</>;
 
   // live preview with the real engine
   const [font, setFont] = useState(1);
@@ -312,20 +320,27 @@ function Editor(props: {
               d={`M0 0H${DW}V${DH}H0Z M${W.x} ${W.y}h${W.w}v${W.h}h${-W.w}Z`} />
             <rect className="crop-window" x={W.x} y={W.y} width={W.w} height={W.h}
               onPointerDown={(e) => start(e, { kind: "crop", px: pt(e).x, py: pt(e).y, x0: win.x0, y0: win.y0 })} />
+            {pair && (
+              <g className="pair-split" pointerEvents="none">
+                <rect x={lx(pair.each_w)} y={ly(-b)} width={pair.gap * k} height={(LH + 2 * b) * k} />
+                <line x1={lx(pair.each_w + pair.gap / 2)} x2={lx(pair.each_w + pair.gap / 2)} y1={ly(-b)} y2={ly(LH + b)} />
+              </g>
+            )}
             <g className="cut-line">{cut}</g>
             <g className="safe-line">{safeShape}</g>
             {snap && (
               <g className="grid" pointerEvents="none">
-                {Array.from({ length: Math.floor(size.w / gridMm) + 1 }, (_, i) => i * gridMm).map((x) => (
-                  <line key={`gx${x}`} x1={lx(x)} x2={lx(x)} y1={ly(0)} y2={ly(size.h)} />
+                {Array.from({ length: Math.floor(LW / gridMm) + 1 }, (_, i) => i * gridMm).map((x) => (
+                  <line key={`gx${x}`} x1={lx(x)} x2={lx(x)} y1={ly(0)} y2={ly(LH)} />
                 ))}
-                {Array.from({ length: Math.floor(size.h / gridMm) + 1 }, (_, i) => i * gridMm).map((y) => (
-                  <line key={`gy${y}`} x1={lx(0)} x2={lx(size.w)} y1={ly(y)} y2={ly(y)} />
+                {Array.from({ length: Math.floor(LH / gridMm) + 1 }, (_, i) => i * gridMm).map((y) => (
+                  <line key={`gy${y}`} x1={lx(0)} x2={lx(LW)} y1={ly(y)} y2={ly(y)} />
                 ))}
-                <line className="centre" x1={lx(size.w / 2)} x2={lx(size.w / 2)} y1={ly(0)} y2={ly(size.h)} />
-                <line className="centre" x1={lx(0)} x2={lx(size.w)} y1={ly(size.h / 2)} y2={ly(size.h / 2)} />
+                <line className="centre" x1={lx(LW / 2)} x2={lx(LW / 2)} y1={ly(0)} y2={ly(LH)} />
+                <line className="centre" x1={lx(0)} x2={lx(LW)} y1={ly(LH / 2)} y2={ly(LH / 2)} />
               </g>
             )}
+            {pair && <rect className="name-box ghost" x={box.x + rightX * k} y={box.y} width={box.w} height={box.h} pointerEvents="none" />}
             <rect className="name-box" x={box.x} y={box.y} width={box.w} height={box.h}
               onPointerDown={(e) => start(e, { kind: "box", px: pt(e).x, py: pt(e).y, text: p.text })} />
             {[[box.x, box.y], [box.x + box.w, box.y], [box.x + box.w, box.y + box.h], [box.x, box.y + box.h]].map(([x, y], i) => (
@@ -341,6 +356,7 @@ function Editor(props: {
         <p className="muted small legend">
           <span className="key cut" /> cut line <span className="key bleed" /> crop window (label + 1.25 mm bleed)
           <span className="key safe" /> 1 mm safe zone <span className="key name" /> name box
+          {pair && <> · shoe pair: one picture split into two labels ({pair.gap} mm gap); set the name box on the left label, the right one copies it</>}
         </p>
         {snap && (
           <p className="muted small">

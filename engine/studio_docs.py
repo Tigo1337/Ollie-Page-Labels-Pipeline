@@ -19,14 +19,15 @@ def studio_labels(config_dir: Path) -> dict[str, dict]:
     return json.loads((Path(config_dir) / "studio_labels.json").read_text(encoding="utf-8"))["labels"]
 
 
-def label_fn(labels: dict[str, dict]):
+def label_fn(labels: dict[str, dict], markdown: bool = True):
+    """L('key') -> "Français (English)", bold in Markdown, with ⚠ when not yet confirmed."""
     def L(key: str) -> str:
         if key not in labels:
             raise KeyError(f"Studio label '{key}' is missing from config/studio_labels.json.")
         lab = labels[key]
         warn = " ⚠" if lab["status"] == "check" else ""
-        same = lab["fr"] == lab["en"]
-        return f"**{lab['fr']}**{warn}" if same else f"**{lab['fr']}** ({lab['en']}){warn}"
+        fr = f"**{lab['fr']}**" if markdown else lab["fr"]
+        return f"{fr}{warn}" if lab["fr"] == lab["en"] else f"{fr} ({lab['en']}){warn}"
     return L
 
 
