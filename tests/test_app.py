@@ -1,5 +1,7 @@
 """API tests: auth, design library, bulk import, previews, quick make, plain errors."""
 import io
+import json
+import shutil
 import zipfile
 
 import pytest
@@ -7,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from app.main import create_app
 from app.settings import REPO, Settings
+from app.templates_store import Templates
 from engine.assets import font_dir_name
 from engine.render import LabelSpec
 from engine.testart import make_square, make_wide
@@ -174,3 +177,49 @@ def test_shop_default_finish(client):
     assert any(f["kind"] == "notch" for f in run["files"])
     assert client.patch("/api/shop", json={"default_finish": "shiny"}).status_code == 400
     client.patch("/api/shop", json={"default_finish": "matte"})
+
+
+# ---------------------------------------------------------------- templates
+def test_templates_page_files_and_studio3(client, tmp_path):
+    data = client.get("/api/templates").json()
+    ids = [row["layout_id"] for row in data["layouts"]]
+    assert ids == [f"chels-{s}-v1" for s in ("pencil", "small", "medium", "large", "tag", "round", "shoe")]
+    assert data["outdated"] == [] and all(row["studio3"] is None for row in data["layouts"])
+    assert client.get("/api/templates/chels-round-v1/preview.png").headers["content-type"] == "image/png"
+    svg = client.get("/api/templates/chels-round-v1/files/svg")
+    assert svg.status_code == 200 and svg.text.count("<circle") == 40
+    assert (REPO / "templates" / "chels-round-v1.svg").read_text() == svg.text
+    dxf = client.get("/api/templates/chels-shoe-v1/files/dxf")
+    assert "attachment" in dxf.headers["content-disposition"] and "ANCHOR" in dxf.text
+    assert client.get("/api/templates/chels-tag-v1/files/calibration.pdf").content.startswith(b"%PDF")
+    assert client.get("/api/templates/chels-mini-v1/files/svg").status_code == 404
+    assert client.get("/api/templates/chels-tag-v1/files/exe").status_code == 404
+
+    # .studio3 upload: stored with the geometry hash, current until the geometry changes
+    r = client.post("/api/templates/chels-small-v1/studio3", files={"file": ("x.png", b"nope")})
+    assert r.status_code == 400 and ".studio3" in r.json()["detail"]
+    r = client.post("/api/templates/chels-small-v1/studio3", files={"file": ("chels-small-v1.studio3", b"STUDIO")})
+    assert r.status_code == 200 and r.json()["current"] is True
+    row = next(x for x in client.get("/api/templates").json()["layouts"] if x["layout_id"] == "chels-small-v1")
+    assert row["studio3"]["current"] and row["studio3"]["geometry_hash"] == row["geometry_hash"]
+    assert client.get("/api/templates/chels-small-v1/studio3").content == b"STUDIO"
+    t: Templates = client.app.state.templates
+    assert t.current_studio3_bytes("chels-small-v1") == b"STUDIO"
+
+    # sheet.json changes (no new layout yet): the upload is outdated and never bundled
+    cfg = tmp_path / "config"
+    shutil.copytree(REPO / "config", cfg)
+    sheet = json.loads((cfg / "sheet.json").read_text())
+    sheet["edge_margin"] = 10.5
+    (cfg / "sheet.json").write_text(json.dumps(sheet))
+    changed = Templates(t.store, cfg, t.layouts_dir)
+    st = changed.studio3("chels-small-v1")
+    assert st is not None and st.current is False
+    assert changed.current_studio3_bytes("chels-small-v1") is None
+    listing = changed.listing()
+    assert all("error" in row for row in listing["layouts"])
+    assert [o["layout_id"] for o in listing["outdated"]] == ["chels-small-v1"]
+    with pytest.raises(ValueError, match="not the current layout"):
+        changed.save_studio3("chels-small-v1", "a.studio3", b"x")
+    assert client.delete("/api/templates/chels-small-v1/studio3").json() == {"ok": True}
+    assert t.studio3("chels-small-v1") is None

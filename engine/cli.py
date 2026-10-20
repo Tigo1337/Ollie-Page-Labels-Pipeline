@@ -6,9 +6,10 @@
   fontchart                   font chart PNG
   review DESIGN               design review sheet PNG
   packs                       labels per sheet and sheets per pack
-  calibrate                   test sheet to check print/cut alignment on plain paper
+  calibration LAYOUT_ID       calibration PDF for one layout (marks + cut outlines, no art)
   layouts                     build the fixed half-sheet layouts (new versions only) + counts table
   layout-gallery --out DIR    one preview PNG per layout (printed view)
+  templates --out DIR         cut templates per layout: SVG, DXF, JSON, calibration PDF
 """
 from __future__ import annotations
 
@@ -101,14 +102,6 @@ def cmd_packs(args) -> int:
     return 0
 
 
-def cmd_calibrate(args) -> int:
-    from .calibration import write_calibration
-    from .config import load_catalog
-    info = write_calibration(load_catalog(args.config).production, Path(args.out))
-    print(f"calibration files in {args.out}: cut file at X {info['x']:.2f} Y {info['y']:.2f} mm")
-    return 0
-
-
 def _layouts_dir(args) -> Path:
     return Path(args.layouts) if args.layouts else REPO / "layouts"
 
@@ -141,6 +134,35 @@ def cmd_layout_gallery(args) -> int:
     return 0
 
 
+def cmd_templates(args) -> int:
+    from .config import load_catalog
+    from .layout import current_layout
+    from .templates import info, write_templates
+    cat = load_catalog(args.config)
+    print(f"{'template':<18} {'cut labels':>10}  cut group X / Y / W / H (mm, anchors excluded)")
+    for size in cat.sizes.values():
+        lay = current_layout(cat.sheet, size, _layouts_dir(args))
+        write_templates(lay, size, cat.sheet, Path(args.out))
+        i = info(lay, size, cat.sheet)
+        b = i["cut_bbox"]
+        print(f"{lay.layout_id:<18} {i['cut_labels']:>10}  {b['x']:g} / {b['y']:g} / {b['w']:g} / {b['h']:g}")
+    print(f"written to {args.out}")
+    if args.docs:
+        from .studio_docs import setup_doc
+        doc = Path(args.docs) / "studio-template-setup.md"
+        doc.parent.mkdir(parents=True, exist_ok=True)
+        doc.write_text(setup_doc(cat, Path(args.config), _layouts_dir(args)), encoding="utf-8")
+        print(doc)
+    return 0
+
+
+def cmd_calibration(args) -> int:
+    from .calibration import write_calibration
+    from .config import load_catalog
+    print(write_calibration(load_catalog(args.config), args.layout_id, Path(args.out), _layouts_dir(args)))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m engine", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -159,13 +181,16 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--font", type=int, default=1); p.add_argument("--finish", default="matte")
     p.set_defaults(fn=cmd_review)
     p = sub.add_parser("packs"); p.set_defaults(fn=cmd_packs)
-    p = sub.add_parser("calibrate"); p.add_argument("--out", default="calibration")
-    p.set_defaults(fn=cmd_calibrate)
+    p = sub.add_parser("calibration"); p.add_argument("layout_id"); p.add_argument("--out", default="out/calibration")
+    p.add_argument("--layouts"); p.set_defaults(fn=cmd_calibration)
     p = sub.add_parser("layouts"); p.add_argument("--layouts", help="layouts folder (default: layouts/)")
     p.set_defaults(fn=cmd_layouts)
     p = sub.add_parser("layout-gallery"); p.add_argument("--out", default="out/layouts")
     p.add_argument("--layouts"); p.add_argument("--dpi", type=int, default=150)
     p.set_defaults(fn=cmd_layout_gallery)
+    p = sub.add_parser("templates"); p.add_argument("--out", default=str(REPO / "templates"))
+    p.add_argument("--docs", default=str(REPO / "docs"), help="where studio-template-setup.md goes ('' = skip)")
+    p.add_argument("--layouts"); p.set_defaults(fn=cmd_templates)
 
     args = ap.parse_args(argv)
     try:

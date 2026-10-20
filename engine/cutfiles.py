@@ -11,12 +11,23 @@ def _fmt(v: float) -> str:
 
 def dxf_r12(paths: list[list[Point]], page_h: float, page_w: float, layer: str = "CUT") -> str:
     """One closed POLYLINE per path. Input points are page mm with y down; DXF y = page_h − y."""
+    return dxf_r12_layers({layer: paths}, page_w, page_h)
+
+
+_LAYER_COLOURS = {"CUT": "1", "ANCHOR": "7"}
+
+
+def dxf_r12_layers(layers: dict[str, list[list[Point]]], page_w: float, page_h: float,
+                   comments: list[str] | None = None) -> str:
+    """R12 DXF (mm), one closed POLYLINE per path on each named layer, y flipped (DXF y = page_h − y)."""
     out: list[str] = []
 
     def g(code: int, value) -> None:
         out.append(str(code))
         out.append(value if isinstance(value, str) else _fmt(value))
 
+    for line in comments or []:
+        g(999, line)
     g(0, "SECTION"); g(2, "HEADER")
     g(9, "$ACADVER"); g(1, "AC1009")
     g(9, "$EXTMIN"); g(10, 0.0); g(20, 0.0); g(30, 0.0)
@@ -29,18 +40,20 @@ def dxf_r12(paths: list[list[Point]], page_h: float, page_w: float, layer: str =
     g(0, "TABLE"); g(2, "LTYPE"); g(70, "1")
     g(0, "LTYPE"); g(2, "CONTINUOUS"); g(70, "0"); g(3, "Solid line"); g(72, "65"); g(73, "0"); g(40, 0.0)
     g(0, "ENDTAB")
-    g(0, "TABLE"); g(2, "LAYER"); g(70, "1")
-    g(0, "LAYER"); g(2, layer); g(70, "0"); g(62, "1"); g(6, "CONTINUOUS")
+    g(0, "TABLE"); g(2, "LAYER"); g(70, str(len(layers)))
+    for name in layers:
+        g(0, "LAYER"); g(2, name); g(70, "0"); g(62, _LAYER_COLOURS.get(name, "1")); g(6, "CONTINUOUS")
     g(0, "ENDTAB")
     g(0, "ENDSEC")
 
     g(0, "SECTION"); g(2, "ENTITIES")
-    for pts in paths:
-        g(0, "POLYLINE"); g(8, layer); g(66, "1"); g(70, "1")
-        g(10, 0.0); g(20, 0.0); g(30, 0.0)
-        for x, y in pts:
-            g(0, "VERTEX"); g(8, layer); g(10, x); g(20, page_h - y); g(30, 0.0)
-        g(0, "SEQEND"); g(8, layer)
+    for layer, paths in layers.items():
+        for pts in paths:
+            g(0, "POLYLINE"); g(8, layer); g(66, "1"); g(70, "1")
+            g(10, 0.0); g(20, 0.0); g(30, 0.0)
+            for x, y in pts:
+                g(0, "VERTEX"); g(8, layer); g(10, x); g(20, page_h - y); g(30, 0.0)
+            g(0, "SEQEND"); g(8, layer)
     g(0, "ENDSEC")
     g(0, "EOF")
     return "\n".join(out) + "\n"

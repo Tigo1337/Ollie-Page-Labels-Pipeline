@@ -19,6 +19,7 @@ from .engine_service import EngineService
 from .repo import NotFound, Repo
 from .settings import Settings, load_settings
 from .storage import BlobNotFound, make_store
+from .templates_store import Templates
 
 log = logging.getLogger("labels")
 AUTH_COOKIE = "labels_auth"
@@ -44,6 +45,7 @@ def create_app(settings: Settings | None = None, start_font_download: bool = Tru
     app.state.repo = repo
     app.state.svc = svc
     app.state.store = store
+    app.state.templates = Templates(store, settings.config_dir, settings.layouts_dir)
     app.state.font_job = {"running": False, "report": []}
 
     # -- auth: one shared secret (Replit Secret LABELS_API_SECRET) -------------
@@ -78,7 +80,9 @@ def create_app(settings: Settings | None = None, start_font_download: bool = Tru
                             status_code=500)
 
     from .api import router
+    from .templates_api import router as templates_router
     app.include_router(router, prefix="/api")
+    app.include_router(templates_router, prefix="/api")
 
     # -- frontend -----------------------------------------------------------
     dist = settings.frontend_dist

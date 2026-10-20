@@ -16,6 +16,7 @@ class Settings:
     api_secret: str | None
     config_dir: Path
     frontend_dist: Path
+    layouts_dir: Path = REPO / "layouts"
 
     @property
     def cache_dir(self) -> Path:
@@ -36,4 +37,5 @@ def load_settings() -> Settings:
         api_secret=os.environ.get("LABELS_API_SECRET") or None,
         config_dir=Path(os.environ.get("LABELS_CONFIG_DIR", REPO / "config")),
         frontend_dist=REPO / "frontend" / "dist",
+        layouts_dir=Path(os.environ.get("LABELS_LAYOUTS_DIR", REPO / "layouts")),
     )

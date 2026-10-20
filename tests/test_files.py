@@ -48,8 +48,8 @@ def test_notches_are_34mm_squares_at_three_mark_corners(ws):
 
 def test_calibration_sheet(ws, tmp_path):
     from engine.calibration import write_calibration
-    info = write_calibration(ws.catalog.production, tmp_path)
-    paths = parse_dxf_polylines((tmp_path / "calibration_cut.dxf").read_text())
-    assert len(paths) == 6
-    assert info["x"] == pytest.approx(14.0) and info["y"] == pytest.approx(14.0)
-    assert (tmp_path / "calibration_print.pdf").stat().st_size > 0
+    from engine.workspace import REPO
+    p = write_calibration(ws.catalog, "chels-small-v1", tmp_path, REPO / "layouts")
+    assert p.name == "chels-small-v1_calibration.pdf" and p.stat().st_size > 0
+    with pytest.raises(ValueError, match="No layout"):
+        write_calibration(ws.catalog, "chels-mini-v1", tmp_path, REPO / "layouts")

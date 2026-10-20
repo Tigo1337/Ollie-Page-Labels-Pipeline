@@ -38,6 +38,11 @@ engine/            pure-Python rendering engine (no web dependencies)
   frames.py        Studio frame <-> printed view (the only place frames are converted)
   layout.py        fixed half-sheet layout optimizer (port of reference/sheet_opt.py)
   gallery.py       layout preview PNGs
+  marks.py         Type 1 registration marks (port of SCM's generate_reg_mark)
+  sheetpdf.py      landscape /Rotate 270 PDF pages in the Studio frame (marks, trim, art)
+  templates.py     cut templates per layout: SVG, DXF (+ anchors), JSON, calibration PDF
+  studio_docs.py   French Studio instructions from config/studio_labels.json
+  calibration.py   per-layout calibration sheet
   art.py           white-band trimming, crop presets, automatic layout
   text.py          NFC normalising, glyph check, text fitting
   render.py        one label at 600 dpi (+ render cache)
@@ -50,6 +55,8 @@ engine/            pure-Python rendering engine (no web dependencies)
 config/            seed data: sheet geometry (sheet.json), production numbers, sizes, packs,
                    finishes, fonts, designs, proof wording (en/fr), info-sheet template
 layouts/           published fixed layouts, chels-<size>-v<N>.json (never edited in place)
+templates/         generated cut templates for the current layouts (python -m engine templates)
+docs/              studio-template-setup.md (generated, French)
 reference/         prototype code and specs the engine is ported from
 app/               FastAPI app: storage interface (repo.py), blob storage, auth,
                    engine wiring, API routes (api.py)
@@ -68,6 +75,8 @@ python -m engine demo-art              # placeholder art for designs that have n
 python -m engine packs                 # labels per sheet / sheets per pack
 python -m engine layouts               # fixed half-sheet layouts + counts (writes -v2… only on a geometry change)
 python -m engine layout-gallery --out out/layouts   # one preview PNG per layout
+python -m engine templates             # templates/*.svg|dxf|json|_calibration.pdf + docs/studio-template-setup.md
+python -m engine calibration chels-small-v1         # one calibration PDF
 python -m engine order examples/order_school.json --out out/   # [--lang fr]
 python -m engine review axolotl --out review.png
 python -m engine fontchart --out font_chart.png

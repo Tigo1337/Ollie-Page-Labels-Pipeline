@@ -15,6 +15,7 @@ from .config import Sheet, Size
 from .frames import to_printed
 from .geometry import mm_to_px
 from .layout import Layout, cell_labels
+from .marks import mark_rects, notch_corners
 
 RED = (220, 0, 0)
 PINK = (255, 214, 222)
@@ -65,30 +66,6 @@ def _dashed(d: ImageDraw.ImageDraw, p0, p1, dash: float, fill, width: int = 1) -
                fill=fill, width=width)
 
 
-def mark_rects(sheet: Sheet) -> list[tuple[float, float, float, float]]:
-    """Type 1 marks as filled rects (Studio frame), as in reference/test_sheets_pdf.py: a 5 mm
-    square with its corner at (inset, inset); L marks whose arms run `length` inward from the
-    corner point, stroke centred on it. (Preview only; the PDF port of SCM's marks is phase 2.)"""
-    i, L, t, W, H = sheet.mark_inset, sheet.mark_length, sheet.mark_thickness, sheet.paper_w, sheet.paper_h
-    h = t / 2
-    out = [(i - h, i - h, i + 5 + h, i + 5 + h)]
-    corners = [(W - i, i, -1, 1), (i, H - i, 1, -1)]          # TR (┐) and BL (└)
-    if sheet.marks == 4:
-        corners.append((W - i, H - i, -1, -1))
-    for cx, cy, sx, sy in corners:
-        xa = sorted((cx - h * sx, cx + sx * (L - h)))
-        ya = sorted((cy - h * sy, cy + sy * (L - h)))
-        out.append((xa[0], cy - h, xa[1], cy + h))            # horizontal arm
-        out.append((cx - h, ya[0], cx + h, ya[1]))            # vertical arm
-    return out
-
-
-def mark_corners(sheet: Sheet) -> list[tuple[float, float, float, float]]:
-    """Corner squares that carry a mark (and get a laminate notch): TL, TR, BL (+ BR with 4 marks)."""
-    sq = sheet.corner_squares(sheet.notch)
-    return sq if sheet.marks == 4 else sq[:3]
-
-
 def render_layout(layout: Layout, size: Size, sheet: Sheet, dpi: int = 150,
                   font_path: Path | None = None) -> Image.Image:
     k = mm_to_px(1, dpi)
@@ -110,7 +87,7 @@ def render_layout(layout: Layout, size: Size, sheet: Sheet, dpi: int = 150,
         _hatch(d, box(*z), 2.5 * k)
     for z in sheet.corner_squares(sheet.cut_keepout):
         d.rectangle(box(*z), outline=GREY, width=1)
-    for z in mark_corners(sheet):
+    for z in notch_corners(sheet):
         d.rectangle(box(*z), outline=BLUE, width=2)
     for r in mark_rects(sheet):
         d.rectangle(box(*r), fill=(0, 0, 0))

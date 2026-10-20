@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- chels-round-v1 · geometry 04b2d3488edcd5cc3d779ce141dd5b21c982be4b2b459f211f7afba19d98c36b · Studio frame (landscape Letter), mm, y down. Select all, place at X 0 / Y 0, then delete the two anchor dots. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="279.4mm" height="215.9mm" viewBox="0 0 279.4 215.9" data-layout-id="chels-round-v1" data-geometry-hash="04b2d3488edcd5cc3d779ce141dd5b21c982be4b2b459f211f7afba19d98c36b">
+<g id="cut" fill="none" stroke="#FF0000" stroke-width="0.1">
+<circle cx="253.4" cy="40.2" r="16"/>
+<circle cx="253.4" cy="74.2" r="16"/>
+<circle cx="253.4" cy="108.2" r="16"/>
+<circle cx="253.4" cy="142.2" r="16"/>
+<circle cx="253.4" cy="176.2" r="16"/>
+<circle cx="222.505" cy="26" r="16"/>
+<circle cx="222.505" cy="60" r="16"/>
+<circle cx="222.505" cy="94" r="16"/>
+<circle cx="222.505" cy="128" r="16"/>
+<circle cx="222.505" cy="162" r="16"/>
+<circle cx="191.611" cy="40.2" r="16"/>
+<circle cx="191.611" cy="74.2" r="16"/>
+<circle cx="191.611" cy="108.2" r="16"/>
+<circle cx="191.611" cy="142.2" r="16"/>
+<circle cx="191.611" cy="176.2" r="16"/>
+<circle cx="160.716" cy="26" r="16"/>
+<circle cx="160.716" cy="60" r="16"/>
+<circle cx="160.716" cy="94" r="16"/>
+<circle cx="160.716" cy="128" r="16"/>
+<circle cx="160.716" cy="162" r="16"/>
+<circle cx="26" cy="40.2" r="16"/>
+<circle cx="26" cy="74.2" r="16"/>
+<circle cx="26" cy="108.2" r="16"/>
+<circle cx="26" cy="142.2" r="16"/>
+<circle cx="26" cy="176.2" r="16"/>
+<circle cx="56.895" cy="26" r="16"/>
+<circle cx="56.895" cy="60" r="16"/>
+<circle cx="56.895" cy="94" r="16"/>
+<circle cx="56.895" cy="128" r="16"/>
+<circle cx="56.895" cy="162" r="16"/>
+<circle cx="87.789" cy="40.2" r="16"/>
+<circle cx="87.789" cy="74.2" r="16"/>
+<circle cx="87.789" cy="108.2" r="16"/>
+<circle cx="87.789" cy="142.2" r="16"/>
+<circle cx="87.789" cy="176.2" r="16"/>
+<circle cx="118.684" cy="26" r="16"/>
+<circle cx="118.684" cy="60" r="16"/>
+<circle cx="118.684" cy="94" r="16"/>
+<circle cx="118.684" cy="128" r="16"/>
+<circle cx="118.684" cy="162" r="16"/>
+</g>
+<g id="anchors" fill="#000000" stroke="none">
+<rect x="0" y="0" width="0.01" height="0.01"/>
+<rect x="279.39" y="215.89" width="0.01" height="0.01"/>
+</g>
+</svg>
