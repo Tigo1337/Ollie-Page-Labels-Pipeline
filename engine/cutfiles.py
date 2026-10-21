@@ -14,12 +14,13 @@ def dxf_r12(paths: list[list[Point]], page_h: float, page_w: float, layer: str =
     return dxf_r12_layers({layer: paths}, page_w, page_h)
 
 
-_LAYER_COLOURS = {"CUT": "1", "ANCHOR": "7"}
+_LAYER_COLOURS = {"CUT": "1", "ANCHOR": "7", "TRIM": "5"}
 
 
 def dxf_r12_layers(layers: dict[str, list[list[Point]]], page_w: float, page_h: float,
-                   comments: list[str] | None = None) -> str:
-    """R12 DXF (mm), one closed POLYLINE per path on each named layer, y flipped (DXF y = page_h − y)."""
+                   comments: list[str] | None = None, open_layers: tuple[str, ...] = ()) -> str:
+    """R12 DXF (mm), one POLYLINE per path on each named layer, y flipped (DXF y = page_h − y).
+    Paths are closed, except on `open_layers` (e.g. a single cut line)."""
     out: list[str] = []
 
     def g(code: int, value) -> None:
@@ -49,7 +50,7 @@ def dxf_r12_layers(layers: dict[str, list[list[Point]]], page_w: float, page_h: 
     g(0, "SECTION"); g(2, "ENTITIES")
     for layer, paths in layers.items():
         for pts in paths:
-            g(0, "POLYLINE"); g(8, layer); g(66, "1"); g(70, "1")
+            g(0, "POLYLINE"); g(8, layer); g(66, "1"); g(70, "0" if layer in open_layers else "1")
             g(10, 0.0); g(20, 0.0); g(30, 0.0)
             for x, y in pts:
                 g(0, "VERTEX"); g(8, layer); g(10, x); g(20, page_h - y); g(30, 0.0)

@@ -104,4 +104,6 @@ dans `config/studio_labels.json` puis relancez `python -m engine templates`.
 | `ref_point` | point de référence | reference point |
 | `print_cut` | Impression et découpe | Print & Cut |
 | `pdf_actual_size` | Taille réelle | Actual size |
+| `material` | Matériau | Material |
+| `add_material` | Ajouter un matériau | Add Material |
 

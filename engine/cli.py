@@ -10,7 +10,8 @@
   calibration LAYOUT_ID       calibration PDF for one layout (marks + cut outlines, no art)
   layouts                     build the fixed half-sheet layouts (new versions only) + counts table
   layout-gallery --out DIR    one preview PNG per layout (printed view)
-  templates --out DIR         cut templates per layout: SVG, DXF, JSON, calibration PDF
+  templates --out DIR         cut templates per layout: SVG, DXF, JSON, calibration PDF (+ docs)
+  docs                        docs/*.md and the generated README sections (French Studio steps)
 """
 from __future__ import annotations
 
@@ -178,13 +179,21 @@ def cmd_templates(args) -> int:
         i = info(lay, size, cat.sheet)
         b = i["cut_bbox"]
         print(f"{lay.layout_id:<18} {i['cut_labels']:>10}  {b['x']:g} / {b['y']:g} / {b['w']:g} / {b['h']:g}")
-    print(f"written to {args.out}")
-    if args.docs:
-        from .studio_docs import setup_doc
-        doc = Path(args.docs) / "studio-template-setup.md"
-        doc.parent.mkdir(parents=True, exist_ok=True)
-        doc.write_text(setup_doc(cat, Path(args.config), _layouts_dir(args)), encoding="utf-8")
-        print(doc)
+    from .templates import write_trim_line
+    write_trim_line(cat.sheet, Path(args.out))
+    print(f"written to {args.out} (+ the optional trim_line.svg / .dxf)")
+    if not args.no_docs:
+        return cmd_docs(args)
+    return 0
+
+
+def cmd_docs(args) -> int:
+    """docs/studio-template-setup.md, docs/cut-settings.md and the generated sections of README.md."""
+    from .config import load_catalog
+    from .studio_docs import write_docs
+    cat = load_catalog(args.config)
+    for p in write_docs(cat, Path(args.config), _layouts_dir(args), REPO):
+        print(p)
     return 0
 
 
@@ -230,8 +239,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--layouts"); p.add_argument("--dpi", type=int, default=150)
     p.set_defaults(fn=cmd_layout_gallery)
     p = sub.add_parser("templates"); p.add_argument("--out", default=str(REPO / "templates"))
-    p.add_argument("--docs", default=str(REPO / "docs"), help="where studio-template-setup.md goes ('' = skip)")
+    p.add_argument("--no-docs", action="store_true", help="do not regenerate docs/ and the README sections")
     p.add_argument("--layouts"); p.set_defaults(fn=cmd_templates)
+    p = sub.add_parser("docs"); p.add_argument("--layouts"); p.set_defaults(fn=cmd_docs)
 
     args = ap.parse_args(argv)
     try:

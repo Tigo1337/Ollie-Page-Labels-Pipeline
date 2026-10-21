@@ -207,3 +207,46 @@ def template_bytes(layout: Layout, size: Size, sheet: Sheet, kind: str) -> bytes
         calibration_pdf(layout, size, sheet, buf)
         return buf.getvalue()
     raise ValueError(f"Unknown template file '{kind}'.")
+
+
+# ---------------------------------------------------------------------------
+# Optional through-cut on the trim line (off by default: it scores the mat)
+# ---------------------------------------------------------------------------
+TRIM_COLOUR = "#0000FF"
+
+
+def trim_line_svg(sheet: Sheet) -> str:
+    """One blue line on the trim line, edge to edge, plus the anchors (merge into a template at X 0 / Y 0
+    and give blue its own through-cut settings with "cut by line colour")."""
+    n, T, W, H = _n, sheet.trim_x, sheet.paper_w, sheet.paper_h
+    out = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        "<!-- Optional through-cut on the trim line. Studio frame (landscape Letter), mm, y down. "
+        "Place at X 0 / Y 0, then delete the two anchor dots. -->",
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{n(W)}mm" height="{n(H)}mm" viewBox="0 0 {n(W)} {n(H)}">',
+        f'<g id="trim" fill="none" stroke="{TRIM_COLOUR}" stroke-width="{n(SVG_STROKE)}">',
+        f'<path d="M{n(T)} 0 V{n(H)}"/>',
+        "</g>",
+        '<g id="anchors" fill="#000000" stroke="none">',
+    ]
+    for x, y, w, h in anchor_rects(sheet):
+        out.append(f'<rect x="{n(x)}" y="{n(y)}" width="{n(w)}" height="{n(h)}"/>')
+    out += ["</g>", "</svg>"]
+    return "\n".join(out) + "\n"
+
+
+def trim_line_dxf(sheet: Sheet) -> str:
+    T, H = sheet.trim_x, sheet.paper_h
+    layers = {"TRIM": [[(T, 0.0), (T, H)]],
+              "ANCHOR": [[(x, y), (x + w, y), (x + w, y + h), (x, y + h)] for x, y, w, h in anchor_rects(sheet)]}
+    return dxf_r12_layers(layers, sheet.paper_w, sheet.paper_h, open_layers=("TRIM",),
+                          comments=["Optional through-cut on the trim line (layer TRIM). Off by default: it scores the mat."])
+
+
+def write_trim_line(sheet: Sheet, out_dir: Path) -> list[Path]:
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    svg, dxf = out_dir / "trim_line.svg", out_dir / "trim_line.dxf"
+    svg.write_text(trim_line_svg(sheet), encoding="utf-8")
+    dxf.write_text(trim_line_dxf(sheet), encoding="ascii")
+    return [svg, dxf]

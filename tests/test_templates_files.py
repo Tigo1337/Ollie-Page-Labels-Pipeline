@@ -50,7 +50,8 @@ def test_dxf_flattening_stays_within_tolerance(sid):
 
 
 def test_templates_folder_has_exactly_the_current_layouts():
-    want = {file_name(lay.layout_id, k) for lay in LAYOUTS.values() for k in KINDS}
+    want = {file_name(lay.layout_id, k) for lay in LAYOUTS.values() for k in KINDS} | {"trim_line.svg",
+                                                                                     "trim_line.dxf"}
     have = {p.name for p in (REPO / "templates").iterdir()}
     assert have == want
 
@@ -65,3 +66,39 @@ def test_setup_doc_is_up_to_date_and_flags_unsure_labels():
     assert "**Fusionner…** (Merge…)" in doc and "--no_center" in doc
     for lay in LAYOUTS.values():
         assert lay.layout_id in doc
+
+
+def test_all_generated_docs_and_readme_sections_are_up_to_date():
+    from engine.studio_docs import readme_with_blocks, render_docs
+    docs = render_docs(CAT, REPO / "config", REPO / "layouts")
+    for rel, text in docs.items():
+        if not rel.startswith("README:"):
+            assert (REPO / rel).read_text(encoding="utf-8") == text, f"{rel} is out of date: run python -m engine docs"
+    readme = (REPO / "README.md").read_text(encoding="utf-8")
+    blocks = {k.split(":", 1)[1]: v for k, v in docs.items() if k.startswith("README:")}
+    assert readme_with_blocks(readme, blocks) == readme, "README.md is out of date: run python -m engine docs"
+    assert "## Imprimer et découper une planche" in readme and "chels-round-v1" in readme
+
+
+def test_cut_settings_doc():
+    doc = (REPO / "docs" / "cut-settings.md").read_text(encoding="utf-8")
+    for want in ("**AutoLame** (AutoBlade)", "**Profondeur** (Depth) | 2", "**Force** | 12",
+                 "**Vitesse** (Speed) | 4", "**Passages** (Passes) | 1", "**Test de découpe** (Test Cut)",
+                 "Chels – vinyle + lam. holo", "**Découper par couleur de ligne** (Cut by Line Color)",
+                 "marque le tapis"):
+        assert want in doc, want
+
+
+def test_trim_line_is_one_open_blue_cut_with_anchors():
+    import ezdxf
+    from engine.templates import trim_line_svg
+    svg = ET.fromstring(trim_line_svg(CAT.sheet))
+    ns = "{http://www.w3.org/2000/svg}"
+    trim = svg.find(f"{ns}g[@id='trim']")
+    assert trim.get("stroke") == "#0000FF" and [el.get("d") for el in trim] == ["M139.7 0 V215.9"]
+    doc = ezdxf.readfile(REPO / "templates" / "trim_line.dxf")
+    ents = list(doc.modelspace())
+    trim_ents = [e for e in ents if e.dxf.layer == "TRIM"]
+    assert len(trim_ents) == 1 and not trim_ents[0].is_closed
+    xs = {round(v.dxf.location.x, 3) for v in trim_ents[0].vertices}
+    assert xs == {139.7} and len([e for e in ents if e.dxf.layer == "ANCHOR"]) == 2
