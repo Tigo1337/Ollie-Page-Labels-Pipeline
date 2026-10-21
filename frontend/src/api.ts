@@ -41,6 +41,28 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
   return (await res.json()) as T;
 }
 
+/** POST a FormData with upload progress (fetch cannot report it). `onProgress` gets 0..1. */
+export function uploadWithProgress<T>(url: string, body: FormData, onProgress: (f: number) => void): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.withCredentials = true;
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+    xhr.onerror = () => reject(new ApiError("The upload failed: the connection was interrupted. Try again, or split the ZIP.", 0));
+    xhr.onload = () => {
+      if (xhr.status === 401) unauthorized.forEach((f) => f());
+      let j: { detail?: unknown } | null = null;
+      try { j = JSON.parse(xhr.responseText); } catch { /* not JSON */ }
+      if (xhr.status >= 200 && xhr.status < 300) return resolve(j as T);
+      const msg = j && typeof j.detail === "string" ? j.detail
+        : xhr.status === 413 ? "The ZIP is too large for the server. Split it into a few smaller ZIPs."
+        : `Upload failed (${xhr.status}).`;
+      reject(new ApiError(msg, xhr.status));
+    };
+    xhr.send(body);
+  });
+}
+
 export const api = {
   get: <T>(url: string) => request<T>("GET", url),
   post: <T>(url: string, body?: unknown) => request<T>("POST", url, body),

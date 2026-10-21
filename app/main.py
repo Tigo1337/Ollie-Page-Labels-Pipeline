@@ -20,6 +20,7 @@ from .migrate import migrate
 from .repo import NotFound, Repo
 from .settings import Settings, load_settings
 from .storage import BlobNotFound, make_store
+from .import_jobs import ImportJobs
 from .templates_store import Templates
 
 log = logging.getLogger("labels")
@@ -48,6 +49,7 @@ def create_app(settings: Settings | None = None, start_font_download: bool = Tru
     app.state.svc = svc
     app.state.store = store
     app.state.templates = Templates(store, settings.config_dir, settings.layouts_dir)
+    app.state.imports = ImportJobs(repo, settings.data_dir / "imports")
     app.state.font_job = {"running": False, "report": []}
 
     # -- auth: one shared secret (Replit Secret LABELS_API_SECRET) -------------

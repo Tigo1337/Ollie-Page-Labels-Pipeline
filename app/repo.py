@@ -249,7 +249,7 @@ class Repo:
                 raise ArtError(f"The square image is {img.width} × {img.height} px; expected roughly square.")
         ext = image_ext(img, filename)
         buf = io.BytesIO()
-        prepared.save(buf, format="PNG", optimize=False, compress_level=6)
+        prepared.save(buf, format="PNG", optimize=False, compress_level=3)   # lossless; faster for bulk imports
         prepared_bytes = buf.getvalue()
         version = hashlib.sha1(prepared_bytes).hexdigest()[:16]
         self.store.put(self.art_key(design_id, source, "original", ext), data)

@@ -42,6 +42,37 @@ def art_zip(designs, cat, extra=()):
     return buf.getvalue()
 
 
+def import_and_wait(client, data: bytes, timeout: float = 60) -> dict:
+    """Start a background ZIP import and wait for its report."""
+    import time
+    r = client.post("/api/designs/import-zip", files={"file": ("a.zip", data, "application/zip")})
+    assert r.status_code == 202, r.text
+    job = r.json()
+    end = time.time() + timeout
+    while job["status"] == "running" and time.time() < end:
+        time.sleep(0.05)
+        job = client.get(f"/api/designs/import-zip/{job['id']}").json()
+    assert job["status"] == "done", job
+    assert job["done"] == job["total"] == len(job["report"]["imported"]) + sum(
+        1 for x in job["report"]["skipped"] if "no design matches" not in x["reason"]
+        and "does not end" not in x["reason"] and "too large" not in x["reason"])
+    return job["report"]
+
+
+def test_import_job_errors_are_plain(client):
+    import time
+    r = client.post("/api/designs/import-zip", files={"file": ("x.zip", b"not a zip", "application/zip")})
+    job = r.json()
+    for _ in range(100):
+        if job["status"] != "running":
+            break
+        time.sleep(0.05)
+        job = client.get(f"/api/designs/import-zip/{job['id']}").json()
+    assert job["status"] == "error" and job["error"] == "That file is not a ZIP archive."
+    assert client.get("/api/designs/import-zip/latest").json()["id"] == job["id"]
+    assert client.get("/api/designs/import-zip/nope").status_code == 404
+
+
 def test_requires_secret(tmp_path):
     st = Settings(data_dir=tmp_path, database_url=f"sqlite:///{tmp_path}/a.db", storage="local",
                   api_secret="x", config_dir=REPO / "config", frontend_dist=tmp_path)
@@ -75,7 +106,7 @@ def test_bulk_import_and_trim(client):
                                                     ("Label Designs\\dino\\test-labels\\dino_wide.png", b"x"),
                                                     ("Label Designs/dino/test-labels/sheet_pencil.png", b"x"),
                                                     ("Label Designs/dino/test-labels/old/dino_square.jpg", b"x")])
-    rep = client.post("/api/designs/import-zip", files={"file": ("a.zip", data, "application/zip")}).json()
+    rep = import_and_wait(client, data)
     assert len(rep["imported"]) == 4
     assert rep["unknown_folders"] == ["zebra-x"]
     assert rep["ignored"] == 3                     # everything under dino/test-labels/, quietly
@@ -122,7 +153,7 @@ def test_plain_errors(client):
 
 def test_make_labels_end_to_end(client):
     data = art_zip(["axolotl"], client.app.state.svc.catalog)
-    client.post("/api/designs/import-zip", files={"file": ("a.zip", data, "application/zip")})
+    import_and_wait(client, data)
     r = client.post("/api/make", json={"design": "axolotl", "pack": "starter", "finish": "gloss",
                                        "name": "Émilie-Rose", "font": 3, "order_id": "1234"})
     assert r.status_code == 200, r.text
@@ -145,7 +176,7 @@ def test_make_labels_end_to_end(client):
 
 def test_crop_presets_are_saved_and_used_by_orders(client):
     data = art_zip(["shark"], client.app.state.svc.catalog)
-    client.post("/api/designs/import-zip", files={"file": ("a.zip", data, "application/zip")})
+    import_and_wait(client, data)
     r = client.get("/api/designs/shark/presets").json()
     large = next(s for s in r["sizes"] if s["size"] == "large")
     assert large["is_auto"] and large["preset"] == large["auto"] and r["art"]["wide"] == [2752, 680]
@@ -187,7 +218,7 @@ def test_shop_default_finish(client):
     assert client.get("/api/shop").json() == {"default_finish": "matte"}
     assert client.patch("/api/shop", json={"default_finish": "gloss"}).json()["default_finish"] == "gloss"
     data = art_zip(["bee"], client.app.state.svc.catalog)
-    client.post("/api/designs/import-zip", files={"file": ("a.zip", data, "application/zip")})
+    import_and_wait(client, data)
     run = client.post("/api/make", json={"design": "bee", "pack": "pencil60", "name": "Zoë", "font": 1}).json()
     assert "gloss" in run["summary"]["finishes"]
     assert any(f["kind"] == "notch" for f in run["files"])

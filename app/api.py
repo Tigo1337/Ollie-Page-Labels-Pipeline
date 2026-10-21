@@ -20,7 +20,6 @@ from engine.proofs import cut_out, font_chart, review_sheet
 from engine.render import LabelSpec
 from engine.text import GlyphError, normalise_name
 
-from .bulk_import import import_zip
 from .db import RunRow
 from .repo import NotFound
 from .runs import CONTENT_TYPES, run_json, run_production
@@ -192,12 +191,23 @@ def get_art(design_id: str, source: str, request: Request, variant: str = "prepa
     return Response(data, media_type=im_fmt, headers={"Cache-Control": "max-age=3600"})
 
 
-@router.post("/designs/import-zip")
+@router.post("/designs/import-zip", status_code=202)
 def bulk_import(request: Request, file: UploadFile = File(...)):
-    """Sync on purpose: FastAPI runs it in a worker thread, so a long import does not block the app.
-    The ZIP is read from the upload's temporary file, never loaded into memory whole."""
-    rep = import_zip(repo(request), file.file)
-    return rep.__dict__
+    """Starts a background import of the ZIP and returns the job; poll /designs/import-zip/{id}."""
+    return request.app.state.imports.start(file.file, file.filename or "")
+
+
+@router.get("/designs/import-zip/latest")
+def bulk_import_latest(request: Request):
+    return request.app.state.imports.latest()
+
+
+@router.get("/designs/import-zip/{job_id}")
+def bulk_import_status(job_id: str, request: Request):
+    job = request.app.state.imports.get(job_id)
+    if job is None:
+        raise NotFound("That import is not known (the app may have restarted).")
+    return job
 
 
 @router.get("/designs/{design_id}/review.png")

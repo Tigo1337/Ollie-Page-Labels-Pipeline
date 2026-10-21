@@ -12,7 +12,7 @@ import io
 import re
 import zipfile
 from dataclasses import dataclass, field
-from typing import BinaryIO
+from typing import BinaryIO, Callable
 
 from engine.art import ArtError
 
@@ -47,8 +47,10 @@ def classify(name: str) -> tuple[str, str] | None:
     return None
 
 
-def import_zip(repo: Repo, data: bytes | BinaryIO) -> ImportReport:
-    """`data`: the ZIP's bytes, or a seekable binary file (read one entry at a time)."""
+def import_zip(repo: Repo, data: bytes | BinaryIO,
+               progress: Callable[[int, int, str], None] | None = None) -> ImportReport:
+    """`data`: the ZIP's bytes, or a seekable binary file (read one entry at a time).
+    `progress(done, total, file)` is called before each image is imported."""
     try:
         zf = zipfile.ZipFile(io.BytesIO(data) if isinstance(data, (bytes, bytearray)) else data)
     except zipfile.BadZipFile as e:
@@ -57,6 +59,7 @@ def import_zip(repo: Repo, data: bytes | BinaryIO) -> ImportReport:
     by_slug = {slug(r.id): r.id for r in designs.values()} | {slug(r.name): r.id for r in designs.values()}
     rep = ImportReport()
     unknown: set[str] = set()
+    todo: list[tuple[zipfile.ZipInfo, str, str]] = []
     for info in zf.infolist():
         if info.is_dir():
             continue
@@ -79,10 +82,16 @@ def import_zip(repo: Repo, data: bytes | BinaryIO) -> ImportReport:
         if info.file_size > MAX_ZIP_ENTRY:
             rep.skipped.append({"file": info.filename, "reason": "file is too large"})
             continue
+        todo.append((info, did, source))
+    for i, (info, did, source) in enumerate(todo):
+        if progress:
+            progress(i, len(todo), info.filename)
         try:
             repo.set_art(did, source, zf.read(info), info.filename)
             rep.imported.append({"design": did, "source": source, "file": info.filename})
         except (ArtError, NotFound, ValueError) as e:
             rep.skipped.append({"file": info.filename, "reason": str(e)})
+    if progress:
+        progress(len(todo), len(todo), "")
     rep.unknown_folders = sorted(unknown)
     return rep

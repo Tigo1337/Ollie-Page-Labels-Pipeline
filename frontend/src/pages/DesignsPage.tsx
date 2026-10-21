@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { api, Design } from "../api";
-import { ErrorBox, Spinner, useAsync } from "../ui";
+import { useEffect, useState } from "react";
+import { api, Design, uploadWithProgress } from "../api";
+import { ErrorBox, useAsync } from "../ui";
 
 interface ImportReport {
   imported: { design: string; source: string; file: string }[];
@@ -8,30 +8,57 @@ interface ImportReport {
   unknown_folders: string[];
   ignored: number;
 }
+interface ImportJob {
+  id: string; file: string; status: "running" | "done" | "error"; done: number; total: number; current: string;
+  report: ImportReport | null; error: string | null;
+}
 
 export default function DesignsPage() {
   const [tick, setTick] = useState(0);
   const designs = useAsync(() => api.get<Design[]>("/api/designs"), [tick]);
-  const [busy, setBusy] = useState(false);
-  const [report, setReport] = useState<ImportReport | null>(null);
+  const [uploading, setUploading] = useState<number | null>(null);   // upload progress, 0..1
+  const [job, setJob] = useState<ImportJob | null>(null);
   const [err, setErr] = useState("");
   const [showNew, setShowNew] = useState(false);
 
+  // pick up an import that is still running (e.g. after reloading the page)
+  useEffect(() => {
+    api.get<ImportJob | null>("/api/designs/import-zip/latest").then((j) => j && j.status === "running" && setJob(j))
+      .catch(() => undefined);
+  }, []);
+
+  // poll a running import; refresh the cards every few seconds so the art appears as it lands
+  useEffect(() => {
+    if (!job || job.status !== "running") return;
+    let n = 0;
+    const t = setInterval(async () => {
+      try {
+        const j = await api.get<ImportJob>(`/api/designs/import-zip/${encodeURIComponent(job.id)}`);
+        setJob(j);
+        if (j.status !== "running" || ++n % 5 === 0) setTick((x) => x + 1);
+      } catch (e) {
+        setErr((e as Error).message);
+        setJob(null);
+      }
+    }, 1000);
+    return () => clearInterval(t);
+  }, [job?.id, job?.status]);
+
   const importZip = async (file: File) => {
-    setBusy(true);
     setErr("");
-    setReport(null);
+    setJob(null);
+    setUploading(0);
     const fd = new FormData();
     fd.append("file", file);
     try {
-      setReport(await api.post<ImportReport>("/api/designs/import-zip", fd));
-      setTick((t) => t + 1);
+      setJob(await uploadWithProgress<ImportJob>("/api/designs/import-zip", fd, setUploading));
     } catch (e) {
       setErr((e as Error).message);
     } finally {
-      setBusy(false);
+      setUploading(null);
     }
   };
+  const busy = uploading !== null || job?.status === "running";
 
   const list = designs.data ?? [];
   const missing = list.filter((d) => !d.art.wide || !d.art.square).length;
@@ -43,7 +70,8 @@ export default function DesignsPage() {
         <div className="actions">
           <label className="button">
             Bulk import ZIP…
-            <input type="file" accept=".zip" hidden onChange={(e) => e.target.files?.[0] && importZip(e.target.files[0])} />
+            <input type="file" accept=".zip" hidden disabled={busy}
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) importZip(f); }} />
           </label>
           <button onClick={() => setShowNew((s) => !s)}>New design</button>
         </div>
@@ -54,9 +82,17 @@ export default function DesignsPage() {
         designs by folder name. Sub-folders inside a design folder are ignored.
         {missing > 0 && ` ${missing} design${missing === 1 ? "" : "s"} still need artwork.`}
       </p>
-      {busy && <Spinner label="Importing and trimming artwork…" />}
+      {uploading !== null && (
+        <Progress value={uploading} label={`Uploading the ZIP… ${Math.round(uploading * 100)} %`} />
+      )}
+      {job?.status === "running" && (
+        <Progress value={job.total ? job.done / job.total : 0}
+          label={job.total ? `Importing artwork… ${job.done} / ${job.total} images${job.current ? ` · ${job.current.split(/[\\/]/).slice(-2).join("/")}` : ""}`
+            : "Reading the ZIP…"} />
+      )}
       {err && <ErrorBox message={err} />}
-      {report && <ImportResult report={report} />}
+      {job?.status === "error" && <ErrorBox message={job.error ?? "The import failed."} />}
+      {job?.status === "done" && job.report && <ImportResult report={job.report} />}
       {showNew && <NewDesign onCreated={() => { setShowNew(false); setTick((t) => t + 1); }} />}
       {designs.error && <ErrorBox message={designs.error} />}
       <div className="design-grid">
@@ -129,5 +165,14 @@ function NewDesign({ onCreated }: { onCreated: () => void }) {
       <div className="actions span2"><button className="primary">Create</button></div>
       {err && <div className="span2"><ErrorBox message={err} /></div>}
     </form>
+  );
+}
+
+function Progress({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="progress" role="progressbar" aria-valuenow={Math.round(value * 100)} aria-valuemin={0} aria-valuemax={100}>
+      <div className="progress-bar"><div style={{ width: `${Math.max(2, value * 100)}%` }} /></div>
+      <span className="muted small">{label}</span>
+    </div>
   );
 }
