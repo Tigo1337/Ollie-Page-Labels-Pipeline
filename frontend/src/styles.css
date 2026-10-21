@@ -141,3 +141,17 @@ ul.plain { list-style: none; padding: 0; margin: 0; display: flex; gap: 6px 16px
 .progress { display: flex; flex-direction: column; gap: 4px; margin: 10px 0; max-width: 560px; }
 .progress-bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
 .progress-bar > div { height: 100%; background: var(--accent); transition: width 0.3s; }
+
+/* listings */
+textarea { font: inherit; padding: 7px 9px; border: 1px solid var(--line); border-radius: 7px; background: #fff; width: 100%; resize: vertical; }
+details summary { cursor: pointer; margin-top: 12px; font-weight: 600; }
+.listing { border-top: 1px solid var(--line); padding: 14px 0 6px; display: flex; flex-direction: column; gap: 8px; }
+.listing-head { display: grid; grid-template-columns: minmax(0, 1fr) 120px auto; gap: 12px; align-items: end; }
+@media (max-width: 700px) { .listing-head { grid-template-columns: 1fr; } }
+.listing .small { margin: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border-radius: 99px; background: #efedf6; font-size: 0.85em; }
+.chip select { width: auto; max-width: 92px; padding: 1px 4px; font-size: 0.9em; border-radius: 99px; }
+.thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
+.thumbs img { width: 110px; height: 110px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); display: block; }
+.thumb-missing { width: 110px; height: 110px; border-radius: 6px; border: 1px dashed var(--line); display: flex; align-items: center; justify-content: center; text-align: center; font-size: 0.8em; color: var(--muted); }

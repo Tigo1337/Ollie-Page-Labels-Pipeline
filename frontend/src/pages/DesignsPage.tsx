@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, Design, uploadWithProgress } from "../api";
-import { ErrorBox, useAsync } from "../ui";
+import { ErrorBox, Progress, useAsync } from "../ui";
 
 interface ImportReport {
   imported: { design: string; source: string; file: string }[];
@@ -165,14 +165,5 @@ function NewDesign({ onCreated }: { onCreated: () => void }) {
       <div className="actions span2"><button className="primary">Create</button></div>
       {err && <div className="span2"><ErrorBox message={err} /></div>}
     </form>
-  );
-}
-
-function Progress({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="progress" role="progressbar" aria-valuenow={Math.round(value * 100)} aria-valuemin={0} aria-valuemax={100}>
-      <div className="progress-bar"><div style={{ width: `${Math.max(2, value * 100)}%` }} /></div>
-      <span className="muted small">{label}</span>
-    </div>
   );
 }

@@ -22,7 +22,7 @@ from engine.config import (Catalog, Design, Finish, FontSpec, Pack, Preset, Prod
 from .db import DesignRow, PresetRow, Setting
 from .storage import BlobStore
 
-SETTING_KEYS = ("production", "sizes", "packs", "finishes", "fonts", "texts", "shop")
+SETTING_KEYS = ("production", "sizes", "packs", "finishes", "fonts", "texts", "shop", "listings")
 GEOMETRY_VERSION = 2   # 2 = fixed half-sheet layouts (sheet.json); see app/migrate.py
 SHOP_DEFAULTS = {"default_finish": "matte"}
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
@@ -74,9 +74,12 @@ class Repo:
         self._bump()
         return True
 
-    def ensure_defaults(self) -> None:
+    def ensure_defaults(self, config_dir: Path | None = None) -> None:
         """Add settings introduced after a database was first seeded."""
         with self.Session() as s:
+            if config_dir is not None and s.get(Setting, "listings") is None:
+                val = json.loads((config_dir / "listings.json").read_text(encoding="utf-8"))
+                s.add(Setting(key="listings", value={k: v for k, v in val.items() if not k.startswith("_")}))
             row = s.get(Setting, "shop")
             if row is None:
                 s.add(Setting(key="shop", value=dict(SHOP_DEFAULTS)))

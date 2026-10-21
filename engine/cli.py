@@ -12,6 +12,7 @@
   layout-gallery --out DIR    one preview PNG per layout (printed view)
   templates --out DIR         cut templates per layout: SVG, DXF, JSON, calibration PDF (+ docs)
   docs                        docs/*.md and the generated README sections (French Studio steps)
+  listings --out DIR          Etsy listing images per design group + the import CSV
 """
 from __future__ import annotations
 
@@ -204,6 +205,32 @@ def cmd_calibration(args) -> int:
     return 0
 
 
+def cmd_listings(args) -> int:
+    """Etsy listing images for every group (or --group ...) and the import CSV."""
+    from .listing_images import ListingImages
+    from .listings import build_csv, groups_of, load_listings, problems
+    ws = _ws(args)
+    cfg = load_listings(Path(args.config))
+    out = Path(args.out)
+    li = ListingImages(ws.renderer, ws.ui, cfg, ws.texts, _layouts_dir(args))
+    for g in groups_of(cfg):
+        if args.group and g.id not in args.group:
+            continue
+        t = time.time()
+        li.write_group(g, out / "images", shared=False)
+        print(f"{g.id:<20} {len(g.designs):>3} designs  images in {time.time() - t:.1f} s")
+    li.write_shared(out / "images")
+    errs = problems(cfg, ws.catalog)
+    if errs:
+        print("CSV not written:\n  " + "\n  ".join(errs))
+        return 1
+    base = args.asset_base or cfg["asset_base_url"]
+    (out / "etsy_import_labels.csv").write_text(build_csv(cfg, ws.catalog, base, args.group or None),
+                                                encoding="utf-8", newline="")
+    print(out / "etsy_import_labels.csv")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m engine", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -242,6 +269,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--no-docs", action="store_true", help="do not regenerate docs/ and the README sections")
     p.add_argument("--layouts"); p.set_defaults(fn=cmd_templates)
     p = sub.add_parser("docs"); p.add_argument("--layouts"); p.set_defaults(fn=cmd_docs)
+    p = sub.add_parser("listings"); p.add_argument("--out", default="out/listings")
+    p.add_argument("--group", nargs="*"); p.add_argument("--layouts")
+    p.add_argument("--asset-base", help="where the images are hosted (default: asset_base_url in listings.json)")
+    p.set_defaults(fn=cmd_listings)
 
     args = ap.parse_args(argv)
     try:

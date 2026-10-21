@@ -21,6 +21,7 @@ from .repo import NotFound, Repo
 from .settings import Settings, load_settings
 from .storage import BlobNotFound, make_store
 from .import_jobs import ImportJobs
+from .listings_service import Listings
 from .templates_store import Templates
 
 log = logging.getLogger("labels")
@@ -39,7 +40,7 @@ def create_app(settings: Settings | None = None, start_font_download: bool = Tru
     repo = Repo(make_session_factory(settings.database_url), store)
     if repo.seed(settings.config_dir):
         log.info("Seeded the database from %s", settings.config_dir)
-    repo.ensure_defaults()
+    repo.ensure_defaults(settings.config_dir)
     migrate(repo, settings.config_dir, settings.database_url, settings.data_dir)
     svc = EngineService(repo, store, settings.cache_dir, settings.config_dir, settings.layouts_dir)
 
@@ -50,6 +51,7 @@ def create_app(settings: Settings | None = None, start_font_download: bool = Tru
     app.state.store = store
     app.state.templates = Templates(store, settings.config_dir, settings.layouts_dir)
     app.state.imports = ImportJobs(repo, settings.data_dir / "imports")
+    app.state.listings = Listings(repo, svc, store)
     app.state.font_job = {"running": False, "report": []}
 
     # -- auth: one shared secret (Replit Secret LABELS_API_SECRET) -------------
@@ -84,9 +86,11 @@ def create_app(settings: Settings | None = None, start_font_download: bool = Tru
                             status_code=500)
 
     from .api import router
+    from .listings_api import router as listings_router
     from .templates_api import router as templates_router
     app.include_router(router, prefix="/api")
     app.include_router(templates_router, prefix="/api")
+    app.include_router(listings_router, prefix="/api")
 
     # -- frontend -----------------------------------------------------------
     dist = settings.frontend_dist

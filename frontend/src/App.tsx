@@ -8,6 +8,7 @@ import FontsPage from "./pages/FontsPage";
 import CropEditor from "./pages/CropEditor";
 import SettingsPage from "./pages/SettingsPage";
 import TemplatesPage from "./pages/TemplatesPage";
+import ListingsPage from "./pages/ListingsPage";
 
 interface AppCtx {
   catalog: Catalog;
@@ -87,6 +88,7 @@ export default function App() {
   else if (top === "fonts") page = <FontsPage />;
   else if (top === "settings") page = <SettingsPage />;
   else if (top === "templates") page = <TemplatesPage />;
+  else if (top === "listings") page = <ListingsPage />;
   else page = <MakePage />;
 
   const link = (href: string, label: string, active: boolean) => (
@@ -100,6 +102,7 @@ export default function App() {
           {link("#/", "Make labels", !top || top === "make")}
           {link("#/designs", "Designs", top === "designs")}
           {link("#/templates", "Templates", top === "templates")}
+          {link("#/listings", "Etsy listings", top === "listings")}
           {link("#/fonts", "Fonts", top === "fonts")}
           {link("#/settings", "Settings", top === "settings")}
         </nav>

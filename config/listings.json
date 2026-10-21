@@ -1,0 +1,333 @@
+{
+ "_comment": "Etsy listings: designs grouped into listings, shop fields for the CSV, bundle prices and copy templates. The app stores an editable copy (Listings page); this file only seeds it. Image URLs in the CSV start with R2_PUBLIC_BASE_URL when R2 is set up, else asset_base_url. Placeholders: {group} {group_name} {designs} {design_count} {bundles} {sizes} {fonts} {font_count} {sku}.",
+ "sku_prefix": "LBL",
+ "asset_prefix": "Labels",
+ "asset_base_url": "https://assets.olliepagecreations.com",
+ "image_size": 2400,
+ "sample_names": [
+  "Liam",
+  "Emma",
+  "Noah",
+  "Olivia",
+  "Léo",
+  "Zoé",
+  "Maya",
+  "Félix",
+  "Ava",
+  "Lucas"
+ ],
+ "pack_short": {
+  "pencil60": "60 Skinny",
+  "small62": "62 Small",
+  "medium30": "30 Medium",
+  "large22": "22 Large",
+  "tag110": "110 Clothing Tags",
+  "round40": "40 Round",
+  "shoe8": "8 Shoe Pairs",
+  "starter": "Starter (61)",
+  "daycare": "Daycare (86)",
+  "school": "Back to School"
+ },
+ "pack_code": {
+  "pencil60": "PEN60",
+  "small62": "SML62",
+  "medium30": "MED30",
+  "large22": "LRG22",
+  "tag110": "TAG110",
+  "round40": "RND40",
+  "shoe8": "SHOE8",
+  "starter": "START",
+  "daycare": "DAYC",
+  "school": "SCHL"
+ },
+ "prices": {
+  "pencil60": "",
+  "small62": "",
+  "medium30": "",
+  "large22": "",
+  "tag110": "",
+  "round40": "",
+  "shoe8": "",
+  "starter": "",
+  "daycare": "",
+  "school": ""
+ },
+ "csv": {
+  "quantity": "50",
+  "who_made": "i_did",
+  "when_made": "made_to_order",
+  "taxonomy_id": "",
+  "category": "Paper & Party Supplies > Paper > Stickers, Labels & Tags > Labels",
+  "shipping_profile_id": "",
+  "return_policy_id": "",
+  "readiness_state_id": "",
+  "readiness_state": "made_to_order",
+  "shop_section_id": "",
+  "item_weight": "0.03",
+  "item_weight_unit": "kg",
+  "item_length": "23",
+  "item_width": "16",
+  "item_height": "1",
+  "item_dimensions_unit": "cm",
+  "is_taxable": "TRUE",
+  "should_auto_renew": "TRUE",
+  "materials": "printable vinyl,laminate,ink",
+  "styles": "",
+  "video_url": ""
+ },
+ "variation_names": {
+  "bundle": "Bundle",
+  "design": "Design"
+ },
+ "personalization": {
+  "columns": true,
+  "required": true,
+  "char_count_max": 256,
+  "instructions": "Name to print (and an optional second line), then the font number from the font chart.\nExample: Emma Tremblay - font 3"
+ },
+ "title_template": "{group_name} Name Labels for Kids | Personalized Waterproof Stickers for School, Daycare, Water Bottles & Clothing",
+ "tags_base": [
+  "name labels",
+  "kids name labels",
+  "daycare labels",
+  "school labels",
+  "waterproof labels",
+  "name stickers",
+  "personalized labels",
+  "back to school",
+  "water bottle label"
+ ],
+ "description_template": "⚠️⚠️ IMPORTANT NOTICE FOR U.S. RESIDENTS ⚠️⚠️\n\nGood news: you will NOT pay any import duties, customs fees or brokerage charges on your order. At Ollie Page Creations, we prepay all U.S. duties ourselves before your labels leave Canada, so nothing is collected from you at delivery.\n\nYour order ships directly from Quebec, Canada with Canada Post and is handed over to USPS once it reaches the United States, so it arrives at your door like any other domestic package.\n\nThank you for supporting a small handmade shop 💙\n\n{group_name} name labels for kids — personalized, laminated vinyl stickers for school supplies, daycare bottles, lunch boxes, shoes and clothing tags. Choose your design, your bundle and your font: every label is printed with your child's name.\n\n━━━━━━━━━━━━━━━\n\nHOW TO ORDER\n\n1. Choose your bundle (first drop-down).\n2. Choose your design (second drop-down) — see the numbered design chart in the photos.\n3. In the personalization box, write the name (and an optional second line) and the font number from the font chart.\n4. We send you a proof to check the spelling before we print.\n\n━━━━━━━━━━━━━━━\n\nDESIGNS IN THIS LISTING ({design_count})\n\n{designs}\n\n━━━━━━━━━━━━━━━\n\nBUNDLES\n\n{bundles}\n\n━━━━━━━━━━━━━━━\n\nLABEL SIZES\n\n{sizes}\n\n━━━━━━━━━━━━━━━\n\nFONTS\n\n{font_count} kid-friendly fonts — see the numbered font chart in the photos.\n\n━━━━━━━━━━━━━━━\n\nIMPORTANT\n\n• Printed on white vinyl and laminated, then kiss-cut so each label peels off easily\n• Screen and printer differences may cause slight colour variation\n• Labels arrive on half sheets that fit flat in a letter envelope\n\n━━━━━━━━━━━━━━━\n\nREFUNDS & RETURNS\n\nPersonalized items cannot be returned. If your labels arrive damaged or are not what you ordered, message the shop within 7 days with a photo and they will be replaced.\n\n━━━━━━━━━━━━━━━\n\nOllie Page Creations © 2026. All rights reserved.",
+ "groups": [
+  {
+   "id": "dinosaurs-fantasy",
+   "code": "DINO",
+   "name": "Dinosaur & Fantasy",
+   "designs": [
+    "dino",
+    "dragon",
+    "monster",
+    "ghost",
+    "alien",
+    "unicorn",
+    "knight",
+    "gnome",
+    "mer-kitty",
+    "narwhal"
+   ],
+   "tags": [
+    "dinosaur labels",
+    "dino name stickers",
+    "dragon stickers",
+    "unicorn labels"
+   ]
+  },
+  {
+   "id": "vehicles-space",
+   "code": "VEHI",
+   "name": "Vehicle & Space",
+   "designs": [
+    "excavator",
+    "train",
+    "fire-truck",
+    "tractor",
+    "race-car",
+    "airplane",
+    "sailboat",
+    "submarine",
+    "rocket",
+    "space-cat",
+    "robot"
+   ],
+   "tags": [
+    "vehicle labels",
+    "truck name labels",
+    "rocket stickers",
+    "construction labels"
+   ]
+  },
+  {
+   "id": "ocean-arctic",
+   "code": "OCEA",
+   "name": "Ocean & Arctic Animal",
+   "designs": [
+    "shark",
+    "octopus",
+    "axolotl",
+    "turtle",
+    "seal",
+    "crab",
+    "seashells",
+    "flamingo",
+    "penguin",
+    "polar-bear",
+    "snowman"
+   ],
+   "tags": [
+    "ocean name labels",
+    "shark stickers",
+    "sea animal labels",
+    "penguin labels"
+   ]
+  },
+  {
+   "id": "woodland",
+   "code": "WOOD",
+   "name": "Woodland Animal",
+   "designs": [
+    "fox",
+    "raccoon",
+    "hedgehog",
+    "owl",
+    "squirrel",
+    "beaver",
+    "moose",
+    "red-panda",
+    "otter",
+    "mushrooms",
+    "snail"
+   ],
+   "tags": [
+    "woodland labels",
+    "fox name labels",
+    "forest animal label",
+    "owl stickers"
+   ]
+  },
+  {
+   "id": "safari-jungle",
+   "code": "SAFA",
+   "name": "Safari & Jungle Animal",
+   "designs": [
+    "panda",
+    "koala",
+    "giraffe",
+    "elephant",
+    "tiger",
+    "hippo",
+    "kangaroo",
+    "chameleon",
+    "llama",
+    "capybara"
+   ],
+   "tags": [
+    "safari labels",
+    "jungle name labels",
+    "zoo animal stickers",
+    "panda labels"
+   ]
+  },
+  {
+   "id": "farm-garden",
+   "code": "FARM",
+   "name": "Farm & Garden",
+   "designs": [
+    "cow",
+    "piglet",
+    "lamb",
+    "chick",
+    "bunny",
+    "bee",
+    "ladybug",
+    "butterfly",
+    "frog",
+    "sakura",
+    "cactus"
+   ],
+   "tags": [
+    "farm animal labels",
+    "bunny name labels",
+    "garden stickers",
+    "butterfly labels"
+   ]
+  },
+  {
+   "id": "sports-hobbies",
+   "code": "SPRT",
+   "name": "Sports & Hobbies",
+   "designs": [
+    "soccer",
+    "hockey",
+    "basketball",
+    "skateboard",
+    "guitar",
+    "paint-palette",
+    "ballet-mouse",
+    "camping",
+    "pirate",
+    "parrot"
+   ],
+   "tags": [
+    "sports name labels",
+    "soccer labels",
+    "hockey stickers",
+    "ballet labels"
+   ]
+  },
+  {
+   "id": "sweets-snacks",
+   "code": "SWEE",
+   "name": "Sweet Treats & Food",
+   "designs": [
+    "strawberry",
+    "ice-cream",
+    "sushi",
+    "pizza",
+    "cupcake",
+    "donut",
+    "watermelon",
+    "avocado"
+   ],
+   "tags": [
+    "food name labels",
+    "cupcake stickers",
+    "fruit labels",
+    "ice cream labels"
+   ]
+  },
+  {
+   "id": "patterns",
+   "code": "PATT",
+   "name": "Pattern",
+   "designs": [
+    "rainbow-clouds",
+    "daisy-checker",
+    "confetti",
+    "groovy-flowers",
+    "sweet-hearts",
+    "polka-dots",
+    "gingham",
+    "tie-dye",
+    "leopard",
+    "smiley-check",
+    "terrazzo",
+    "camo",
+    "moon-stars"
+   ],
+   "tags": [
+    "pattern name labels",
+    "rainbow labels",
+    "retro name stickers",
+    "aesthetic labels"
+   ]
+  },
+  {
+   "id": "pets-cuddly",
+   "code": "PETS",
+   "name": "Puppy, Kitten & Pet",
+   "designs": [
+    "corgi",
+    "dalmatian",
+    "teacup-kitten",
+    "hamster",
+    "balloon-bear"
+   ],
+   "tags": [
+    "puppy name labels",
+    "kitten stickers",
+    "pet labels",
+    "dog name labels"
+   ]
+  }
+ ]
+}

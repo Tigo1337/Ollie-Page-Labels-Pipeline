@@ -10,7 +10,9 @@ production files for an Epson ET-2980 (US Letter) and a Silhouette Cameo 5.
 - **Phase 3 – crop editor** ✅
 - **Fixed half-sheet layouts** (reference/layout-update-prompt.md) ✅ phases 1–4: layouts,
   cut templates, half-sheet batching and bundles, new sizes and the database migration
-- Orders screen (CSV import, status tracking), pricing helper – to do
+- **Etsy listings** ✅ designs grouped into listings, listing images, Etsy import CSV
+  (`docs/etsy-listings.md`)
+- Orders screen (CSV import, status tracking) – to do
 
 ## Running the app (Replit)
 
@@ -29,6 +31,9 @@ production files for an Epson ET-2980 (US Letter) and a Silhouette Cameo 5.
 
 Environment variables: `LABELS_API_SECRET`, `LABELS_DATA_DIR`, `LABELS_STORAGE`
 (`auto` | `replit` | `local`), `LABELS_DATABASE_URL` / `DATABASE_URL`, `PORT`.
+Optional, for the Etsy listing images (same as the binder pipeline): `R2_ACCOUNT_ID`,
+`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_BASE_URL`, `R2_ENDPOINT`,
+`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID`.
 
 Local development: `pip install -r requirements-dev.txt`, `bash scripts/start.sh`
 (or `uvicorn app.main:_app_factory --factory --reload` plus `cd frontend && npm run dev`).
@@ -53,16 +58,18 @@ engine/            pure-Python rendering engine (no web dependencies)
   cutfiles.py      R12 DXF + SVG writers
   production.py    bundle: print PDFs per finish × layout, templates, page proofs, info sheet, packing slip, ZIP
   proofs.py        customer proof, holographic preview, review sheet, font chart
+  listings.py      Etsy listings: design groups, checks, import CSV (binder pipeline's format)
+  listing_images.py  listing photos: close-ups on a sheet, designs, fonts, bundles, sizes
   fonts_download.py  Google Fonts downloader (+ licence files)
   cli.py           python -m engine ...
 config/            seed data: sheet geometry (sheet.json), production numbers, sizes, packs,
                    finishes, fonts, designs, proof wording (en/fr), info-sheet template
 layouts/           published fixed layouts, chels-<size>-v<N>.json (never edited in place)
 templates/         generated cut templates for the current layouts (python -m engine templates)
-docs/              studio-template-setup.md (generated, French)
+docs/              studio-template-setup.md (generated, French), etsy-listings.md
 reference/         prototype code and specs the engine is ported from
 app/               FastAPI app: storage interface (repo.py), blob storage, auth,
-                   engine wiring, API routes (api.py)
+                   engine wiring, API routes (api.py), Etsy listings (listings_*.py, r2.py)
 frontend/          React + Vite + TypeScript UI, built into frontend/dist
 scripts/start.sh   one run command
 tests/             pytest suite (alignment, packing, text fit, golden, speed…)
@@ -84,6 +91,7 @@ python -m engine calibration chels-small-v1         # one calibration PDF
 python -m engine order examples/order_school.json --out out/   # [--lang fr]
 python -m engine review axolotl --out review.png
 python -m engine fontchart --out font_chart.png
+python -m engine listings --out out/listings --group pets-cuddly   # listing images + Etsy CSV
 pytest
 ```
 

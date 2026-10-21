@@ -48,3 +48,12 @@ export function fmtBytes(n: number) {
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
+
+export function Progress({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="progress" role="progressbar" aria-valuenow={Math.round(value * 100)} aria-valuemin={0} aria-valuemax={100}>
+      <div className="progress-bar"><div style={{ width: `${Math.max(2, value * 100)}%` }} /></div>
+      <span className="muted small">{label}</span>
+    </div>
+  );
+}
