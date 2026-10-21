@@ -11,6 +11,7 @@ import io
 import re
 import zipfile
 from dataclasses import dataclass, field
+from typing import BinaryIO
 
 from engine.art import ArtError
 
@@ -44,9 +45,10 @@ def classify(name: str) -> tuple[str, str] | None:
     return None
 
 
-def import_zip(repo: Repo, data: bytes) -> ImportReport:
+def import_zip(repo: Repo, data: bytes | BinaryIO) -> ImportReport:
+    """`data`: the ZIP's bytes, or a seekable binary file (read one entry at a time)."""
     try:
-        zf = zipfile.ZipFile(io.BytesIO(data))
+        zf = zipfile.ZipFile(io.BytesIO(data) if isinstance(data, (bytes, bytearray)) else data)
     except zipfile.BadZipFile as e:
         raise ValueError("That file is not a ZIP archive.") from e
     designs = {r.id: r for r in repo.design_rows()}

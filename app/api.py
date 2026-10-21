@@ -193,8 +193,10 @@ def get_art(design_id: str, source: str, request: Request, variant: str = "prepa
 
 
 @router.post("/designs/import-zip")
-async def bulk_import(request: Request, file: UploadFile = File(...)):
-    rep = import_zip(repo(request), await file.read())
+def bulk_import(request: Request, file: UploadFile = File(...)):
+    """Sync on purpose: FastAPI runs it in a worker thread, so a long import does not block the app.
+    The ZIP is read from the upload's temporary file, never loaded into memory whole."""
+    rep = import_zip(repo(request), file.file)
     return rep.__dict__
 
 
