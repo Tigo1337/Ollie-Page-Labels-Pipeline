@@ -3,7 +3,8 @@
 Expected layout (any depth, Windows or Unix separators):
     Label Designs\\<id>\\<id>_wide.jpg
     Label Designs\\<id>\\<id>_square.jpg
-Files are matched to designs by their folder name.
+Files are matched to designs by their folder name. Anything inside a sub-folder of a design
+folder (e.g. Label Designs\\alien\\test-labels\\...) is ignored: it is only counted, not listed.
 """
 from __future__ import annotations
 
@@ -26,6 +27,7 @@ class ImportReport:
     imported: list[dict] = field(default_factory=list)   # {design, source, file}
     skipped: list[dict] = field(default_factory=list)    # {file, reason}
     unknown_folders: list[str] = field(default_factory=list)
+    ignored: int = 0          # files in sub-folders of a design folder (e.g. test-labels/)
 
 
 def slug(s: str) -> str:
@@ -57,6 +59,10 @@ def import_zip(repo: Repo, data: bytes | BinaryIO) -> ImportReport:
     unknown: set[str] = set()
     for info in zf.infolist():
         if info.is_dir():
+            continue
+        parts = [p for p in re.split(r"[\\/]", info.filename) if p]
+        if any(slug(folder) in by_slug for folder in parts[:-2]):
+            rep.ignored += 1            # inside a sub-folder of a design folder
             continue
         c = classify(info.filename)
         if c is None:

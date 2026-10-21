@@ -6,6 +6,7 @@ interface ImportReport {
   imported: { design: string; source: string; file: string }[];
   skipped: { file: string; reason: string }[];
   unknown_folders: string[];
+  ignored: number;
 }
 
 export default function DesignsPage() {
@@ -48,8 +49,9 @@ export default function DesignsPage() {
         </div>
       </div>
       <p className="muted">
-        ZIP your <code>Label Designs</code> folder (<code>&lt;id&gt;\&lt;id&gt;_wide.jpg</code> and{" "}
-        <code>&lt;id&gt;_square.jpg</code>); files are matched to designs by folder name.
+        ZIP your <code>Label Designs</code> folder (right-click it → Send to → Compressed (zipped) folder):
+        each design's folder holds <code>&lt;id&gt;_wide.jpg</code> and <code>&lt;id&gt;_square.jpg</code>, matched to
+        designs by folder name. Sub-folders inside a design folder are ignored.
         {missing > 0 && ` ${missing} design${missing === 1 ? "" : "s"} still need artwork.`}
       </p>
       {busy && <Spinner label="Importing and trimming artwork…" />}
@@ -86,6 +88,9 @@ function ImportResult({ report }: { report: ImportReport }) {
   return (
     <div className="card">
       <strong>Imported {report.imported.length} image{report.imported.length === 1 ? "" : "s"}.</strong>
+      {report.ignored > 0 && (
+        <span className="muted"> {report.ignored} file{report.ignored === 1 ? "" : "s"} in sub-folders of design folders (like test-labels) ignored.</span>
+      )}
       {report.unknown_folders.length > 0 && (
         <p className="bad">
           No design matches these folders: {report.unknown_folders.join(", ")}. Create the design first (New design)

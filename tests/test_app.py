@@ -71,10 +71,15 @@ def test_seeded_catalog(client):
 def test_bulk_import_and_trim(client):
     cat = client.app.state.svc.catalog
     data = art_zip(["axolotl", "dino"], cat, extra=[("Label Designs/zebra-x/zebra-x_wide.jpg", b"x"),
-                                                    ("Label Designs/dino/notes.png", b"x")])
+                                                    ("Label Designs/dino/notes.png", b"x"),
+                                                    ("Label Designs\\dino\\test-labels\\dino_wide.png", b"x"),
+                                                    ("Label Designs/dino/test-labels/sheet_pencil.png", b"x"),
+                                                    ("Label Designs/dino/test-labels/old/dino_square.jpg", b"x")])
     rep = client.post("/api/designs/import-zip", files={"file": ("a.zip", data, "application/zip")}).json()
     assert len(rep["imported"]) == 4
     assert rep["unknown_folders"] == ["zebra-x"]
+    assert rep["ignored"] == 3                     # everything under dino/test-labels/, quietly
+    assert not any("test-labels" in x["file"] for x in rep["skipped"] + rep["imported"])
     d = client.get("/api/designs/axolotl").json()
     assert d["art"]["wide_size"] == [2752, 688 - 8] and d["art"]["square_size"] == [2048, 2048]
     orig = client.get("/api/designs/axolotl/art/wide?variant=original")
