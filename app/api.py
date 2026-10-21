@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import io
 import threading
+from typing import Literal
 
 from fastapi import APIRouter, File, Request, Response, UploadFile
 from fastapi.responses import JSONResponse
@@ -11,9 +12,10 @@ from PIL import Image
 from pydantic import BaseModel, Field
 
 from engine.art import auto_preset, validate_preset
+from engine.layout import LayoutError, current_layout
+from engine.packing import PackError, pack_halves, pack_sheets
 from engine.config import Preset
 from engine.orders import Order, OrderLine, validate_line
-from engine.packing import labels_per_sheet, sheets_for
 from engine.proofs import cut_out, font_chart, review_sheet
 from engine.render import LabelSpec
 from engine.text import GlyphError, normalise_name
@@ -106,13 +108,25 @@ def catalog(request: Request):
     with s.lock:
         cat = s.catalog
     prod = cat.production
-    per_sheet = {sid: labels_per_sheet(size, prod) for sid, size in cat.sizes.items()}
+    layouts_dir = s.layouts_dir
+    per_size, per_pack = {}, {}
+    for sid, size in cat.sizes.items():
+        try:
+            lay = current_layout(cat.sheet, size, layouts_dir)
+            per_size[sid] = {"layout_id": lay.layout_id, "per_half": lay.per_half, "per_sheet": lay.per_sheet}
+        except LayoutError:
+            per_size[sid] = {"layout_id": None, "per_half": 0, "per_sheet": 0}
+    for pid, p in cat.packs.items():
+        try:
+            per_pack[pid] = {"halves_by_size": pack_halves(p, cat, layouts_dir), **pack_sheets(p, cat, layouts_dir)}
+        except (LayoutError, PackError) as e:
+            per_pack[pid] = {"halves_by_size": {}, "halves": 0, "batched": 0, "alone": 0, "error": str(e)}
     return {
         "production": prod.__dict__,
-        "sizes": [dict(size.__dict__, is_rect=size.is_rect, dims=size.dims_label, per_sheet=per_sheet[sid])
+        "sheet": {k: v for k, v in cat.sheet.__dict__.items() if k != "raw"},
+        "sizes": [dict(size.__dict__, is_rect=size.is_rect, dims=size.dims_label, **per_size[sid])
                   for sid, size in cat.sizes.items()],
-        "packs": [dict(p.__dict__, total=p.total, sheets=sheets_for(p.contents, cat.sizes, prod))
-                  for p in cat.packs.values()],
+        "packs": [dict(p.__dict__, total=p.total, **per_pack[p.id]) for p in cat.packs.values()],
         "finishes": [f.__dict__ for f in cat.finishes.values()],
         "fonts": [f.__dict__ for f in cat.fonts.values()],
     }
@@ -198,7 +212,7 @@ def design_thumb(design_id: str, request: Request, name: str = "Léo", size: str
     with s.lock:
         cat = s.catalog
         lab = s.renderer.render(LabelSpec(design_id, size, name, "", font))
-        img = cut_out(lab, cat.sizes[size], cat.production.bleed, 7.0)
+        img = cut_out(lab, cat.sizes[size], cat.sheet.bleed, 7.0)
     return png_response(img)
 
 
@@ -211,16 +225,17 @@ def get_presets(design_id: str, request: Request):
         cat = s.catalog
         design = s.renderer.design(design_id)
         dims = s.assets.art_sources(design_id)
+        review = repo(request).design_json(repo(request).design_row(design_id)).get("review", {})
         out = []
         for sid, size in cat.sizes.items():
             saved = design.presets.get(sid)
             auto = None
             if size.default_source in dims:
                 w, h = dims[size.default_source]
-                auto = auto_preset(design, size, cat.production, w, h).to_dict()
+                auto = auto_preset(design, size, cat.sheet.bleed, w, h).to_dict()
             out.append({"size": sid, "preset": saved.to_dict() if saved else auto, "auto": auto,
-                        "is_auto": saved is None})
-    return {"sizes": out, "art": {k: list(v) for k, v in dims.items()}, "bleed": cat.production.bleed,
+                        "is_auto": saved is None, "review": review.get(sid)})
+    return {"sizes": out, "art": {k: list(v) for k, v in dims.items()}, "bleed": cat.sheet.bleed,
             "safe": cat.production.safe}
 
 
@@ -301,7 +316,7 @@ def preview(body: PreviewBody, request: Request):
         preset = Preset.from_dict(body.preset) if body.preset else None
         lab = s.renderer.render(LabelSpec(body.design, body.size, body.name, body.line2, body.font, body.finish),
                                 preset=preset)
-        img = cut_out(lab, cat.sizes[body.size], cat.production.bleed, body.scale,
+        img = cut_out(lab, cat.sizes[body.size], cat.sheet.bleed, body.scale,
                       holo=body.finish == "holographic")
     return {"image": data_url(img), "cap_mm": lab.cap_mm, "warnings": lab.warnings,
             "preset": lab.preset.to_dict(), "preset_is_auto": lab.preset_is_auto,
@@ -362,6 +377,7 @@ class MakeBody(BaseModel):
     line2: str = ""
     font: int = 1
     lang: str = "en"
+    unpaired: Literal["bonus", "blank"] = "bonus"   # the other half of a sheet printed alone
 
 
 @router.post("/make")
@@ -377,7 +393,8 @@ def make(body: MakeBody, request: Request):
     order_id = body.order_id.strip() or "quick-" + normalise_name(body.name).replace(" ", "-")[:30]
     order = Order(order_id, [line], lang=body.lang)
     row = run_production(s, [order], title=f"{order_id} · {normalise_name(body.name)}",
-                         request=body.model_dump(), lang=body.lang)
+                         request=body.model_dump(), lang=body.lang, unpaired=body.unpaired,
+                         studio3=request.app.state.templates.current_studio3_bytes)
     return run_json(row)
 
 

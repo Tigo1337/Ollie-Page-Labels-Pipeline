@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Optional through-cut on the trim line. Studio frame (landscape Letter), mm, y down. Place at X 0 / Y 0, then delete the two anchor dots. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="279.4mm" height="215.9mm" viewBox="0 0 279.4 215.9">
+<g id="trim" fill="none" stroke="#0000FF" stroke-width="0.1">
+<path d="M139.7 0 V215.9"/>
+</g>
+<g id="anchors" fill="#000000" stroke="none">
+<rect x="0" y="0" width="0.01" height="0.01"/>
+<rect x="279.39" y="215.89" width="0.01" height="0.01"/>
+</g>
+</svg>

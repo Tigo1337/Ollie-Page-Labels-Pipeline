@@ -1,66 +1,49 @@
 {#- ======================================================================
-    Info sheet template (Jinja2). Edit freely.
-    Silhouette Studio interface labels (FRENCH UI) are collected here so
-    they can be corrected in one place.  >>> PLEASE CONFIRM THESE <<<
+    Info sheet (Jinja2). Edit freely.
+    Silhouette Studio labels come from config/studio_labels.json through L('key'),
+    which prints "French (English)" and marks unconfirmed labels with ⚠.
     ====================================================================== -#}
-{%- set studio = {
-  "file_menu":        "Fichier",
-  "open":             "Ouvrir…",
-  "merge":            "Fusionner…",
-  "page_setup":       "Configuration de la page",
-  "page_size":        "Format de page",
-  "letter":           "Lettre",
-  "reg_marks":        "Repères d'enregistrement",
-  "mark_style":       "Style",
-  "type1":            "Type 1",
-  "inset":            "Retrait",
-  "length":           "Longueur",
-  "thickness":        "Épaisseur",
-  "transform":        "Transformer",
-  "position":         "Position",
-  "send":             "Envoyer",
-  "material":         "Matériau",
-  "action_cut":       "Couper",
-  "blade_depth":      "Profondeur de lame",
-  "force":            "Force",
-  "test_cut":         "Test de découpe",
-} -%}
 PRODUCTION INFO SHEET
 =====================
 {{ title }}
 Generated {{ generated }}
 Orders: {{ orders | join(", ") }}
 
-{% for f in finishes -%}
--------------------------------------------------------------------
-FINISH: {{ f.label }}  ({{ f.sheets }} sheet{{ "s" if f.sheets != 1 }}, {{ f.labels }} labels)
-Media: {{ f.media }}    Laminate: {{ f.laminate }}
-Print file: {{ f.pdf }}
-{% if f.notch %}Laminate notch file: {{ notch_dxf }}  (place at X 0 mm, Y 0 mm)
-{% endif %}
-  Page | Labels | Cut file (DXF)                       |     X mm |     Y mm |     W mm |     H mm
-{% for p in f.pages -%}
-  {{ "%4d"|format(p.n) }} | {{ "%6d"|format(p.count) }} | {{ "%-36s"|format(p.dxf) }} | {{ "%8.2f"|format(p.x) }} | {{ "%8.2f"|format(p.y) }} | {{ "%8.2f"|format(p.w) }} | {{ "%8.2f"|format(p.h) }}
-{% endfor %}
-{% endfor -%}
--------------------------------------------------------------------
-SILHOUETTE STUDIO SET-UP (once)
-  The print PDF already contains the registration marks, so print it from any PDF
-  viewer. Studio only needs to know where the marks are:
-  • {{ studio.page_setup }} → {{ studio.page_size }}: {{ studio.letter }} (215.9 × 279.4 mm), portrait.
-  • {{ studio.reg_marks }}: on, {{ studio.mark_style }} = {{ studio.type1 }},
-    {{ studio.inset }} {{ mark_inset }} mm, {{ studio.length }} {{ mark_length }} mm, {{ studio.thickness }} {{ mark_thickness }} mm.
-  • Before the first real job, run the calibration sheet (python -m engine calibrate)
-    on plain paper and check every cut stays inside its black ring.
+SHEETS
+------
+Every sheet of a layout is cut with that layout's template: there is no X / Y to type,
+the template is already positioned.
 
-PRODUCTION STEPS (for each sheet)
-  1. Print the page from the PDF at 100 % (actual size, no "fit to page"), one sheet at a time.
+ Sheet | Finish      | Template to open        | Print file (page)
+{% for s in sheets -%}
+ {{ "%5d"|format(s.n) }} | {{ "%-11s"|format(s.finish) }} | {{ "%-23s"|format(s.template) }} | {{ s.pdf }} (p. {{ s.page }})
+        haut (top):    {{ s.top }}
+        bas (bottom):  {{ s.bottom }}
+{% endfor %}
+{%- if waiting %}
+WAITING (not printed: no partner half yet)
+{% for w in waiting %}  - {{ w }}
+{% endfor %}
+{%- endif %}
+TEMPLATES IN THIS BUNDLE (folder templates/)
+{% for t in templates %}  - {{ t.layout_id }}: {% if t.studio3 %}{{ t.layout_id }}.studio3 (ready to cut), plus .svg / .dxf{% else %}{{ t.layout_id }}.svg / .dxf — no .studio3 uploaded yet: build it once with docs/studio-template-setup.md{% endif %}
+{% endfor %}
+STEPS (for each sheet)
+----------------------
+  1. Print the page from the print PDF at 100 % ({{ L('pdf_actual_size') }}, no "fit to page"),
+     one sheet at a time. The PDF turns itself to portrait: do not change the orientation.
   2. Let the ink dry, ideally overnight (dye ink).
-  3. Laminate the sheet.{% if any_notch %} For {{ notch_finishes | join(" and ") }}: notch the laminate
-     first — cut the three {{ notch }} × {{ notch }} mm corner squares off the laminate
-     ({{ notch_dxf }}) so the Cameo can read the marks.{% endif %}
-  4. Load the sheet on the mat. In Silhouette Studio: {{ studio.file_menu }} → {{ studio.merge }}
-     the page's cut file (DXF), then in {{ studio.transform }} → {{ studio.position }}
-     type the X and Y from the table above. Check W and H match.
-  5. {{ studio.send }}: kiss cut through the laminate and vinyl, not the backing
-     (adjust {{ studio.blade_depth }} / {{ studio.force }}; do a {{ studio.test_cut }} on a new roll).
+  3. Notch the laminate first, for every finish: cut {{ notch_dxf }} on the laminate sheet
+     (plain cut, no registration marks, placed at X 0 / Y 0), so the three
+     {{ "%g"|format(sheet.notch) }} × {{ "%g"|format(sheet.notch) }} mm corners are open. Lay the laminate with its
+     notches over the three registration marks, then laminate.
+  4. Silhouette Studio, page {{ L('landscape') }}: {{ L('file_menu') }} → {{ L('open') }} the template in the
+     table above (the .studio3, or one built from the .svg). Check {{ L('reg_marks') }}:
+     {{ L('type1') }}, {{ L('length') }} {{ "%g"|format(sheet.mark_length) }} mm, {{ L('thickness') }} {{ "%g"|format(sheet.mark_thickness) }} mm, {{ L('inset') }} {{ "%g"|format(sheet.mark_inset) }} mm.
+     Load the sheet on the mat in landscape, like the card proxies: the filled square mark
+     at the top left.
+  5. {{ L('send') }}: kiss cut through the laminate and the vinyl, not the backing
+     with the finish's {{ L('material') }} (a {{ L('test_cut') }} first on each new finish or roll;
+     starting settings in docs/cut-settings.md).
+  6. Trim the sheet at the trim ticks into its two halves (haut / bas) and pack them with the
+     packing slip.

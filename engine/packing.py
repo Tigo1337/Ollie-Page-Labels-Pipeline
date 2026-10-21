@@ -1,174 +1,149 @@
-"""Sheet packing. Strategies sit behind `PackingStrategy` so they can be swapped.
+"""Half-sheet batching: orders fill whole halves of fixed layouts; two halves make a sheet.
 
-Coordinates: page mm, y down; a placement's (x, y) is the top-left of the CUT box.
-Rules every strategy must respect:
-  * bleed boxes stay inside the print margin and outside the keep-out squares
-  * neighbouring cut lines are at least `gap` apart
+* A pack is a whole number of single-size halves (pencil60 = 2 pencil halves, school = one
+  half each of pencil, small, medium, round and shoe). Every half carries its order, line,
+  size, design, name, font and finish; all its cells hold that one label.
+* A sheet is two halves with the same layout (size) and the same finish. Halves are paired
+  oldest first and may come from different orders (two `starter` orders = one pencil sheet
+  and one small sheet).
+* A half without a partner either waits for one, or is printed alone: its other half is a
+  free bonus copy of the same half, or left blank.
+
+Strategies sit behind `PackingStrategy` so the batching can change later.
 """
 from __future__ import annotations
 
-import itertools
 import math
-from dataclasses import dataclass, field
-from typing import Protocol, Sequence
+from dataclasses import dataclass, field, replace
+from typing import Literal, Protocol, Sequence
 
-from .config import Production, Size
+from .config import Catalog, Pack
 
-EPS = 1e-6
+Unpaired = Literal["wait", "bonus", "blank"]
 
 
-@dataclass
-class Job:
-    """One physical label to place."""
+class PackError(ValueError):
+    pass
+
+
+@dataclass(frozen=True)
+class Half:
+    """One half-sheet: one size, one label repeated in every cell of the half."""
+    order_id: str
+    line: int                # order line index (0-based)
     size: str
-    key: str                 # render key (identical labels share it)
-    group: str = ""          # name grouping key, e.g. "order:line"
-    order_id: str = ""
-    seq: int = 0             # stable order within the run
+    key: str                 # render key (same label = same key)
+    finish: str
+    layout_id: str
+    name: str = ""
+    design: str = ""
+    font: int = 1
+    index: int = 1           # this half's number within its order (1-based) ...
+    of: int = 1              # ... out of the order's halves
+    seq: int = 0             # age: lower = older (pairing order)
+    bonus: bool = False      # a free copy filling the other half of a sheet printed alone
+
+    @property
+    def tag(self) -> str:
+        return f"#{self.order_id} · {self.name} · {self.finish} · half {self.index}/{self.of}"
 
 
 @dataclass
-class Placement:
-    job: Job
-    x: float
-    y: float
-    w: float
-    h: float
+class SheetPlan:
+    n: int                   # sheet number in the run (1-based)
+    layout_id: str
+    size: str
+    finish: str
+    top: Half
+    bottom: Half | None      # None = printed blank
 
-    def bleed_box(self, b: float) -> tuple[float, float, float, float]:
-        return self.x - b, self.y - b, self.x + self.w + b, self.y + self.h + b
+    @property
+    def halves(self) -> list[Half]:
+        return [self.top] + ([self.bottom] if self.bottom is not None else [])
 
 
 @dataclass
-class Sheet:
-    placements: list[Placement] = field(default_factory=list)
+class BatchPlan:
+    sheets: list[SheetPlan] = field(default_factory=list)
+    waiting: list[Half] = field(default_factory=list)
 
 
 class PackingStrategy(Protocol):
     name: str
 
-    def pack(self, jobs: Sequence[Job], sizes: dict[str, Size], prod: Production) -> list[Sheet]:
+    def plan(self, halves: Sequence[Half], unpaired: Unpaired, size_order: Sequence[str],
+             finish_order: Sequence[str]) -> BatchPlan:
         ...
 
 
-def x_interval(prod: Production, y0: float, y1: float) -> tuple[float, float]:
-    """Usable x range for a bleed box spanning [y0, y1] given the margins and keep-outs."""
-    left, right = prod.margin, prod.page_w - prod.margin
-    for kx0, ky0, kx1, ky1 in prod.keepout_rects():
-        if y0 < ky1 - EPS and y1 > ky0 + EPS:  # vertical overlap
-            if kx0 <= EPS:
-                left = max(left, kx1)
-            else:
-                right = min(right, kx0)
-    return left, right
+class HalfSheetBatcher:
+    """Pair halves of the same layout and finish, oldest first."""
+    name = "half-sheets"
+
+    def plan(self, halves: Sequence[Half], unpaired: Unpaired = "bonus", size_order: Sequence[str] = (),
+             finish_order: Sequence[str] = ()) -> BatchPlan:
+        groups: dict[tuple[str, str], list[Half]] = {}
+        for h in sorted(halves, key=lambda h: h.seq):
+            groups.setdefault((h.finish, h.layout_id), []).append(h)
+        f_rank = {f: i for i, f in enumerate(finish_order)}
+        s_rank = {s: i for i, s in enumerate(size_order)}
+        out = BatchPlan()
+        for (finish, layout_id) in sorted(groups, key=lambda k: (f_rank.get(k[0], 99),
+                                                               s_rank.get(groups[k][0].size, 99), k)):
+            todo = groups[(finish, layout_id)]
+            size = todo[0].size
+            for i in range(0, len(todo) - 1, 2):
+                out.sheets.append(SheetPlan(0, layout_id, size, finish, todo[i], todo[i + 1]))
+            if len(todo) % 2:
+                last = todo[-1]
+                if unpaired == "wait":
+                    out.waiting.append(last)
+                else:
+                    other = replace(last, bonus=True) if unpaired == "bonus" else None
+                    out.sheets.append(SheetPlan(0, layout_id, size, finish, last, other))
+        for n, sh in enumerate(out.sheets, 1):
+            sh.n = n
+        return out
 
 
-class TidyRowPacker:
-    """Rows of identical sizes, left-aligned, filled edge to edge, top to bottom.
-
-    * Each size sits on a fixed column grid starting at the left margin, so its
-      columns line up down the page; rows beside a keep-out square simply skip the
-      grid columns the square covers.
-
-    * Labels of one size stay together; within a size the job order is kept, so
-      every name's labels are contiguous.
-    * A row never mixes sizes; when a size runs out the next size starts a new row.
-    * The order in which sizes are laid down is chosen to minimise sheets, then to
-      keep each size on as few sheets as possible; remaining ties go to the
-      tallest-first order, so the layout is predictable.
-    """
-    name = "tidy-rows"
-    grid = True
-
-    def pack(self, jobs: Sequence[Job], sizes: dict[str, Size], prod: Production) -> list[Sheet]:
-        if not jobs:
-            return []
-        groups: dict[str, list[Job]] = {}
-        for j in sorted(jobs, key=lambda j: j.seq):
-            groups.setdefault(j.size, []).append(j)
-        canonical = sorted(groups, key=lambda s: (-(sizes[s].h), -(sizes[s].w), s))
-        best: tuple[tuple, list[Sheet]] | None = None
-        for rank, perm in enumerate(itertools.permutations(canonical)):
-            sheets = self._lay(perm, groups, sizes, prod)
-            spread = sum(len({p.job.size for p in sh.placements}) for sh in sheets)
-            score = (len(sheets), spread, rank)
-            if best is None or score < best[0]:
-                best = (score, sheets)
-            if len(canonical) > 6 and rank > 720:
-                break
-        assert best is not None
-        return best[1]
-
-    def _lay(self, order: Sequence[str], groups: dict[str, list[Job]], sizes: dict[str, Size],
-             prod: Production) -> list[Sheet]:
-        b = prod.bleed
-        spacing = prod.gap - 2 * b           # space between neighbouring bleed boxes
-        bottom = prod.page_h - prod.margin
-        boundaries = sorted({r[3] for r in prod.keepout_rects()} | {r[1] for r in prod.keepout_rects()})
-        sheets = [Sheet()]
-        y = prod.margin                      # top of the next row's bleed box
-        for sid in order:
-            size = sizes[sid]
-            bw, bh = size.w + 2 * b, size.h + 2 * b
-            todo = list(groups[sid])
-            while todo:
-                n = 0
-                left = 0.0
-                fresh = not sheets[-1].placements
-                while True:
-                    if y + bh > bottom + EPS:
-                        if fresh:
-                            raise ValueError(f"Label size '{sid}' does not fit on the page.")
-                        sheets.append(Sheet())
-                        y = prod.margin
-                        fresh = True
-                        continue
-                    left, right = x_interval(prod, y, y + bh)
-                    if self.grid:  # snap to the size's column grid
-                        pitch = bw + spacing
-                        left = prod.margin + math.ceil((left - prod.margin) / pitch - EPS) * pitch
-                    n = int(math.floor((right - left + spacing) / (bw + spacing) + EPS))
-                    if n >= 1:
-                        break
-                    nxt = [v for v in boundaries if v > y + EPS]
-                    if not nxt:
-                        y = bottom + 1  # force a new sheet
-                    else:
-                        y = nxt[0]
-                row, todo = todo[:n], todo[n:]
-                for i, job in enumerate(row):
-                    x = left + i * (bw + spacing) + b
-                    sheets[-1].placements.append(Placement(job, x, y + b, size.w, size.h))
-                y += bh + spacing
-        return sheets
-
-
-class CompactRowPacker(TidyRowPacker):
-    """Like tidy-rows, but rows beside a keep-out start right after the square
-    (can fit one more label in those rows; columns no longer line up)."""
-    name = "compact-rows"
-    grid = False
-
-
-STRATEGIES: dict[str, PackingStrategy] = {s.name: s for s in (TidyRowPacker(), CompactRowPacker())}
-DEFAULT_STRATEGY = TidyRowPacker.name
+STRATEGIES: dict[str, PackingStrategy] = {s.name: s for s in (HalfSheetBatcher(),)}
+DEFAULT_STRATEGY = HalfSheetBatcher.name
 
 
 def get_strategy(name: str | None = None) -> PackingStrategy:
     return STRATEGIES[name or DEFAULT_STRATEGY]
 
 
-def labels_per_sheet(size: Size, prod: Production, strategy: str | None = None) -> int:
-    jobs = [Job(size=size.id, key="x", seq=i) for i in range(2000)]
-    sheets = get_strategy(strategy).pack(jobs, {size.id: size}, prod)
-    return len(sheets[0].placements)
+# ---------------------------------------------------------------------------
+# Packs in halves
+# ---------------------------------------------------------------------------
+def per_half(cat: Catalog, size_id: str, layouts_dir) -> int:
+    from .layout import current_layout
+    return current_layout(cat.sheet, cat.sizes[size_id], layouts_dir).per_half
 
 
-def sheets_for(contents: dict[str, int], sizes: dict[str, Size], prod: Production,
-               strategy: str | None = None) -> int:
-    jobs, seq = [], 0
-    for sid, q in contents.items():
-        for _ in range(q):
-            jobs.append(Job(size=sid, key=sid, seq=seq))
-            seq += 1
-    return len(get_strategy(strategy).pack(jobs, sizes, prod))
+def pack_halves(pack: Pack, cat: Catalog, layouts_dir) -> dict[str, int]:
+    """{size: number of halves}. Every quantity must fill whole halves of its layout."""
+    return pack_halves_from(pack, cat, {sid: per_half(cat, sid, layouts_dir) for sid in pack.contents
+                                        if sid in cat.sizes})
+
+
+def pack_halves_from(pack: Pack, cat: Catalog, per_half_of: dict[str, int]) -> dict[str, int]:
+    out = {}
+    for sid, q in pack.contents.items():
+        if sid not in cat.sizes or sid not in per_half_of:
+            raise PackError(f"Pack '{pack.id}' uses unknown size '{sid}'.")
+        n = per_half_of[sid]
+        if q % n:
+            raise PackError(f"Pack '{pack.id}': {q} {sid} labels is not a whole number of halves "
+                            f"({n} per half).")
+        out[sid] = q // n
+    return out
+
+
+def pack_sheets(pack: Pack, cat: Catalog, layouts_dir) -> dict[str, float]:
+    """Material per pack, in sheets: halves / 2 when batched with other orders, and the sheets
+    used when the order is printed on its own (each odd half takes a whole sheet)."""
+    halves = pack_halves(pack, cat, layouts_dir)
+    return {"halves": sum(halves.values()), "batched": sum(halves.values()) / 2,
+            "alone": sum(math.ceil(n / 2) for n in halves.values())}

@@ -41,6 +41,10 @@ class DesignRow(Base):
     square_w: Mapped[int | None] = mapped_column(Integer, nullable=True)
     square_h: Mapped[int | None] = mapped_column(Integer, nullable=True)
     square_ext: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    # scene settings (None = engine default): see engine.config.Design
+    mini_start: Mapped[float | None] = mapped_column(Float, nullable=True)
+    square_text: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    no_character_sizes: Mapped[list | None] = mapped_column(JSON, nullable=True)
     updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
 
@@ -49,6 +53,18 @@ class PresetRow(Base):
     design_id: Mapped[str] = mapped_column(ForeignKey("designs.id", ondelete="CASCADE"), primary_key=True)
     size_id: Mapped[str] = mapped_column(String(32), primary_key=True)
     data: Mapped[dict] = mapped_column(JSON)
+    review: Mapped[str | None] = mapped_column(String(200), nullable=True)  # "à revoir" note, cleared on save
+
+
+class ArchivedPresetRow(Base):
+    """Presets of sizes that no longer exist (kept, not deleted, by the geometry migration)."""
+    __tablename__ = "archived_presets"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    design_id: Mapped[str] = mapped_column(String(64))
+    size_id: Mapped[str] = mapped_column(String(32))
+    data: Mapped[dict] = mapped_column(JSON)
+    reason: Mapped[str] = mapped_column(String(200))
+    archived_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
 class RunRow(Base):
@@ -75,4 +91,23 @@ def make_session_factory(url: str):
         def _fk(dbapi_conn, _rec):  # pragma: no cover - trivial
             dbapi_conn.execute("PRAGMA foreign_keys=ON")
     Base.metadata.create_all(engine)
+    add_missing_columns(engine)
     return sessionmaker(engine, expire_on_commit=False)
+
+
+def add_missing_columns(engine) -> list[str]:
+    """create_all() never alters an existing table: add the nullable columns introduced since."""
+    from sqlalchemy import inspect, text
+    added = []
+    insp = inspect(engine)
+    with engine.begin() as conn:
+        for table in Base.metadata.sorted_tables:
+            if not insp.has_table(table.name):
+                continue
+            have = {c["name"] for c in insp.get_columns(table.name)}
+            for col in table.columns:
+                if col.name not in have and col.nullable:
+                    ddl = col.type.compile(dialect=engine.dialect)
+                    conn.execute(text(f'ALTER TABLE {table.name} ADD COLUMN "{col.name}" {ddl}'))
+                    added.append(f"{table.name}.{col.name}")
+    return added

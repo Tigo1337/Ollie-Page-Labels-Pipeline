@@ -1,15 +1,18 @@
-"""The print PDF and the DXF line up: rasterise the PDF, draw the cut paths from the
-DXF, and check every cut line falls inside the bleed of its label."""
+"""A real run's print PDFs line up with the layout templates in its bundle: rasterise every page
+in the Studio frame, draw the template's cut paths, and check every cut line falls inside the
+printed art of its label. The only ink in the corner keep-outs is the registration marks."""
+import io
 import math
+import zipfile
 
 import numpy as np
 import pypdfium2 as pdfium
 import pytest
 
-from engine.cutfiles import parse_dxf_polylines
 from engine.orders import Order, OrderLine
 
-DPI = 600
+DPI = 300
+K = DPI / 25.4
 
 
 def outward_samples(path, d):
@@ -35,71 +38,66 @@ def outward_samples(path, d):
 @pytest.fixture(scope="module")
 def produced(ws, tmp_path_factory):
     out = tmp_path_factory.mktemp("align")
-    lines = [OrderLine("solid", "school", "matte", "Léo", "", 1),
-             OrderLine("solid", "square12", "matte", "Zoë", "", 1)]
+    lines = [OrderLine("solid", p, "matte", "Léo", "", 1) for p in ("school", "large22", "daycare")]
     res = ws.producer.run([Order("align", lines)], out, customer_proofs=False)
     return res, out
 
 
-def test_pdf_and_dxf_line_up(ws, produced):
+def studio_pages(path):
+    for page in pdfium.PdfDocument(str(path)):
+        printed = np.asarray(page.render(scale=DPI / 72).to_pil().convert("RGB")).astype(int)
+        yield np.rot90(printed, k=-1)          # printed view -> Studio frame
+
+
+def test_every_sheet_is_cut_on_its_art(ws, produced):
+    from engine.layout import published
+    from engine.templates import cut_shapes, flatten
     res, out = produced
-    prod = ws.catalog.production
-    pdf = pdfium.PdfDocument(str(out / "align_matte_print.pdf"))
-    assert len(pdf) == len(res.sheets["matte"])
-    k = DPI / 25.4
+    sheet = ws.catalog.sheet
+    lays = {lay.layout_id: lay for v in published(ws.producer.layouts_dir).values() for lay in v}
+    band = {sid: min(sheet.bleed, s.gap_on(sheet) / 2) for sid, s in ws.catalog.sizes.items()}
     checked = 0
-    for i, page in enumerate(pdf):
-        w_pt, h_pt = page.get_size()
-        assert w_pt == pytest.approx(prod.page_w / 25.4 * 72, abs=0.01)
-        assert h_pt == pytest.approx(prod.page_h / 25.4 * 72, abs=0.01)
-        img = np.asarray(page.render(scale=DPI / 72).to_pil().convert("RGB")).astype(int)
-        ink = img.min(axis=2) < 200
-        H, W = ink.shape
+    with zipfile.ZipFile(res.zip_path) as z:
+        bundle = set(z.namelist())
+    for pdf in sorted({sh["pdf"] for sh in res.summary["sheets"]}):
+        sheets = [sh for sh in res.summary["sheets"] if sh["pdf"] == pdf]
+        for sh, img in zip(sheets, studio_pages(out / pdf)):
+            lay = lays[sh["layout_id"]]
+            size = ws.catalog.sizes[lay.size]
+            assert f"templates/{lay.layout_id}.svg" in bundle
+            ink = img.min(axis=2) < 200
+            H, W = ink.shape
 
-        def at(pt):
-            x, y = int(round(pt[0] * k)), int(round(pt[1] * k))
-            return ink[min(max(y, 0), H - 1), min(max(x, 0), W - 1)]
+            def at(p):
+                x, y = int(round(p[0] * K)), int(round(p[1] * K))
+                return ink[min(max(y, 0), H - 1), min(max(x, 0), W - 1)]
 
-        dxf = (out / f"align_matte_p{i + 1}_cut.dxf").read_text()
-        paths = [[(x, prod.page_h - y) for x, y in p] for p in parse_dxf_polylines(dxf)]
-        assert len(paths) == len(res.sheets["matte"][i].placements)
-        for path in paths:
-            for d in (0.0, 0.5, 1.0):      # on the cut line and well inside the 1.25 mm bleed
-                bad = [p for p in outward_samples(path, d) if not at(p)]
-                assert not bad, f"cut line +{d} mm not on ink at {bad[:3]}"
-            # just past the bleed (and before any neighbour's bleed) the paper is white
-            bad = [p for p in outward_samples(path, 1.5) if at(p)]
-            assert not bad, f"ink found 1.5 mm outside the cut line at {bad[:3]}"
-            checked += 1
-        # the only ink in the margins and keep-out squares is the registration marks
-        marks = np.zeros_like(ink)
-        for x0, y0, x1, y1 in prod.mark_rects():
-            marks[int(round(y0 * k)) - 2:int(round(y1 * k)) + 2, int(round(x0 * k)) - 2:int(round(x1 * k)) + 2] = True
-        stray = ink & ~marks
-        m = int(prod.margin * k) - 1
-        assert not stray[:m].any() and not stray[-m:].any() and not stray[:, :m].any() and not stray[:, -m:].any()
-        for x0, y0, x1, y1 in prod.keepout_rects():
-            assert not stray[int(y0 * k):int(y1 * k) - 1, int(x0 * k):int(x1 * k) - 1].any()
-        # and the marks are there, solid black, where Silhouette Studio expects them
-        for x0, y0, x1, y1 in prod.mark_rects():
-            cx, cy = (x0 + x1) / 2 * k, (y0 + y1) / 2 * k
-            assert img[int(cy), int(cx)].max() < 40
-            for ex, ey in ((x0 - 0.3, cy / k), (x1 + 0.3, cy / k), (cx / k, y0 - 0.3), (cx / k, y1 + 0.3)):
-                edge_px = img[int(round(ey * k)), int(round(ex * k))]
-                inside_other = any(a <= ex <= c and b <= ey <= d for a, b, c, d in prod.mark_rects())
-                assert inside_other or edge_px.min() > 200, f"mark edge not at {ex:.2f},{ey:.2f}"
-    assert checked == 132 + 12
+            for shape in cut_shapes(lay, size, sheet):
+                path = flatten(shape, tol=0.05)
+                for d in (-0.4, 0.0, 0.4, band[lay.size] - 0.3):
+                    bad = [p for p in outward_samples(path, d) if not at(p)]
+                    assert not bad, f"{pdf} sheet {sh['n']}: cut line +{d} mm off the art at {bad[:3]}"
+                checked += 1
+            # nothing but the marks inside the corner ink keep-outs
+            for x0, y0, x1, y1 in sheet.corner_squares(sheet.ink_keepout):
+                win = ink[int(y0 * K) + 1:int(y1 * K) - 1, int(x0 * K) + 1:int(x1 * K) - 1].copy()
+                mark = np.zeros_like(win)
+                from engine.marks import mark_rects
+                for m in mark_rects(sheet):
+                    a0, b0 = int((m[0] - 0.4 - x0) * K), int((m[1] - 0.4 - y0) * K)
+                    a1, b1 = int((m[2] + 0.4 - x0) * K) + 1, int((m[3] + 0.4 - y0) * K) + 1
+                    mark[max(b0, 0):max(b1, 0), max(a0, 0):max(a1, 0)] = True
+                assert not (win & ~mark).any(), f"ink inside the keep-out {x0, y0} on {pdf}"
+    labels = sum(len(lay.cells) * (2 if ws.catalog.sizes[lay.size].shape == "pair" else 1)
+                 for sh in res.summary["sheets"] for lay in [lays[sh["layout_id"]]])
+    assert checked == labels
 
 
-def test_info_sheet_xy_is_cut_bbox(ws, produced):
+def test_pdf_pages_are_landscape_rotated_and_unscaled(produced):
     res, out = produced
-    prod = ws.catalog.production
-    for p in res.pages:
-        paths = parse_dxf_polylines((out / p.dxf).read_text())
-        xs = [x for path in paths for x, _ in path]
-        ys = [prod.page_h - y for path in paths for _, y in path]
-        assert min(xs) == pytest.approx(p.x, abs=1e-3) and min(ys) == pytest.approx(p.y, abs=1e-3)
-        assert max(xs) - min(xs) == pytest.approx(p.w, abs=1e-3)
-        assert max(ys) - min(ys) == pytest.approx(p.h, abs=1e-3)
-        txt = (out / "align_info_sheet.txt").read_text()
-        assert f"{p.x:8.2f}" in txt and f"{p.y:8.2f}" in txt
+    for f in {sh["pdf"] for sh in res.summary["sheets"]}:
+        data = (out / f).read_bytes()
+        for page in pdfium.PdfDocument(io.BytesIO(data)):
+            assert tuple(round(v, 2) for v in page.get_mediabox()) == (0, 0, 792, 612)
+            assert page.get_rotation() == 270
+        assert b"/PrintScaling /None" in data

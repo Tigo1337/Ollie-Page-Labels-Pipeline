@@ -86,11 +86,13 @@ class AppAssets:
 
 
 class EngineService:
-    def __init__(self, repo: Repo, store: BlobStore, cache_dir: Path, config_dir: Path):
+    def __init__(self, repo: Repo, store: BlobStore, cache_dir: Path, config_dir: Path,
+                 layouts_dir: Path | None = None):
         self.repo = repo
         self.store = store
         self.cache_dir = cache_dir
         self.config_dir = config_dir
+        self.layouts_dir = layouts_dir or config_dir.parent / "layouts"
         self.lock = threading.RLock()
         self.assets = AppAssets(repo, store, cache_dir)
         self._version = -1
@@ -136,7 +138,8 @@ class EngineService:
         return self.repo.setting("texts")
 
     def producer(self) -> Producer:
-        return Producer(self.renderer, self.ui, self.texts(), self.config_dir / "templates")
+        return Producer(self.renderer, self.ui, self.texts(), self.config_dir / "templates",
+                        layouts_dir=self.layouts_dir, config_dir=self.config_dir)
 
     # -- fonts -------------------------------------------------------------
     def font_status(self) -> list[dict]:

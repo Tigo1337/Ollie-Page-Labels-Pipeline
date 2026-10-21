@@ -1,21 +1,6 @@
 {
-  "_comment": "Fixed production numbers (mm). Do not change without checking a test print.",
-  "page_w": 215.9,
-  "page_h": 279.4,
-  "margin": 12.0,
-  "keepout": 36.0,
-  "mark_inset": 10.0,
-  "mark_length": 20.0,
-  "mark_thickness": 1.0,
-  "mark_square": 5.0,
-  "print_marks": true,
-  "bleed": 1.25,
-  "gap": 3.0,
+  "_comment": "Production numbers that are not sheet geometry (page, marks, keep-outs, gap, bleed and dpi are in sheet.json).",
   "safe": 1.0,
-  "dpi": 600,
   "proof_dpi": 150,
-  "min_cap_mm": 1.7,
-  "notch": 34.0,
-  "rrect_segments": 12,
-  "circle_segments": 96
+  "min_cap_mm": 1.7
 }

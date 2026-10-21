@@ -127,3 +127,14 @@ label small { font-weight: 400; }
 label.inline { flex-direction: row; align-items: center; gap: 6px; font-weight: 400; }
 label.inline input { width: auto; }
 .snap-controls select { padding: 4px 6px; }
+
+/* templates page */
+.template-card { display: grid; grid-template-columns: minmax(0, 300px) 1fr; gap: 18px; align-items: start; }
+.template-preview { width: 100%; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.template-card h3 { margin-top: 0; }
+.template-card h4 { margin: 12px 0 4px; }
+ul.plain { list-style: none; padding: 0; margin: 0; display: flex; gap: 6px 16px; flex-wrap: wrap; }
+@media (max-width: 700px) { .template-card { grid-template-columns: 1fr; } }
+.pair-split rect { fill: rgba(255, 255, 255, 0.35); }
+.pair-split line { stroke: #ff9f1a; stroke-width: 1.5; stroke-dasharray: 4 3; }
+.name-box.ghost { fill: rgba(80,160,255,0.08); stroke-dasharray: 2 3; cursor: default; }

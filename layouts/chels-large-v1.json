@@ -1,0 +1,39 @@
+{
+ "_doc": "Fixed half-sheet layout. Never edit a published layout: a geometry change makes a new version. Cells are [X, Y, W, H, rotated] in mm, Studio frame (landscape Letter, origin top-left, y down); 'top'/'bottom' are the halves as the printed sheet is held (printed top = Studio right half, X > trim). bottom[i] mirrors top[i] about the trim line.",
+ "layout_id": "chels-large-v1",
+ "size": "large",
+ "version": 1,
+ "geometry_hash": "104304c01ab23cf4bf82f92ba51f552c2f3bb52f3b171531354ec97f72664893",
+ "frame": "studio",
+ "arrangement": "normal",
+ "per_half": 11,
+ "per_sheet": 22,
+ "rows": [2, 3, 3, 3],
+ "size_geometry": {"shape": "rrect", "w": 63.5, "h": 25.4, "r": 5},
+ "top": [
+  [236.2, 43.2, 25.4, 63.5, false],
+  [236.2, 109.2, 25.4, 63.5, false],
+  [208.3, 10.2, 25.4, 63.5, false],
+  [208.3, 76.2, 25.4, 63.5, false],
+  [208.3, 142.2, 25.4, 63.5, false],
+  [180.4, 10.2, 25.4, 63.5, false],
+  [180.4, 76.2, 25.4, 63.5, false],
+  [180.4, 142.2, 25.4, 63.5, false],
+  [152.5, 10.2, 25.4, 63.5, false],
+  [152.5, 76.2, 25.4, 63.5, false],
+  [152.5, 142.2, 25.4, 63.5, false]
+ ],
+ "bottom": [
+  [17.8, 43.2, 25.4, 63.5, false],
+  [17.8, 109.2, 25.4, 63.5, false],
+  [45.7, 10.2, 25.4, 63.5, false],
+  [45.7, 76.2, 25.4, 63.5, false],
+  [45.7, 142.2, 25.4, 63.5, false],
+  [73.6, 10.2, 25.4, 63.5, false],
+  [73.6, 76.2, 25.4, 63.5, false],
+  [73.6, 142.2, 25.4, 63.5, false],
+  [101.5, 10.2, 25.4, 63.5, false],
+  [101.5, 76.2, 25.4, 63.5, false],
+  [101.5, 142.2, 25.4, 63.5, false]
+ ]
+}

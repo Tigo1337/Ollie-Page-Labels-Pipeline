@@ -1,4 +1,4 @@
-"""Orders and their expansion into one job per physical label, grouped by finish."""
+"""Orders and their expansion into half-sheets (see packing.py)."""
 from __future__ import annotations
 
 import json
@@ -6,7 +6,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from .config import Catalog
-from .packing import Job
+from .layout import Layout
+from .packing import Half, PackError, pack_halves_from
 from .render import LabelSpec
 from .text import normalise_name
 
@@ -84,40 +85,52 @@ def validate_line(line: OrderLine, cat: Catalog) -> list[str]:
 
 @dataclass
 class Expanded:
-    jobs_by_finish: dict[str, list[Job]]
+    halves: list[Half]
     specs: dict[str, LabelSpec]          # key -> spec
     order_of_key: dict[str, list[str]]   # key -> order ids using it
+
+    def by_finish(self) -> dict[str, list[Half]]:
+        out: dict[str, list[Half]] = {}
+        for h in self.halves:
+            out.setdefault(h.finish, []).append(h)
+        return out
 
 
 def spec_key(spec: LabelSpec) -> str:
     return json.dumps([spec.design, spec.size, spec.name, spec.line2, spec.font, spec.finish], ensure_ascii=False)
 
 
-def expand(orders: list[Order], cat: Catalog) -> Expanded:
-    """One job per label. Jobs keep (order, line, size) order so each name stays together."""
-    jobs: dict[str, list[Job]] = {}
+def expand(orders: list[Order], cat: Catalog, layouts: dict[str, Layout]) -> Expanded:
+    """Every order line's pack as whole halves, in (order, line, size) order: that is their age,
+    so pairing takes the oldest halves first. `layouts` maps size -> its current layout."""
+    halves: list[Half] = []
     specs: dict[str, LabelSpec] = {}
     users: dict[str, list[str]] = {}
     seq = 0
     size_rank = {s: i for i, s in enumerate(cat.sizes)}
     for order in orders:
+        planned = []
         for li, line in enumerate(order.lines):
             errs = validate_line(line, cat)
             if errs:
                 raise OrderError(f"Order {order.order_id}, line {li + 1} ({line.name or 'no name'}): "
                                  + " ".join(errs))
             pack = cat.packs[line.pack]
-            for size_id in sorted(pack.contents, key=lambda s: size_rank.get(s, 99)):
-                if size_id not in cat.sizes:
-                    raise OrderError(f"Pack '{pack.id}' uses unknown size '{size_id}'.")
+            try:
+                counts = pack_halves_from(pack, cat, {s: lay.per_half for s, lay in layouts.items()})
+            except PackError as e:
+                raise OrderError(str(e)) from e
+            for size_id in sorted(counts, key=lambda s: size_rank.get(s, 99)):
                 spec = line.label_spec(size_id)
                 key = spec_key(spec)
                 specs[key] = spec
                 users.setdefault(key, [])
                 if order.order_id not in users[key]:
                     users[key].append(order.order_id)
-                for _ in range(pack.contents[size_id]):
-                    jobs.setdefault(line.finish, []).append(
-                        Job(size=size_id, key=key, group=f"{order.order_id}:{li}", order_id=order.order_id, seq=seq))
-                    seq += 1
-    return Expanded(jobs, specs, users)
+                planned += [(li, line, size_id, key)] * counts[size_id]
+        for i, (li, line, size_id, key) in enumerate(planned, 1):
+            halves.append(Half(order_id=order.order_id, line=li, size=size_id, key=key, finish=line.finish,
+                               layout_id=layouts[size_id].layout_id, name=normalise_name(line.name),
+                               design=line.design, font=int(line.font), index=i, of=len(planned), seq=seq))
+            seq += 1
+    return Expanded(halves, specs, users)

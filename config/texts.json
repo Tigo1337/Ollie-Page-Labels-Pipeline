@@ -10,12 +10,13 @@
     "fontchart_title": "Choose your font",
     "fontchart_sample": "Émilie-Rose",
     "sizes": {
-      "mini": "Mini",
+      "pencil": "Skinny",
       "small": "Small",
       "medium": "Medium",
       "large": "Large",
+      "tag": "Clothing tag",
       "round": "Round",
-      "square": "Square"
+      "shoe": "Shoe pair"
     },
     "finishes": {
       "matte": "Matte",
@@ -23,12 +24,13 @@
       "holographic": "Holographic"
     },
     "size_labels": {
-      "mini": "Mini (pencils)",
+      "pencil": "Skinny (pencils)",
       "small": "Small",
       "medium": "Medium (bottles)",
-      "large": "Large (lunch boxes)",
-      "round": "Round (shoes, caps)",
-      "square": "Square (books, boxes)"
+      "large": "Large (books, lunch bags)",
+      "tag": "Clothing tag",
+      "round": "Round",
+      "shoe": "Shoe pair (left + right)"
     }
   },
   "fr": {
@@ -42,12 +44,13 @@
     "fontchart_title": "Choisissez votre police",
     "fontchart_sample": "Émilie-Rose",
     "sizes": {
-      "mini": "Mini",
+      "pencil": "Mince",
       "small": "Petite",
       "medium": "Moyenne",
       "large": "Grande",
+      "tag": "Vêtements",
       "round": "Ronde",
-      "square": "Carrée"
+      "shoe": "Souliers"
     },
     "finishes": {
       "matte": "Mat",
@@ -55,12 +58,13 @@
       "holographic": "Holographique"
     },
     "size_labels": {
-      "mini": "Mini (crayons)",
+      "pencil": "Mince (crayons)",
       "small": "Petite",
       "medium": "Moyenne (bouteilles)",
-      "large": "Grande (boîtes à lunch)",
-      "round": "Ronde (chaussures, casquettes)",
-      "square": "Carrée (livres, boîtes)"
+      "large": "Grande (livres, boîtes à lunch)",
+      "tag": "Étiquette de vêtement",
+      "round": "Ronde",
+      "shoe": "Paire de souliers (gauche + droite)"
     }
   }
 }

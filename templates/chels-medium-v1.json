@@ -1,0 +1,41 @@
+{
+ "layout_id": "chels-medium-v1",
+ "size": "medium",
+ "geometry_hash": "390ec60048faf7d8df2d5d54f8eeaa685a7232d0d29ec5d53745f21a0e33c574",
+ "cells": 30,
+ "cut_labels": 30,
+ "page": {
+  "w": 279.4,
+  "h": 215.9,
+  "orientation": "landscape"
+ },
+ "cut_bbox": {
+  "x": 23.6,
+  "y": 10.2,
+  "w": 232.2,
+  "h": 195.5
+ },
+ "anchors": [
+  [
+   0.0,
+   0.0
+  ],
+  [
+   279.4,
+   215.9
+  ]
+ ],
+ "registration": {
+  "type": 1,
+  "marks": 3,
+  "length": 10.0,
+  "thickness": 1.0,
+  "inset": 10.0
+ },
+ "files": {
+  "svg": "chels-medium-v1.svg",
+  "dxf": "chels-medium-v1.dxf",
+  "json": "chels-medium-v1.json",
+  "calibration.pdf": "chels-medium-v1_calibration.pdf"
+ }
+}

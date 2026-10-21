@@ -1,0 +1,56 @@
+{#- Rendered to docs/cut-settings.md by `python -m engine docs`. Studio labels: config/studio_labels.json. -#}
+# Réglages de découpe (Silhouette Cameo 5)
+
+*Fichier généré par `python -m engine docs` : modifiez `config/templates/cut_settings.md.j2` et
+`config/studio_labels.json`, pas ce fichier.*
+
+Ce sont des **points de départ**, pas des valeurs garanties. Le but est une **découpe à mi-chair**
+(kiss cut) : la lame traverse le laminé et le vinyle, **pas** la pellicule de support.
+
+## Réglages de départ
+
+| Réglage | Valeur de départ |
+|---|---|
+| Lame | {{ L('autoblade') }} |
+| {{ L('depth') }} | 2 |
+| {{ L('force') }} | 12 |
+| {{ L('speed') }} | 4 |
+| {{ L('passes') }} | 1 |
+
+## Un matériau personnalisé par finition
+
+Chaque finition commence par un {{ L('test_cut') }}, puis ses réglages sont enregistrés comme un
+{{ L('material') }} personnalisé ({{ L('add_material') }}), pour ne plus avoir à les chercher :
+
+| Finition | Nom du matériau |
+|---|---|
+{% for f in finishes -%}
+| {{ f.label }} | `Chels – vinyle + lam. {{ f.short }}` |
+{% endfor %}
+1. Panneau {{ L('send') }} : choisissez le matériau de la finition.
+2. Faites un {{ L('test_cut') }} dans un coin libre (hors des zones des repères).
+3. Le petit carré doit se décoller proprement **sans** marquer le support. Trop léger : montez la
+   {{ L('force') }} ; le support est coupé : baissez la {{ L('force') }} ou la {{ L('depth') }}.
+4. Enregistrez les réglages dans le matériau.
+
+## Notes
+
+* Le laminé **holographique** demande en général plus de {{ L('force') }} : montez de 2 à la fois.
+* Utilisez une lame neuve de bonne qualité.
+* Le tapis doit bien coller ; s'il est fatigué, scotchez les bords de la feuille.
+* Si le bord gauche est mal coupé, vérifiez d'abord l'adhérence du tapis et la position des
+  rouleaux presseurs, **avant** de monter la {{ L('force') }}.
+* Un décalage de toutes les découpes dans une même direction n'est pas un réglage de lame : voir
+  le {{ L('calibration') }} dans `docs/studio-template-setup.md`.
+
+## Option : couper la feuille en deux à la machine (désactivée par défaut)
+
+`templates/trim_line.svg` (et `.dxf`) contient une seule ligne de coupe traversante sur la ligne de
+coupe des moitiés (X {{ "%g"|format(sheet.trim_x) }} mm en paysage), en **bleu** sur le calque `TRIM`.
+Pour l'utiliser : {{ L('file_menu') }} → {{ L('merge') }} ce fichier dans le modèle, placez-le à X 0 / Y 0
+(les points d'ancrage), supprimez les ancrages, puis dans {{ L('send') }} choisissez
+{{ L('cut_by_line_colour') }} et donnez au bleu des réglages de coupe complète (plus de
+{{ L('depth') }} et de {{ L('force') }}, 2 {{ L('passes') }}).
+
+**Attention :** une coupe traversante marque le tapis à chaque feuille. Sans elle, coupez aux
+ciseaux ou au massicot entre les repères de coupe imprimés.

@@ -19,9 +19,11 @@ The `PORT` environment variable can override the default port.
   available at `/api/health`.
 - Fonts download in the background at startup. Real design artwork must be
   uploaded before generating production labels.
-- Keep the existing Python/FastAPI and React/Vite structure. No database
-  migration is required for workspace use. Review persistent database and
-  blob storage configuration separately before publishing.
+- Keep the existing Python/FastAPI and React/Vite structure. At startup the app
+  migrates a database made before the fixed half-sheet layouts (geometry v2): it
+  backs it up first (`data/backups/` and `backups/` in blob storage) and logs every
+  change. Review persistent database and blob storage configuration separately
+  before publishing.
 
 ## Checks
 

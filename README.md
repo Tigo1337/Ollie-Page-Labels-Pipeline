@@ -8,8 +8,9 @@ production files for an Epson ET-2980 (US Letter) and a Silhouette Cameo 5.
 - **Phase 1 – engine + CLI** ✅
 - **Phase 2 – web app + design library** ✅ (plus a first "Make labels" screen)
 - **Phase 3 – crop editor** ✅
-- Phase 4 – orders
-- Phase 5 – batching + polish
+- **Fixed half-sheet layouts** (reference/layout-update-prompt.md) ✅ phases 1–4: layouts,
+  cut templates, half-sheet batching and bundles, new sizes and the database migration
+- Orders screen (CSV import, status tracking), pricing helper – to do
 
 ## Running the app (Replit)
 
@@ -36,18 +37,30 @@ Local development: `pip install -r requirements-dev.txt`, `bash scripts/start.sh
 
 ```
 engine/            pure-Python rendering engine (no web dependencies)
-  config.py        catalogue dataclasses, loads config/*.json
+  config.py        catalogue dataclasses, loads config/*.json (incl. sheet.json geometry)
+  frames.py        Studio frame <-> printed view (the only place frames are converted)
+  layout.py        fixed half-sheet layout optimizer (port of reference/sheet_opt.py)
+  gallery.py       layout preview PNGs
+  marks.py         Type 1 registration marks (port of SCM's generate_reg_mark)
+  sheetpdf.py      landscape /Rotate 270 PDF pages in the Studio frame (marks, trim, art)
+  templates.py     cut templates per layout: SVG, DXF (+ anchors), JSON, calibration PDF
+  studio_docs.py   French Studio instructions from config/studio_labels.json
+  calibration.py   per-layout calibration sheet
   art.py           white-band trimming, crop presets, automatic layout
   text.py          NFC normalising, glyph check, text fitting
   render.py        one label at 600 dpi (+ render cache)
-  packing.py       sheet packing strategies (tidy-rows default, compact-rows)
+  packing.py       half-sheet batching (pairs halves of the same layout and finish)
   cutfiles.py      R12 DXF + SVG writers
-  production.py    print PDF, cut files, page proofs, info sheet, ZIP
+  production.py    bundle: print PDFs per finish × layout, templates, page proofs, info sheet, packing slip, ZIP
   proofs.py        customer proof, holographic preview, review sheet, font chart
   fonts_download.py  Google Fonts downloader (+ licence files)
   cli.py           python -m engine ...
-config/            seed data: production numbers, sizes, packs, finishes, fonts,
-                   designs, proof wording (en/fr), info-sheet template
+config/            seed data: sheet geometry (sheet.json), production numbers, sizes, packs,
+                   finishes, fonts, designs, proof wording (en/fr), info-sheet template
+layouts/           published fixed layouts, chels-<size>-v<N>.json (never edited in place)
+templates/         generated cut templates for the current layouts (python -m engine templates)
+docs/              studio-template-setup.md (generated, French)
+reference/         prototype code and specs the engine is ported from
 app/               FastAPI app: storage interface (repo.py), blob storage, auth,
                    engine wiring, API routes (api.py)
 frontend/          React + Vite + TypeScript UI, built into frontend/dist
@@ -62,7 +75,12 @@ examples/          sample order JSON
 pip install -r requirements-dev.txt
 python -m engine fonts                 # download the 17 fonts into data/fonts
 python -m engine demo-art              # placeholder art for designs that have none
-python -m engine packs                 # labels per sheet / sheets per pack
+python -m engine packs                 # labels per half / sheet, halves and sheets per pack
+python -m engine pack-samples --out out/samples      # a bundle for every pack × finish (demo art)
+python -m engine layouts               # fixed half-sheet layouts + counts (writes -v2… only on a geometry change)
+python -m engine layout-gallery --out out/layouts   # one preview PNG per layout
+python -m engine templates             # templates/*.svg|dxf|json|_calibration.pdf + docs/studio-template-setup.md
+python -m engine calibration chels-small-v1         # one calibration PDF
 python -m engine order examples/order_school.json --out out/   # [--lang fr]
 python -m engine review axolotl --out review.png
 python -m engine fontchart --out font_chart.png
@@ -74,6 +92,68 @@ Real artwork goes in `data/designs/<id>/<id>_wide.jpg` and `<id>_square.jpg`
 
 ## Production numbers
 
-All in `config/production.json` (mm): Letter page, 12 mm margin, 36 mm
-keep-out squares at TL/TR/BL, 1.25 mm bleed, 3 mm gap between cut lines,
-1 mm text safe zone, 600 dpi, 1.7 mm minimum cap height, 34 mm laminate notch.
+Sheet geometry is in `config/sheet.json` (mm, Silhouette Studio's landscape frame): Type 1 marks
+(3 marks, inset 10, length 10, thickness 1), 21.5 mm ink / 23.5 mm cut keep-outs on all four
+corners, 22 mm laminate notch (every finish), 10 mm edge margin, trim line at Studio X 139.7 with
+5 mm clear each side, 2.5 mm gap (2.0 mm between round labels), 1.25 mm bleed, 600 dpi.
+`config/production.json` keeps the 1 mm text safe zone, the 1.7 mm minimum cap height and the
+150 dpi proof resolution. Changing `sheet.json` changes the layouts' geometry hash: run
+`python -m engine layouts` (new `-v2` layouts), then rebuild the Studio templates.
+
+Starting kiss-cut settings: `docs/cut-settings.md`. Building a Studio template once per layout:
+`docs/studio-template-setup.md`.
+
+<!-- generated:layouts -->
+## Fixed half-sheet layouts
+
+*Generated by `python -m engine docs` from `layouts/`.*
+
+Every label size has one fixed layout. A sheet holds two identical halves (the bottom half is the
+top half mirrored about the trim line); a pack is a whole number of halves, and two halves of the
+same size and finish make a sheet. Each layout has one cut template, built once in Silhouette Studio.
+
+| Layout | Size | Arrangement | Per half | Per sheet | Rows |
+|---|---|---|---:|---:|---|
+| `chels-pencil-v1` | 57 × 9.5 mm | rotated | 30 | 60 | 14 + 16 |
+| `chels-small-v1` | 44.5 × 12.7 mm | normal | 31 | 62 | 3 + 4 + 4 + 4 + 4 + 4 + 4 + 4 |
+| `chels-medium-v1` | 63.5 × 19 mm | normal | 15 | 30 | 3 + 3 + 3 + 3 + 3 |
+| `chels-large-v1` | 63.5 × 25.4 mm | normal | 11 | 22 | 2 + 3 + 3 + 3 |
+| `chels-tag-v1` | 25.4 × 12.7 mm | normal | 55 | 110 | 6 + 7 + 7 + 7 + 7 + 7 + 7 + 7 |
+| `chels-round-v1` | 32 mm Ø | stagger | 20 | 40 | 5 + 5 + 5 + 5 |
+| `chels-shoe-v1` | 2 × (30 × 38) mm | normal | 8 pairs | 16 pairs | 2 + 3 + 3 |
+
+Commands: `python -m engine layouts` (rebuild; a geometry change writes a new `-v2` file, a published
+layout is never edited), `python -m engine layout-gallery --out DIR`, `python -m engine templates`,
+`python -m engine calibration <layout_id>`, `python -m engine docs`.
+<!-- /generated:layouts -->
+
+<!-- generated:print-and-cut -->
+## Imprimer et découper une planche
+
+*Section générée par `python -m engine docs` (libellés Studio : `config/studio_labels.json`).
+Les libellés marqués ⚠ sont à confirmer dans votre Studio.*
+
+**Une fois par mise en page** : créez le modèle Studio et vérifiez-le avec la feuille de calibrage
+(`docs/studio-template-setup.md`), puis téléversez le `.studio3` dans la page **Templates** de l'appli.
+
+**Pour chaque planche** (le lot ZIP contient tout ; la fiche d'info dit quel modèle ouvrir) :
+
+1. **Imprimer** le PDF d'impression à 100 % (**Taille réelle** (Actual size) ⚠, sans « ajuster à la page »),
+   une feuille à la fois sur l'Epson ET-2980. Le PDF se tourne tout seul en portrait : ne changez pas
+   l'orientation.
+2. **Sécher** : laissez sécher l'encre, idéalement une nuit (encre à colorant).
+3. **Encocher le laminé**, pour toutes les finitions : découpez `laminate_notches.dxf` dans la feuille
+   de laminé (coupe simple, sans repères, placée à X 0 / Y 0) pour ouvrir les trois coins de
+   22 × 22 mm. Posez le laminé encoches sur les
+   trois repères, puis laminez.
+4. **Studio**, page **Paysage** (Landscape) : **Fichier** (File) → **Ouvrir…** (Open…) le modèle de la mise en
+   page (`<layout_id>.studio3`). **Repères d'impression** (Registration Marks) : **Type 1**, **Longueur** (Length)
+   10 mm, **Épaisseur** (Thickness) 1 mm,
+   **Retrait** (Inset) 10 mm. Posez la feuille sur le tapis en paysage,
+   comme les cartes : le carré noir en haut à gauche.
+5. **Découper** : **Envoyer** (Send), le **Matériau** (Material) ⚠ de la finition (réglages et
+   **Test de découpe** (Test Cut) : `docs/cut-settings.md`). Découpe à mi-chair : laminé et vinyle, pas le support.
+6. **Séparer** la feuille en deux moitiés (haut / bas) entre les repères de coupe imprimés, puis
+   rangez chaque moitié selon le bordereau (`packing_slip`) : chaque moitié indique sa commande, son
+   prénom, sa finition et son numéro de moitié.
+<!-- /generated:print-and-cut -->
