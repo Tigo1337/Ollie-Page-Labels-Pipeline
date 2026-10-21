@@ -27,10 +27,15 @@ export default function MakePage() {
   const [run, setRun] = useState<Run | null>(null);
   const runs = useAsync(() => api.get<Run[]>("/api/runs?limit=10"), [run?.id]);
 
-  const ready = (designs.data ?? []).filter((d) => d.art.wide && d.art.square);
-  useEffect(() => {
-    if (!form.design && ready.length) setForm((f) => ({ ...f, design: ready[0].id }));
-  }, [ready, form.design]);
+  const hasArt = (d: Design) => d.art.wide && d.art.square;
+  const ready = useMemo(() => (designs.data ?? []).filter(hasArt), [designs.data]);
+  const missingArt = useMemo(() => (designs.data ?? []).filter((d) => !hasArt(d)), [designs.data]);
+  useEffect(() => {   // start on a design that can be made (or the first one, to show what is missing)
+    const first = ready[0] ?? missingArt[0];
+    if (!form.design && first) setForm((f) => ({ ...f, design: first.id }));
+  }, [ready, missingArt, form.design]);
+  const chosen = (designs.data ?? []).find((d) => d.id === form.design);
+  const chosenReady = !!chosen && hasArt(chosen);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm({ ...form, [k]: k === "font" ? Number(e.target.value) : e.target.value });
@@ -49,13 +54,15 @@ export default function MakePage() {
     setPreviews([]);
     setPreviewErr("");
     if (!live.name.trim() || !live.design) return;
+    const d = (designs.data ?? []).find((x) => x.id === live.design);
+    const canRender = !!d && d.art.wide && d.art.square;
     const sizes = Object.keys(catalog.packs.find((p) => p.id === live.pack)?.contents ?? {});
     let stale = false;
     api.get<GlyphCheck>(`/api/check-name?name=${encodeURIComponent(live.name)}&line2=${encodeURIComponent(live.line2)}&font=${live.font}`)
       .then(async (g) => {
         if (stale) return;
         setGlyph(g);
-        if (!g.ok) return;
+        if (!g.ok || !canRender) return;
         const out: { size: string; p: Preview }[] = [];
         for (const size of sizes) {  // one at a time: the server renders serially anyway
           const p = await api.post<Preview>("/api/preview", { ...live, size, scale: 6 });
@@ -66,7 +73,7 @@ export default function MakePage() {
       })
       .catch((e) => !stale && setPreviewErr(e.message));
     return () => { stale = true; };
-  }, [liveKey, catalog.packs]);
+  }, [liveKey, catalog.packs, designs.data]);
 
   const fontSpec = catalog.fonts.find((f) => f.id === form.font);
   const miniSizes = pack ? MINI_SIZES.filter((s) => s in pack.contents) : [];
@@ -91,25 +98,34 @@ export default function MakePage() {
     }
   };
 
-  const designOptions = useMemo(() => designs.data ?? [], [designs.data]);
-
   return (
     <div className="make">
       <section className="card">
         <h2>Make labels</h2>
         {designs.error && <ErrorBox message={designs.error} />}
         {designs.data && !ready.length && (
-          <ErrorBox message="No design has both artworks yet. Upload art in Designs first." />
+          <ErrorBox message="No design has its artwork yet. Upload the wide and square images in Designs (one at a time, or a ZIP of the Label Designs folder) to make labels." />
         )}
         <form onSubmit={submit} className="grid-form">
           <label>Design
             <select value={form.design} onChange={set("design")} required>
-              {designOptions.map((d) => (
-                <option key={d.id} value={d.id} disabled={!(d.art.wide && d.art.square)}>
-                  {d.name}{d.art.wide && d.art.square ? "" : " (no art)"}
-                </option>
-              ))}
+              {ready.length > 0 && (
+                <optgroup label={`Ready (${ready.length})`}>
+                  {ready.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </optgroup>
+              )}
+              {missingArt.length > 0 && (
+                <optgroup label={`Artwork missing (${missingArt.length})`}>
+                  {missingArt.map((d) => <option key={d.id} value={d.id}>{d.name} (no art yet)</option>)}
+                </optgroup>
+              )}
             </select>
+            {chosen && !chosenReady && (
+              <small className="bad">
+                {chosen.name} has no {!chosen.art.wide && !chosen.art.square ? "wide or square" : !chosen.art.wide ? "wide" : "square"} artwork
+                yet: <a href={`#/designs/${encodeURIComponent(chosen.id)}`}>upload it</a> to make labels.
+              </small>
+            )}
           </label>
           <label>Bundle
             <select value={form.pack} onChange={set("pack")}>
@@ -173,7 +189,7 @@ export default function MakePage() {
             <Warnings items={[...new Set(previews.flatMap(({ p }) => p.warnings))]} />
           </div>
           <div className="span2 actions">
-            <button className="primary" disabled={busy || !form.design || !form.name.trim() || (glyph !== null && !glyph.ok)}>
+            <button className="primary" disabled={busy || !chosenReady || !form.name.trim() || (glyph !== null && !glyph.ok)}>
               Generate files
             </button>
             {busy && <Spinner label="Rendering labels…" />}
