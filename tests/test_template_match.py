@@ -32,7 +32,7 @@ K = DPI / 25.4
 CAT = load_catalog(REPO / "config")
 SHEET = CAT.sheet
 TEMPLATES = REPO / "templates"
-FIXTURE = Path(__file__).parent / "fixtures" / "Starter_15-22_portrait.pdf"
+FIXTURE = Path(__file__).parent / "fixtures" / "scm_letter_v6_marks.pdf"
 SIZES = list(CAT.sizes)
 SVG_NS = "{http://www.w3.org/2000/svg}"
 
@@ -295,15 +295,47 @@ def test_printed_view_has_the_square_bottom_left(case):
     assert (w, h) == (round(215.9 * k), round(279.4 * k))
 
 
-@pytest.mark.skipif(not FIXTURE.exists(), reason="SCM fixture tests/fixtures/Starter_15-22_portrait.pdf not added yet")
-def test_marks_match_the_scm_fixture(case):
-    """Same square and L corner points as SCM's proxy PDF (arm length is the only allowed difference)."""
+# Windows that hold only the marks: clear of SCM's card art (it starts ~1 mm from the marks) and of
+# our labels (inside our 21.5 mm ink keep-outs). Studio mm (x0, y0, x1, y1).
+FIXTURE_WINDOWS = {"square": (5, 5, 20, 17), "top-right L": (258, 5, 279.4, 17.5),
+                   "bottom-left L": (5, 198, 21, 211)}
+
+
+@pytest.fixture(scope="module")
+def scm():
+    if not FIXTURE.exists():
+        pytest.skip("SCM fixture tests/fixtures/scm_letter_v6_marks.pdf missing")
+    data = FIXTURE.read_bytes()
+    page = pdfium.PdfDocument(data)[0]
+    assert tuple(round(v, 2) for v in page.get_mediabox()) == (0, 0, 792, 612) and page.get_rotation() == 270
+    return data, studio_raster(data)
+
+
+def test_marks_match_the_scm_fixture(case, scm):
+    """Same square and L corner points as SCM's proxy PDF, within 0.2 mm (arm length is the only
+    allowed difference: ours 10 mm, SCM v6 8.04 mm)."""
     _, _, _, ours = case
-    theirs = studio_raster(FIXTURE.read_bytes())
-    sq_ours, sq_theirs = _ink_bbox(ours, *WINDOWS["square"]), _ink_bbox(theirs, *WINDOWS["square"])
+    _, theirs = scm
+    sq_ours, sq_theirs = _ink_bbox(ours, *FIXTURE_WINDOWS["square"]), _ink_bbox(theirs, *FIXTURE_WINDOWS["square"])
     assert sq_ours == pytest.approx(sq_theirs, abs=0.2)
     # L marks: compare the outer corner (the end that does not depend on the arm length)
-    o, t = _ink_bbox(ours, *WINDOWS["top-right L"]), _ink_bbox(theirs, *WINDOWS["top-right L"])
+    o, t = _ink_bbox(ours, *FIXTURE_WINDOWS["top-right L"]), _ink_bbox(theirs, *FIXTURE_WINDOWS["top-right L"])
     assert (o[2], o[1]) == pytest.approx((t[2], t[1]), abs=0.2)
-    o, t = _ink_bbox(ours, *WINDOWS["bottom-left L"]), _ink_bbox(theirs, *WINDOWS["bottom-left L"])
+    o, t = _ink_bbox(ours, *FIXTURE_WINDOWS["bottom-left L"]), _ink_bbox(theirs, *FIXTURE_WINDOWS["bottom-left L"])
     assert (o[0], o[3]) == pytest.approx((t[0], t[3]), abs=0.2)
+    # and SCM's arms really are shorter: the only difference allowed
+    o, t = _ink_bbox(ours, *FIXTURE_WINDOWS["top-right L"]), _ink_bbox(theirs, *FIXTURE_WINDOWS["top-right L"])
+    assert o[0] < t[0] - 1.5
+
+
+def test_scm_fixture_prints_with_the_square_bottom_left(scm):
+    data, _ = scm
+    printed = np.asarray(pdfium.PdfDocument(data)[0].render(scale=100 / 72).to_pil().convert("L"))
+    k = 100 / 25.4
+
+    def ink(x0, y0, x1, y1):
+        return (printed[int(y0 * k):int(y1 * k), int(x0 * k):int(x1 * k)] < 60).any()
+    assert ink(8, 279.4 - 17, 17, 279.4 - 8)                    # square, bottom-left
+    assert ink(8, 8, 12, 18)                                    # L, top-left (vertical arm)
+    assert ink(215.9 - 12, 279.4 - 18, 215.9 - 8, 279.4 - 8)    # L, bottom-right (vertical arm)
+    assert not ink(215.9 - 18, 3, 215.9 - 3, 9)                 # top-right: no mark
