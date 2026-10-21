@@ -13,15 +13,20 @@ The `PORT` environment variable can override the default port.
 
 - Set `LABELS_API_SECRET` in Replit Secrets; enter that value on the app's
   login screen. Never put the password in source code or documentation.
-- The app uses SQLite at `data/app.db` by default.
-- Blob storage uses Replit Object Storage when available, otherwise
-  `data/blobs/`. Health information is available at `/api/health`.
+- The existing app uses SQLite at `data/app.db` by default.
+- Blob storage uses the app's existing automatic selection: Replit Object
+  Storage when available, otherwise `data/blobs/`. Health information is
+  available at `/api/health`.
 - Fonts download in the background at startup. Real design artwork must be
   uploaded before generating production labels.
-- Review persistent database and blob storage configuration separately before
-  publishing.
+- Keep the existing Python/FastAPI and React/Vite structure. At startup the app
+  migrates a database made before the fixed half-sheet layouts (geometry v2): it
+  backs it up first (`data/backups/` and `backups/` in blob storage) and logs every
+  change. Review persistent database and blob storage configuration separately
+  before publishing.
 
 ## Checks
 
 Run `python -m pytest` for the existing Python tests and
 `cd frontend && npm run build` for TypeScript checking and the frontend build.
+Tests use temporary local data rather than the workspace database.
