@@ -249,6 +249,7 @@ def test_seeded_listings_lose_the_other_business(tmp_path):
     old.pop("shop_name")
     old["asset_base_url"] = "https://assets.olliepagecreations.com"
     old["description_template"] = ("At Ollie Page Creations, we prepay all U.S. duties.\n"
+                                   "• Labels arrive on half sheets that fit flat in a letter envelope\n"
                                    "Ollie Page Creations © 2026. All rights reserved.")
     with repo.Session() as s:
         s.get(Setting, "listings").value = old

@@ -3,7 +3,7 @@
 Per listing (a group of designs):
   Hero           a close-up of a sheet of the group's labels, turned at an angle (different names / fonts)
   Designs        "Choose your design": every design of the group, numbered like the Design drop-down
-  Bundles        "Choose your bundle": each bundle's labels and the half sheets it ships on
+  Bundles        "Choose your bundle": each bundle's labels, with diagrams of its sheets
   Sizes          every label size, to scale, with its size in mm and inches
   Closeup_Small  a close-up of small, skinny pencil and clothing tag labels
   Closeup_Round  a close-up of round labels and shoe pairs
@@ -202,7 +202,7 @@ class ListingImages:
         return img
 
     def bundles(self, g: Group) -> Image.Image:
-        img, top = self._canvas("Choose your bundle", "Labels arrive on half sheets that ship flat in an envelope")
+        img, top = self._canvas("Choose your bundle")
         d = ImageDraw.Draw(img)
         packs = list(self.cat.packs.values())
         margin = int(self.S * 0.04)
@@ -247,7 +247,7 @@ class ListingImages:
             for ln in lines:
                 d.text((x0 + ch * 0.12, yy), ln, font=bf, fill=MUTED)
                 yy += step
-            # the half sheets it ships on, as small diagrams
+            # the bundle's half sheets, as small diagrams
             halves = [sid for sid, q in p.contents.items() for _ in range(self._halves(sid, q))]
             per_row = min(3, max(1, len(halves)))
             n_rows = math.ceil(len(halves[:6]) / per_row)

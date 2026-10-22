@@ -25,8 +25,9 @@ from .storage import BlobStore
 SETTING_KEYS = ("production", "sizes", "packs", "finishes", "fonts", "texts", "shop", "listings")
 GEOMETRY_VERSION = 2   # 2 = fixed half-sheet layouts (sheet.json); see app/migrate.py
 SHOP_DEFAULTS = {"default_finish": "matte"}
-# the first listings seed carried another business's name and image host: (key, old text, new text)
+# changes to text the first listings seed put in the database: (key, old text, new text)
 LISTINGS_FIXUPS = (
+    ("description_template", "• Labels arrive on half sheets that fit flat in a letter envelope\n", ""),
     ("asset_base_url", "https://assets.olliepagecreations.com", ""),
     ("description_template", "At Ollie Page Creations, we prepay", "We prepay"),
     ("description_template", "Ollie Page Creations © ", "{shop_name} © "),

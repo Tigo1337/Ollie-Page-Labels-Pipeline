@@ -42,7 +42,7 @@ IMAGE_VARIANTS = [
     ("Hero", False, "{group_name} kids name labels on a sheet — personalized laminated vinyl name stickers"),
     ("Designs", False, "The {design_count} {group_name} label designs, numbered — choose your design"),
     ("Fonts", True, "The {font_count} numbered fonts for the kids name labels — choose your font"),
-    ("Bundles", False, "Bundle options for the {group_name} name labels — label counts, sizes and half sheets"),
+    ("Bundles", False, "Bundle options for the {group_name} name labels — label counts and sizes"),
     ("Sizes", False, "{group_name} name label sizes to scale — skinny, small, medium, large, clothing tag, round and "
                      "shoe pair"),
     ("Closeup_Small", False, "Close-up of small, skinny pencil and clothing tag {group_name} name labels on a sheet"),
