@@ -5,7 +5,7 @@ import { ErrorBox, Progress, Warnings } from "../ui";
 
 interface Group { id: string; code: string; name: string; designs: string[]; tags: string[] }
 interface Cfg {
-  sku_prefix: string; asset_prefix: string; asset_base_url: string; sample_names: string[];
+  shop_name: string; sku_prefix: string; asset_prefix: string; asset_base_url: string; sample_names: string[];
   pack_short: Record<string, string>; pack_code: Record<string, string>; prices: Record<string, string>;
   csv: Record<string, string>; variation_names: Record<string, string>;
   personalization: { columns: boolean; required: boolean; char_count_max: number; instructions: string };
@@ -133,9 +133,9 @@ export default function ListingsPage() {
         <p className="muted small">
           {st.r2.configured
             ? <>Images are uploaded to Cloudflare R2 as they are made: {st.r2.public_base}{st.r2.cdn_purge ? " (the CDN cache is purged after each run)." : "."}</>
-            : <>R2 is not set up, so the images stay here: download the ZIP and host them at <b>{st.asset_base}</b>, or add
-              the R2_* secrets in Replit (same as the binder pipeline) and restart the app.</>}
-          {" "}The CSV's image links start with {st.asset_base}/.
+            : <>R2 is not set up, so the images stay here: add the R2_* secrets in Replit and restart the app, or
+              download the ZIP and host the images yourself (fill in "Where the images are hosted" below).</>}
+          {st.asset_base ? <>{" "}The CSV's image links start with {st.asset_base}/.</> : null}
         </p>
         <div className="actions">
           <button className="primary" disabled={running} onClick={() => startImages(null)}>Make all listing images</button>
@@ -185,14 +185,17 @@ export default function ListingsPage() {
       <section className="card">
         <h3>3 · Shop fields (same for every listing)</h3>
         <div className="grid-form">
+          <label className="span2">Shop name<small className="muted">used in the description ({"{shop_name}"})</small>
+            <input value={cfg.shop_name} onChange={(e) => edit({ shop_name: e.target.value })} />
+          </label>
           {SHOP_FIELDS.map(([k, label, hint]) => (
             <label key={k}>{label}{hint && <small className="muted">{hint}</small>}
               <input value={cfg.csv[k] ?? ""} onChange={(e) => edit({ csv: { ...cfg.csv, [k]: e.target.value } })} />
             </label>
           ))}
           {!st.r2.configured && (
-            <label className="span2">Where the images are hosted<small className="muted">used when R2 is not set up</small>
-              <input value={cfg.asset_base_url} onChange={(e) => edit({ asset_base_url: e.target.value })} />
+            <label className="span2">Where the images are hosted<small className="muted">used when R2 is not set up, e.g. https://images.yourshop.com</small>
+              <input value={cfg.asset_base_url} placeholder="https://" onChange={(e) => edit({ asset_base_url: e.target.value })} />
             </label>
           )}
           <label className="inline span2">
@@ -212,7 +215,7 @@ export default function ListingsPage() {
               <input value={cfg.title_template} onChange={(e) => edit({ title_template: e.target.value })} />
             </label>
             <label className="span2">Description
-              <small className="muted">{"{group_name} {designs} {design_count} {bundles} {sizes} {fonts} {font_count} {sku}"}</small>
+              <small className="muted">{"{shop_name} {group_name} {designs} {design_count} {bundles} {sizes} {fonts} {font_count} {sku}"}</small>
               <textarea rows={18} value={cfg.description_template} onChange={(e) => edit({ description_template: e.target.value })} />
             </label>
             <label className="span2">Tags for every listing<small className="muted">comma separated; each listing's own tags come first, 13 in total</small>

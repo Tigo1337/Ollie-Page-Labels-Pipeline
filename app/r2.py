@@ -1,8 +1,7 @@
 """Cloudflare R2 (S3 API) uploads for the Etsy listing images, without extra packages.
 
-Same settings as the binder pipeline (Replit Secrets): R2_ACCOUNT_ID, R2_ACCESS_KEY_ID,
-R2_SECRET_ACCESS_KEY, R2_BUCKET, R2_PUBLIC_BASE_URL (e.g. https://assets.olliepagecreations.com),
-optional R2_ENDPOINT. Optional CDN purge: CLOUDFLARE_API_TOKEN + CLOUDFLARE_ZONE_ID.
+Replit Secrets: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET,
+R2_PUBLIC_BASE_URL (the bucket's public address, e.g. https://images.example.com), optional R2_ENDPOINT. Optional CDN purge: CLOUDFLARE_API_TOKEN + CLOUDFLARE_ZONE_ID.
 Requests are signed with AWS Signature Version 4 (region "auto", path-style URLs).
 """
 from __future__ import annotations

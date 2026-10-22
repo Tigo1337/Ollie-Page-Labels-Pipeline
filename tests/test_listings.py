@@ -1,4 +1,4 @@
-"""Etsy listings: groups, CSV format (same as the binder pipeline's), images, R2 signing, API."""
+"""Etsy listings: groups, CSV format (the binder pipeline's), images, R2 signing, API."""
 import copy
 import csv
 import datetime as dt
@@ -31,6 +31,7 @@ def cat():
 def cfg(cat):
     c = load_listings(REPO / "config")
     c["prices"] = {pid: f"{10 + i}.50" for i, pid in enumerate(cat.packs)}
+    c["shop_name"] = "Test Shop"
     return c
 
 
@@ -44,8 +45,11 @@ def test_seed_groups_cover_every_design_once(cat):
     seen = [d for g in groups_of(cfg) for d in g.designs]
     assert sorted(seen) == sorted(cat.designs) and len(seen) == len(set(seen))
     assert 6 <= len(cfg["groups"]) <= 15
-    # only the prices are left for the shop to fill in
-    assert all(p.startswith("Set the price") for p in problems(cfg, cat))
+    # only the prices, the shop name and the image address are left for the shop to fill in
+    msgs = problems(cfg, cat, cfg["asset_base_url"])
+    assert all(m.startswith(("Set the price", "Set the shop name", "Set where the listing images")) for m in msgs)
+    assert len(msgs) == len(cat.packs) + 2
+    assert "Ollie" not in str(cfg) and cfg["asset_base_url"] == ""
 
 
 def test_problems(cfg, cat):
@@ -60,6 +64,10 @@ def test_problems(cfg, cat):
     assert "are in no listing" in msgs
     with pytest.raises(ListingError):
         build_csv(bad, cat, "https://x")
+    with pytest.raises(ListingError, match="hosted"):
+        build_csv(cfg, cat, "")
+    with pytest.raises(ListingError, match="shop name"):
+        build_csv({**cfg, "shop_name": ""}, cat, "https://x")
 
 
 def test_csv_matches_the_binder_format(cfg, cat):
@@ -84,6 +92,7 @@ def test_csv_matches_the_binder_format(cfg, cat):
         assert urls[0].startswith("https://assets.example.com/Labels_") and len(urls) == len(IMAGE_VARIANTS)
         assert len(r["image_alts"].split("|")) == len(urls)
         assert all(n in r["description"] for n in (cat.designs[d].name for d in g.designs))
+        assert "Test Shop © " in r["description"]
         assert r["is_personalizable"] == "TRUE" and "font" in r["personalization_instructions"]
         assert r["who_made"] == "i_did" and r["when_made"] == "made_to_order" and r["item_weight_unit"] == "kg"
     # the shared font chart is the same file in every listing
@@ -174,15 +183,17 @@ def wait(client, timeout=30):
 def test_api_listings_flow(client, cat, monkeypatch):
     st = client.get("/api/listings").json()
     assert st["unassigned"] == [] and st["r2"]["configured"] is False
-    assert st["asset_base"] == "https://assets.olliepagecreations.com"
+    assert st["asset_base"] == "" and st["cfg"]["shop_name"] == ""
     assert any(p.startswith("Set the price") for p in st["problems"])
+    assert any("hosted" in p for p in st["problems"]) and any("shop name" in p for p in st["problems"])
     r = client.get("/api/listings/csv")
     assert r.status_code == 400 and "not ready" in r.json()["detail"]
 
     cfg = st["cfg"]
     cfg["prices"] = {pid: "14.95" for pid in cat.packs}
+    cfg.update(shop_name="Test Shop", asset_base_url="https://images.example.com")
     st = client.put("/api/listings", json=cfg).json()
-    assert st["problems"] == []
+    assert st["problems"] == [] and st["asset_base"] == "https://images.example.com"
     assert client.put("/api/listings", json={"groups": "x"}).status_code == 400
     r = client.get("/api/listings/csv")
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv")
@@ -226,3 +237,23 @@ def test_api_listings_flow(client, cat, monkeypatch):
     assert any("not generated yet" in e for e in job["errors"])
     client.app.state.listings.env = {}
     assert client.post("/api/listings/images", json={"upload_only": True}).status_code == 400
+
+
+def test_seeded_listings_lose_the_other_business(tmp_path):
+    """A database seeded with the first listings.json gets the other shop's name and image host removed."""
+    from app.db import Setting
+    st = Settings(data_dir=tmp_path, database_url=f"sqlite:///{tmp_path}/a.db", storage="local", api_secret=None,
+                  config_dir=REPO / "config", frontend_dist=tmp_path)
+    repo = create_app(st, start_font_download=False).state.repo
+    old = dict(repo.setting("listings"))
+    old.pop("shop_name")
+    old["asset_base_url"] = "https://assets.olliepagecreations.com"
+    old["description_template"] = ("At Ollie Page Creations, we prepay all U.S. duties.\n"
+                                   "Ollie Page Creations © 2026. All rights reserved.")
+    with repo.Session() as s:
+        s.get(Setting, "listings").value = old
+        s.commit()
+    repo.ensure_defaults(REPO / "config")
+    new = repo.setting("listings")
+    assert new["asset_base_url"] == "" and new["shop_name"] == ""
+    assert new["description_template"] == "We prepay all U.S. duties.\n{shop_name} © 2026. All rights reserved."

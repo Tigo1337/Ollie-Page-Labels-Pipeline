@@ -31,7 +31,7 @@ production files for an Epson ET-2980 (US Letter) and a Silhouette Cameo 5.
 
 Environment variables: `LABELS_API_SECRET`, `LABELS_DATA_DIR`, `LABELS_STORAGE`
 (`auto` | `replit` | `local`), `LABELS_DATABASE_URL` / `DATABASE_URL`, `PORT`.
-Optional, for the Etsy listing images (same as the binder pipeline): `R2_ACCOUNT_ID`,
+Optional, to host the Etsy listing images on Cloudflare R2 (`docs/etsy-listings.md`): `R2_ACCOUNT_ID`,
 `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_BASE_URL`, `R2_ENDPOINT`,
 `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID`.
 

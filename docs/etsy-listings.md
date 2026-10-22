@@ -28,12 +28,14 @@ does not, untick "Add the personalization columns" (Shop fields) and turn on per
 ## Before the first export
 
 1. **Bundles:** a price for every bundle (the option names and SKU codes are already filled in).
-2. **Shop fields:** shipping profile, return policy and processing profile IDs (from Etsy, the
-   same ones as the binder listings), optionally the shop section and the taxonomy ID.
+2. **Shop fields:** the shop name (used in the description), the shipping profile, return
+   policy and processing profile IDs from this shop's Etsy settings, optionally the shop section
+   and the taxonomy ID. Read the description template too: its U.S. duties notice and shipping
+   wording are a starting point, check they match how this shop ships.
 3. **Listings:** check the groups. Move a design with its "Move…" menu; new designs that are in
    no listing are shown at the bottom with an "Add to…" menu. Each listing has up to 13 tags:
    its own first, then the shop's.
-4. **Images:** add the R2 secrets in Replit (below), then **Make all listing images** (about
+4. **Images:** set up image hosting (below), then **Make all listing images** (about
    20 seconds per listing). Each listing gets 7 images, 2400 × 2400 PNG:
    `Hero` (medium labels on a sheet), `Designs` (every design of the listing, numbered),
    `Fonts` (the font chart, shared by every listing), `Bundles`, `Sizes` (to scale),
@@ -44,14 +46,25 @@ The page lists everything still missing; the CSV button stays off until the list
 
 ## Image hosting (Cloudflare R2)
 
-Same secrets as the binder pipeline: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
-`R2_BUCKET`, `R2_PUBLIC_BASE_URL` (https://assets.olliepagecreations.com), optional `R2_ENDPOINT`;
-`CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ZONE_ID` to purge the CDN after each run. Images are
-uploaded as they are made, as flat file names (`Labels_Puppy_Kitten_Pet_Hero.png`), so a new run
-replaces the old photos at the same URL.
+The images need a public web address for Etsy to fetch them. This shop has its own: give it its
+own R2 bucket (in your Cloudflare account, or a separate account for the business) with a public
+address, either a custom domain (e.g. `images.yourshop.com`) or the bucket's `r2.dev` URL.
+Then add these Replit Secrets and restart the app:
 
-Without R2 the images stay in the app: **Download images (ZIP)** and host them at the address
-in "Where the images are hosted"; the CSV's image links start with that address.
+| Secret | |
+|---|---|
+| `R2_ACCOUNT_ID` | the Cloudflare account ID |
+| `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | an R2 API token with Object Read & Write on the bucket |
+| `R2_BUCKET` | the bucket's name |
+| `R2_PUBLIC_BASE_URL` | the bucket's public address, e.g. `https://images.yourshop.com` |
+| `R2_ENDPOINT` | optional (default `https://<account>.r2.cloudflarestorage.com`) |
+| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID` | optional, custom domain only: purge the CDN after each run |
+
+Images are uploaded as they are made, as flat file names (`Labels_Puppy_Kitten_Pet_Hero.png`),
+so a new run replaces the old photos at the same URL.
+
+Without R2 the images stay in the app: **Download images (ZIP)**, host them anywhere public and
+put that address in "Where the images are hosted"; the CSV's image links start with it.
 
 ## Command line
 

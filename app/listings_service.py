@@ -32,7 +32,7 @@ INDEX_KEY = PREFIX + "index.json"
 FILE_RE = re.compile(r"^[A-Za-z0-9_-]{1,120}\.png$")
 GROUP_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
 GROUP_CODE_RE = re.compile(r"^[A-Z0-9]{1,8}$")
-EDITABLE = ("sku_prefix", "asset_prefix", "asset_base_url", "sample_names", "pack_short", "pack_code", "prices",
+EDITABLE = ("shop_name", "sku_prefix", "asset_prefix", "asset_base_url", "sample_names", "pack_short", "pack_code", "prices",
             "csv", "variation_names", "personalization", "title_template", "tags_base", "description_template",
             "groups")
 CSV_NAME = "etsy_import_labels.csv"
@@ -59,8 +59,12 @@ def validate(current: dict, body: dict, cat: Catalog) -> dict:
     for k in ("sku_prefix", "asset_prefix"):
         if not re.fullmatch(r"[A-Za-z0-9]{1,12}", str(cfg.get(k, ""))):
             raise ValueError(f"'{k}' must be 1-12 letters or digits.")
-    if not str(cfg.get("asset_base_url", "")).startswith(("https://", "http://")):
-        raise ValueError("The image address (asset_base_url) must start with https://.")
+    cfg["shop_name"] = str(cfg.get("shop_name", "")).strip()
+    if len(cfg["shop_name"]) > 60:
+        raise ValueError("The shop name can be at most 60 characters.")
+    cfg["asset_base_url"] = str(cfg.get("asset_base_url", "")).strip()
+    if cfg["asset_base_url"] and not cfg["asset_base_url"].startswith(("https://", "http://")):
+        raise ValueError("Where the images are hosted must be a web address starting with https://.")
     for k in ("sample_names", "tags_base"):
         if not isinstance(cfg.get(k), list) or not all(isinstance(x, str) for x in cfg[k]):
             raise ValueError(f"'{k}' must be a list of words.")
@@ -126,7 +130,7 @@ class Listings:
 
     def asset_base(self, cfg: dict) -> str:
         r2 = self.r2()
-        return r2.public_base if r2 else cfg["asset_base_url"].rstrip("/")
+        return r2.public_base if r2 else cfg.get("asset_base_url", "").rstrip("/")
 
     # -- image index ---------------------------------------------------------------
     def index(self) -> dict[str, dict]:
@@ -168,7 +172,7 @@ class Listings:
         assigned = {d for g in cfg["groups"] for d in g["designs"]}
         return {
             "cfg": cfg,
-            "problems": problems(cfg, cat),
+            "problems": problems(cfg, cat, self.asset_base(cfg)),
             "image_notes": notes,
             "groups": groups,
             "unassigned": [d for d in cat.designs if d not in assigned],
@@ -193,7 +197,7 @@ class Listings:
             for n in names:
                 if self.store.exists(PREFIX + n):
                     z.writestr(f"images/{n}", self.store.get(PREFIX + n))
-            if not problems(cfg, self.svc.catalog):
+            if not problems(cfg, self.svc.catalog, self.asset_base(cfg)):
                 z.writestr(CSV_NAME, self.csv())
         return buf.getvalue()
 

@@ -39,8 +39,7 @@ SEP = "━━━━━━━━━━━━━━━"
 
 # listing images, in gallery order: (variant, shared across listings?, alt template)
 IMAGE_VARIANTS = [
-    ("Hero", False, "{group_name} kids name labels on a sheet — personalized laminated vinyl name stickers by "
-                    "Ollie Page Creations"),
+    ("Hero", False, "{group_name} kids name labels on a sheet — personalized laminated vinyl name stickers"),
     ("Designs", False, "The {design_count} {group_name} label designs, numbered — choose your design"),
     ("Fonts", True, "The {font_count} numbered fonts for the kids name labels — choose your font"),
     ("Bundles", False, "Bundle options for the {group_name} name labels — label counts, sizes and half sheets"),
@@ -89,9 +88,16 @@ def image_files(cfg: dict, group: Group) -> list[tuple[str, str]]:
 # ---------------------------------------------------------------------------
 # Checks
 # ---------------------------------------------------------------------------
-def problems(cfg: dict, cat: Catalog) -> list[str]:
-    """Everything that would make the import fail or the listings wrong (empty = ready)."""
+def problems(cfg: dict, cat: Catalog, asset_base: str | None = None) -> list[str]:
+    """Everything that would make the import fail or the listings wrong (empty = ready).
+    `asset_base` (where the images are hosted) is checked when given."""
     out = []
+    uses_name = any("{shop_name}" in cfg.get(k, "") for k in ("title_template", "description_template"))
+    if uses_name and not cfg.get("shop_name", "").strip():
+        out.append("Set the shop name (it is used in the description).")
+    if asset_base is not None and not asset_base.strip():
+        out.append("Set where the listing images are hosted: add the R2 secrets, or fill in "
+                   "'Where the images are hosted'.")
     seen: dict[str, str] = {}
     for g in groups_of(cfg):
         if not g.designs:
@@ -141,7 +147,7 @@ def variation_sku(cfg: dict, g: Group, pack_id: str) -> str:
 
 
 def render_title(cfg: dict, g: Group) -> str:
-    return cfg["title_template"].format(group_name=g.name, group=g.id)
+    return cfg["title_template"].format(group_name=g.name, group=g.id, shop_name=cfg.get("shop_name", ""))
 
 
 def sanitize_tag(tag: str) -> str:
@@ -202,7 +208,7 @@ def description(cfg: dict, cat: Catalog, g: Group) -> str:
         group=g.id, group_name=g.name, designs=designs, design_count=len(g.designs),
         bundles="\n".join(bundle_lines(cfg, cat)), sizes="\n".join(size_lines(cat)),
         fonts=", ".join(f"{f.id}. {f.name}" for f in cat.fonts.values()), font_count=len(cat.fonts),
-        sku=listing_sku(cfg, g))
+        sku=listing_sku(cfg, g), shop_name=cfg.get("shop_name", ""))
 
 
 def alts(cfg: dict, cat: Catalog, g: Group) -> list[str]:
@@ -249,7 +255,7 @@ def listing_row(cfg: dict, cat: Catalog, g: Group, asset_base: str) -> list[str]
 
 
 def build_csv(cfg: dict, cat: Catalog, asset_base: str, group_ids: list[str] | None = None) -> str:
-    errs = problems(cfg, cat)
+    errs = problems(cfg, cat, asset_base)
     if errs:
         raise ListingError("The listings are not ready: " + " ".join(errs[:8]) + (" …" if len(errs) > 8 else ""))
     header = CSV_HEADER + (PERSONALIZATION_HEADER if cfg["personalization"].get("columns") else [])

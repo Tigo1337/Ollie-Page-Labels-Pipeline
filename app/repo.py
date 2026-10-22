@@ -25,6 +25,12 @@ from .storage import BlobStore
 SETTING_KEYS = ("production", "sizes", "packs", "finishes", "fonts", "texts", "shop", "listings")
 GEOMETRY_VERSION = 2   # 2 = fixed half-sheet layouts (sheet.json); see app/migrate.py
 SHOP_DEFAULTS = {"default_finish": "matte"}
+# the first listings seed carried another business's name and image host: (key, old text, new text)
+LISTINGS_FIXUPS = (
+    ("asset_base_url", "https://assets.olliepagecreations.com", ""),
+    ("description_template", "At Ollie Page Creations, we prepay", "We prepay"),
+    ("description_template", "Ollie Page Creations © ", "{shop_name} © "),
+)
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
 MAX_IMAGE_PIXELS = 40_000_000
 
@@ -77,9 +83,17 @@ class Repo:
     def ensure_defaults(self, config_dir: Path | None = None) -> None:
         """Add settings introduced after a database was first seeded."""
         with self.Session() as s:
-            if config_dir is not None and s.get(Setting, "listings") is None:
+            listings = s.get(Setting, "listings")
+            if config_dir is not None and listings is None:
                 val = json.loads((config_dir / "listings.json").read_text(encoding="utf-8"))
                 s.add(Setting(key="listings", value={k: v for k, v in val.items() if not k.startswith("_")}))
+            elif listings is not None:
+                val = {"shop_name": "", **listings.value}
+                for key, old, new in LISTINGS_FIXUPS:
+                    if isinstance(val.get(key), str):
+                        val[key] = new if key == "asset_base_url" and val[key] == old else val[key].replace(old, new)
+                if val != listings.value:
+                    listings.value = val
             row = s.get(Setting, "shop")
             if row is None:
                 s.add(Setting(key="shop", value=dict(SHOP_DEFAULTS)))

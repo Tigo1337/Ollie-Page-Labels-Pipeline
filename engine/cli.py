@@ -220,11 +220,11 @@ def cmd_listings(args) -> int:
         li.write_group(g, out / "images", shared=False)
         print(f"{g.id:<20} {len(g.designs):>3} designs  images in {time.time() - t:.1f} s")
     li.write_shared(out / "images")
-    errs = problems(cfg, ws.catalog)
+    base = args.asset_base or cfg["asset_base_url"]
+    errs = problems(cfg, ws.catalog, base)
     if errs:
         print("CSV not written:\n  " + "\n  ".join(errs))
         return 1
-    base = args.asset_base or cfg["asset_base_url"]
     (out / "etsy_import_labels.csv").write_text(build_csv(cfg, ws.catalog, base, args.group or None),
                                                 encoding="utf-8", newline="")
     print(out / "etsy_import_labels.csv")
