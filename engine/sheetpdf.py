@@ -65,19 +65,20 @@ class SheetPDF:
             self._rect(*r)
 
     def trim(self) -> None:
-        """Black ticks at both edges and a light dashed guide along the trim line."""
+        """Black ticks at both edges and a light dashed guide along every trim line."""
         s, c = self.sheet, self.c
-        T = s.trim_x
         c.saveState()
-        c.setStrokeColorRGB(0, 0, 0)
-        c.setLineWidth(0.6)
-        self._line(T, 0, T, s.trim_ticks)
-        self._line(T, s.paper_h - s.trim_ticks, T, s.paper_h)
-        if s.trim_guide:
-            c.setStrokeColorRGB(0.6, 0.6, 0.65)
-            c.setLineWidth(0.3)
-            c.setDash(3, 3)
-            self._line(T, s.edge_margin - 2, T, s.paper_h - s.edge_margin + 2)
+        for T in s.trims:
+            c.setStrokeColorRGB(0, 0, 0)
+            c.setLineWidth(0.6)
+            c.setDash()
+            self._line(T, 0, T, s.trim_ticks)
+            self._line(T, s.paper_h - s.trim_ticks, T, s.paper_h)
+            if s.trim_guide:
+                c.setStrokeColorRGB(0.6, 0.6, 0.65)
+                c.setLineWidth(0.3)
+                c.setDash(3, 3)
+                self._line(T, s.edge_margin - 2, T, s.paper_h - s.edge_margin + 2)
         c.restoreState()
 
     def header(self, text: str, font: str = "Helvetica") -> None:

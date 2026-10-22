@@ -77,7 +77,7 @@ def test_all_generated_docs_and_readme_sections_are_up_to_date():
     readme = (REPO / "README.md").read_text(encoding="utf-8")
     blocks = {k.split(":", 1)[1]: v for k, v in docs.items() if k.startswith("README:")}
     assert readme_with_blocks(readme, blocks) == readme, "README.md is out of date: run python -m engine docs"
-    assert "## Imprimer et découper une planche" in readme and "chels-round-v1" in readme
+    assert "## Imprimer et découper une planche" in readme and "chels-round-v2" in readme
 
 
 def test_cut_settings_doc():
@@ -89,16 +89,17 @@ def test_cut_settings_doc():
         assert want in doc, want
 
 
-def test_trim_line_is_one_open_blue_cut_with_anchors():
+def test_trim_lines_are_open_blue_cuts_with_anchors():
     import ezdxf
     from engine.templates import trim_line_svg
     svg = ET.fromstring(trim_line_svg(CAT.sheet))
     ns = "{http://www.w3.org/2000/svg}"
     trim = svg.find(f"{ns}g[@id='trim']")
-    assert trim.get("stroke") == "#0000FF" and [el.get("d") for el in trim] == ["M139.7 0 V215.9"]
+    assert trim.get("stroke") == "#0000FF" and [el.get("d") for el in trim] == ["M93.133 0 V215.9",
+                                                                                "M186.267 0 V215.9"]
     doc = ezdxf.readfile(REPO / "templates" / "trim_line.dxf")
     ents = list(doc.modelspace())
     trim_ents = [e for e in ents if e.dxf.layer == "TRIM"]
-    assert len(trim_ents) == 1 and not trim_ents[0].is_closed
-    xs = {round(v.dxf.location.x, 3) for v in trim_ents[0].vertices}
-    assert xs == {139.7} and len([e for e in ents if e.dxf.layer == "ANCHOR"]) == 2
+    assert len(trim_ents) == 2 and not any(e.is_closed for e in trim_ents)
+    xs = [{round(v.dxf.location.x, 3) for v in e.vertices} for e in trim_ents]
+    assert xs == [{93.133}, {186.267}] and len([e for e in ents if e.dxf.layer == "ANCHOR"]) == 2

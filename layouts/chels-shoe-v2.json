@@ -1,0 +1,33 @@
+{
+ "_doc": "Fixed piece layout. Never edit a published layout: a geometry change makes a new version. Cells are [X, Y, W, H, rotated] in mm, Studio frame (landscape Letter, origin top-left, y down). 'pieces' lists the pieces in printed order (top, middle, bottom: printed top = Studio right, highest X). Every piece holds the same arrangement: a middle piece is the top piece translated by whole piece widths, the bottom piece is the top piece mirrored about the page centre (pieces[-1][i] mirrors pieces[0][i]).",
+ "layout_id": "chels-shoe-v2",
+ "size": "shoe",
+ "version": 2,
+ "geometry_hash": "3e98146c2bad547b753b303304d51da9643b311955270718959a8f2fee819a38",
+ "frame": "studio",
+ "arrangement": "rotated",
+ "per_piece": 4,
+ "per_sheet": 12,
+ "rows": [4],
+ "size_geometry": {"shape": "pair", "w": 62.5, "h": 38, "r": 4, "pair": {"each_w": 30, "gap": 2.5}},
+ "pieces": [
+  [
+   [199.084, 28.2, 62.5, 38, true],
+   [199.084, 68.7, 62.5, 38, true],
+   [199.084, 109.2, 62.5, 38, true],
+   [199.084, 149.7, 62.5, 38, true]
+  ],
+  [
+   [105.951, 28.2, 62.5, 38, true],
+   [105.951, 68.7, 62.5, 38, true],
+   [105.951, 109.2, 62.5, 38, true],
+   [105.951, 149.7, 62.5, 38, true]
+  ],
+  [
+   [17.816, 28.2, 62.5, 38, true],
+   [17.816, 68.7, 62.5, 38, true],
+   [17.816, 109.2, 62.5, 38, true],
+   [17.816, 149.7, 62.5, 38, true]
+  ]
+ ]
+}

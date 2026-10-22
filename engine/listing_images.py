@@ -297,7 +297,7 @@ class ListingImages:
     # -- small parts -------------------------------------------------------------
     def _halves(self, sid: str, q: int) -> int:
         try:
-            return max(1, q // current_layout(self.cat.sheet, self.cat.sizes[sid], self.layouts_dir).per_half) \
+            return max(1, q // current_layout(self.cat.sheet, self.cat.sizes[sid], self.layouts_dir).per_piece) \
                 if self.layouts_dir else 1
         except ValueError:
             return 1
@@ -314,7 +314,7 @@ class ListingImages:
         lay = current_layout(self.cat.sheet, size, self.layouts_dir)
         light = tuple(int(c + (255 - c) * 0.45) for c in colour)
         from .layout import cell_labels
-        for cell in lay.top:
+        for cell in lay.pieces[0]:
             for lab in cell_labels(cell, size, self.cat.sheet):
                 px_, py, pw, ph = to_printed(*lab, studio_w=self.cat.sheet.paper_w)  # type: ignore[misc]
                 box = [x0 + px_ * k, y0 + py * k, x0 + (px_ + pw) * k, y0 + (py + ph) * k]

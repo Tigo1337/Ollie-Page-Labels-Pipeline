@@ -46,7 +46,7 @@ class Sheet:
     cut_keepout: float
     notch: float
     edge_margin: float
-    trim_x: float
+    pieces: int                   # the sheet is trimmed into this many equal pieces (3 = thirds)
     trim_margin: float
     trim_ticks: float
     trim_guide: bool
@@ -61,19 +61,37 @@ class Sheet:
         reg, trim = d["registration"], d["trim"]
         if reg.get("style") != "type1" or reg.get("marks") not in (3, 4):
             raise ValueError("sheet.json: registration must be Type 1 with 3 or 4 marks.")
+        if int(trim.get("pieces", 0)) < 2:
+            raise ValueError("sheet.json: trim.pieces must be 2 or more.")
         return Sheet(paper_w=float(d["paper"]["w"]), paper_h=float(d["paper"]["h"]),
                      pdf_rotate=int(d["paper"]["pdf_rotate"]), marks=int(reg["marks"]),
                      mark_inset=float(reg["inset"]), mark_length=float(reg["length"]),
                      mark_thickness=float(reg["thickness"]), mark_padding=float(reg["padding"]),
                      ink_keepout=float(d["corner_ink_keepout"]), cut_keepout=float(d["corner_cut_keepout"]),
                      notch=float(d["laminate_notch"]), edge_margin=float(d["edge_margin"]),
-                     trim_x=float(trim["x"]), trim_margin=float(trim["margin_each_side"]),
+                     pieces=int(trim["pieces"]), trim_margin=float(trim["margin_each_side"]),
                      trim_ticks=float(trim["ticks_mm"]), trim_guide=bool(trim["dashed_guide"]),
                      gap=float(d["gap"]), bleed=float(d["bleed"]), dpi=int(d["dpi"]), raw=d)
 
+    @property
+    def piece_w(self) -> float:
+        """The width of one piece in the Studio frame (its height on the printed sheet)."""
+        return self.paper_w / self.pieces
+
+    @property
+    def trims(self) -> list[float]:
+        """The trim lines' Studio X, computed (never typed in): paper_w × i / pieces, i = 1 … pieces − 1.
+        Ascending Studio X, so the last one is the printed top piece's lower edge."""
+        return [round(self.paper_w * i / self.pieces, 3) for i in range(1, self.pieces)]
+
+    def piece_span(self, i: int) -> tuple[float, float]:
+        """Studio X range (x0, x1) of piece i, in printed order (0 = printed top = Studio right)."""
+        edges = [0.0] + self.trims + [self.paper_w]
+        return edges[self.pieces - 1 - i], edges[self.pieces - i]
+
     def corner_squares(self, k: float) -> list[tuple[float, float, float, float]]:
         """The four k × k corner squares (x0, y0, x1, y1). Keep-outs apply to all four corners,
-        marked or not, because the two halves mirror each other."""
+        marked or not, because the bottom piece mirrors the top piece."""
         W, H = self.paper_w, self.paper_h
         return [(0.0, 0.0, k, k), (W - k, 0.0, W, k), (0.0, H - k, k, H), (W - k, H - k, W, H)]
 

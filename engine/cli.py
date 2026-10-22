@@ -5,10 +5,10 @@
   order ORDER.json            produce all files for an order (or several, = a batch)
   fontchart                   font chart PNG
   review DESIGN               design review sheet PNG
-  packs                       labels per half / sheet, and halves / sheets per pack
+  packs                       labels per piece / sheet, and pieces / sheets per pack
   pack-samples --out DIR      a sample bundle for every pack × finish (demo art)
   calibration LAYOUT_ID       calibration PDF for one layout (marks + cut outlines, no art)
-  layouts                     build the fixed half-sheet layouts (new versions only) + counts table
+  layouts                     build the fixed piece layouts (new versions only) + counts table
   layout-gallery --out DIR    one preview PNG per layout (printed view)
   templates --out DIR         cut templates per layout: SVG, DXF, JSON, calibration PDF (+ docs)
   docs                        docs/*.md and the generated README sections (French Studio steps)
@@ -70,9 +70,12 @@ def cmd_order(args) -> int:
 def print_run(res) -> None:
     for f, s in res.summary["finishes"].items():
         print(f"{f}: {s['labels']} labels on {s['sheets']} sheet(s)")
+    from .layout import piece_name
     for sh in res.summary["sheets"]:
-        bottom = sh["bottom"]["tag"] + (" (bonus)" if sh["bottom"]["bonus"] else "") if sh["bottom"] else "(blank)"
-        print(f"  sheet {sh['n']}: {sh['layout_id']} {sh['finish']}  haut: {sh['top']['tag']}  |  bas: {bottom}")
+        n = len(sh["pieces"])
+        parts = [f"{piece_name(i, n, 'fr')}: " + (p["tag"] + (" (bonus)" if p["bonus"] else "") if p else "(blank)")
+                 for i, p in enumerate(sh["pieces"])]
+        print(f"  sheet {sh['n']}: {sh['layout_id']} {sh['finish']}  " + "  |  ".join(parts))
     for w in res.summary["waiting"]:
         print(f"  WAITING: {w['tag']}")
     for w in res.warnings:
@@ -104,12 +107,12 @@ def cmd_packs(args) -> int:
     print("Labels per layout")
     for sid, x in per.items():
         unit = " pairs" if x["pairs"] else ""
-        print(f"  {cat.sizes[sid].label:<38} {x['layout_id']:<17} {x['per_half']:>4}{unit} per half "
+        print(f"  {cat.sizes[sid].label:<38} {x['layout_id']:<17} {x['per_piece']:>4}{unit} per piece "
               f"{x['per_sheet']:>4}{unit} per sheet")
-    print("\nPacks (halves; sheets of material when batched / when printed alone)")
+    print("\nPacks (pieces; sheets of material when batched / when printed alone)")
     for pid, x in packs.items():
-        halves = ", ".join(f"{n} {s}" for s, n in x["halves_by_size"].items())
-        print(f"  {cat.packs[pid].label:<42} {x['halves']} halves ({halves})  "
+        pieces = ", ".join(f"{n} {s}" for s, n in x["pieces_by_size"].items())
+        print(f"  {cat.packs[pid].label:<42} {x['pieces']} pieces ({pieces})  "
               f"{x['batched']:g} / {x['alone']} sheet(s)")
     return 0
 
@@ -145,13 +148,13 @@ def cmd_layouts(args) -> int:
     from .layout import rebuild
     cat = load_catalog(args.config)
     rows = rebuild(cat.sheet, cat.sizes, _layouts_dir(args))
-    print(f"{'layout':<18} {'size':<24} {'arrangement':<11} {'per half':>9} {'per sheet':>10}  rows")
+    print(f"{'layout':<18} {'size':<24} {'arrangement':<11} {'per piece':>9} {'per sheet':>10}  rows (top piece)")
     for r in rows:
         lay, size = r.layout, cat.sizes[r.layout.size]
         unit = " pr" if size.shape == "pair" else ""
         note = {"new": "  (new file)", "unchanged": "",
                 "differs": "  WARNING: the optimizer now gives different cells; published file kept"}[r.status]
-        print(f"{lay.layout_id:<18} {size.dims_label:<24} {lay.arrangement:<11} {lay.per_half:>6}{unit:<3} "
+        print(f"{lay.layout_id:<18} {size.dims_label:<24} {lay.arrangement:<11} {lay.per_piece:>6}{unit:<3} "
               f"{lay.per_sheet:>7}{unit:<3}  {' + '.join(map(str, lay.rows))}{note}")
     return 1 if any(r.status == "differs" for r in rows) else 0
 
@@ -244,7 +247,8 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("order"); p.add_argument("order", nargs="+", help="order JSON file(s); several = one batch")
     p.add_argument("--out", default="out"); p.add_argument("--lang", default=None)
     p.add_argument("--unpaired", choices=["bonus", "blank", "wait"], default="bonus",
-                   help="a half without a partner: print it with a bonus copy (default), with a blank half, or wait")
+                   help="a sheet without enough pieces: fill it with bonus copies (default), leave the empty pieces blank, "
+                        "or wait")
     p.set_defaults(fn=cmd_order)
     p = sub.add_parser("fontchart"); p.add_argument("--out", default="font_chart.png")
     p.add_argument("--lang", default="en"); p.set_defaults(fn=cmd_fontchart)

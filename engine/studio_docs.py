@@ -60,7 +60,7 @@ def render_docs(cat: Catalog, config_dir: Path, layouts_dir: Path) -> dict[str, 
     for s in cat.sizes.values():
         lay = current_layout(cat.sheet, s, layouts_dir)
         lays.append({"layout_id": lay.layout_id, "dims": s.dims_label, "arrangement": lay.arrangement,
-                     "per_half": lay.per_half, "per_sheet": lay.per_sheet, "rows": " + ".join(map(str, lay.rows)),
+                     "per_piece": lay.per_piece, "per_sheet": lay.per_sheet, "rows": " + ".join(map(str, lay.rows)),
                      "unit": " pairs" if s.shape == "pair" else ""})
     finishes = [{"id": f.id, "label": f.label, "short": FINISH_SHORT.get(f.id, f.id)} for f in cat.finishes.values()]
     out = {

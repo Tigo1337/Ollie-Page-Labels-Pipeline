@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- chels-round-v2 · geometry 152691afd24f8717366252ff773444e93a266ba01875a3df0a24dbaf6ef16459 · Studio frame (landscape Letter), mm, y down. Select all, place at X 0 / Y 0, then delete the two anchor dots. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="279.4mm" height="215.9mm" viewBox="0 0 279.4 215.9" data-layout-id="chels-round-v2" data-geometry-hash="152691afd24f8717366252ff773444e93a266ba01875a3df0a24dbaf6ef16459">
+<g id="cut" fill="none" stroke="#FF0000" stroke-width="0.1">
+<circle cx="247.334" cy="39.95" r="16"/>
+<circle cx="247.334" cy="73.95" r="16"/>
+<circle cx="247.334" cy="107.95" r="16"/>
+<circle cx="247.334" cy="141.95" r="16"/>
+<circle cx="247.334" cy="175.95" r="16"/>
+<circle cx="213.334" cy="39.95" r="16"/>
+<circle cx="213.334" cy="73.95" r="16"/>
+<circle cx="213.334" cy="107.95" r="16"/>
+<circle cx="213.334" cy="141.95" r="16"/>
+<circle cx="213.334" cy="175.95" r="16"/>
+<circle cx="154.201" cy="39.95" r="16"/>
+<circle cx="154.201" cy="73.95" r="16"/>
+<circle cx="154.201" cy="107.95" r="16"/>
+<circle cx="154.201" cy="141.95" r="16"/>
+<circle cx="154.201" cy="175.95" r="16"/>
+<circle cx="120.201" cy="39.95" r="16"/>
+<circle cx="120.201" cy="73.95" r="16"/>
+<circle cx="120.201" cy="107.95" r="16"/>
+<circle cx="120.201" cy="141.95" r="16"/>
+<circle cx="120.201" cy="175.95" r="16"/>
+<circle cx="32.066" cy="39.95" r="16"/>
+<circle cx="32.066" cy="73.95" r="16"/>
+<circle cx="32.066" cy="107.95" r="16"/>
+<circle cx="32.066" cy="141.95" r="16"/>
+<circle cx="32.066" cy="175.95" r="16"/>
+<circle cx="66.066" cy="39.95" r="16"/>
+<circle cx="66.066" cy="73.95" r="16"/>
+<circle cx="66.066" cy="107.95" r="16"/>
+<circle cx="66.066" cy="141.95" r="16"/>
+<circle cx="66.066" cy="175.95" r="16"/>
+</g>
+<g id="anchors" fill="#000000" stroke="none">
+<rect x="0" y="0" width="0.01" height="0.01"/>
+<rect x="279.39" y="215.89" width="0.01" height="0.01"/>
+</g>
+</svg>

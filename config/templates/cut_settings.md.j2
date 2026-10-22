@@ -43,14 +43,15 @@ Chaque finition commence par un {{ L('test_cut') }}, puis ses réglages sont enr
 * Un décalage de toutes les découpes dans une même direction n'est pas un réglage de lame : voir
   le {{ L('calibration') }} dans `docs/studio-template-setup.md`.
 
-## Option : couper la feuille en deux à la machine (désactivée par défaut)
+## Option : couper la feuille en trois tiers à la machine (désactivée par défaut)
 
-`templates/trim_line.svg` (et `.dxf`) contient une seule ligne de coupe traversante sur la ligne de
-coupe des moitiés (X {{ "%g"|format(sheet.trim_x) }} mm en paysage), en **bleu** sur le calque `TRIM`.
+`templates/trim_line.svg` (et `.dxf`) contient une ligne de coupe traversante sur chacune des
+{{ sheet.trims | length }} lignes de coupe des tiers (X {% for t in sheet.trims %}{{ "%g"|format(t) }}{{ " et " if not loop.last }}{% endfor %} mm
+en paysage), en **bleu** sur le calque `TRIM`.
 Pour l'utiliser : {{ L('file_menu') }} → {{ L('merge') }} ce fichier dans le modèle, placez-le à X 0 / Y 0
 (les points d'ancrage), supprimez les ancrages, puis dans {{ L('send') }} choisissez
 {{ L('cut_by_line_colour') }} et donnez au bleu des réglages de coupe complète (plus de
 {{ L('depth') }} et de {{ L('force') }}, 2 {{ L('passes') }}).
 
 **Attention :** une coupe traversante marque le tapis à chaque feuille. Sans elle, coupez aux
-ciseaux ou au massicot entre les repères de coupe imprimés.
+ciseaux ou au massicot aux repères de coupe imprimés.

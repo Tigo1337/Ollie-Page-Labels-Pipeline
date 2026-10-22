@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from engine.art import auto_preset, validate_preset
 from engine.layout import LayoutError, current_layout
-from engine.packing import PackError, pack_halves, pack_sheets
+from engine.packing import PackError, pack_pieces, pack_sheets
 from engine.config import Preset
 from engine.orders import Order, OrderLine, validate_line
 from engine.proofs import cut_out, font_chart, review_sheet
@@ -112,14 +112,14 @@ def catalog(request: Request):
     for sid, size in cat.sizes.items():
         try:
             lay = current_layout(cat.sheet, size, layouts_dir)
-            per_size[sid] = {"layout_id": lay.layout_id, "per_half": lay.per_half, "per_sheet": lay.per_sheet}
+            per_size[sid] = {"layout_id": lay.layout_id, "per_piece": lay.per_piece, "per_sheet": lay.per_sheet}
         except LayoutError:
-            per_size[sid] = {"layout_id": None, "per_half": 0, "per_sheet": 0}
+            per_size[sid] = {"layout_id": None, "per_piece": 0, "per_sheet": 0}
     for pid, p in cat.packs.items():
         try:
-            per_pack[pid] = {"halves_by_size": pack_halves(p, cat, layouts_dir), **pack_sheets(p, cat, layouts_dir)}
+            per_pack[pid] = {"pieces_by_size": pack_pieces(p, cat, layouts_dir), **pack_sheets(p, cat, layouts_dir)}
         except (LayoutError, PackError) as e:
-            per_pack[pid] = {"halves_by_size": {}, "halves": 0, "batched": 0, "alone": 0, "error": str(e)}
+            per_pack[pid] = {"pieces_by_size": {}, "pieces": 0, "batched": 0, "alone": 0, "error": str(e)}
     return {
         "production": prod.__dict__,
         "sheet": {k: v for k, v in cat.sheet.__dict__.items() if k != "raw"},

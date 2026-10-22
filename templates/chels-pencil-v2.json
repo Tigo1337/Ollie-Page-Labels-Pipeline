@@ -1,0 +1,41 @@
+{
+ "layout_id": "chels-pencil-v2",
+ "size": "pencil",
+ "geometry_hash": "1d21f4ea33e53b67e2d385fd45fd48933b647eb9c7291f5cae8099c1f9d68c73",
+ "cells": 51,
+ "cut_labels": 51,
+ "page": {
+  "w": 279.4,
+  "h": 215.9,
+  "orientation": "landscape"
+ },
+ "cut_bbox": {
+  "x": 14.316,
+  "y": 19.95,
+  "w": 250.768,
+  "h": 176.0
+ },
+ "anchors": [
+  [
+   0.0,
+   0.0
+  ],
+  [
+   279.4,
+   215.9
+  ]
+ ],
+ "registration": {
+  "type": 1,
+  "marks": 3,
+  "length": 10.0,
+  "thickness": 1.0,
+  "inset": 10.0
+ },
+ "files": {
+  "svg": "chels-pencil-v2.svg",
+  "dxf": "chels-pencil-v2.dxf",
+  "json": "chels-pencil-v2.json",
+  "calibration.pdf": "chels-pencil-v2_calibration.pdf"
+ }
+}

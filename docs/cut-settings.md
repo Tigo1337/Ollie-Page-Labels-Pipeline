@@ -43,14 +43,15 @@ Chaque finition commence par un **Test de découpe** (Test Cut), puis ses régla
 * Un décalage de toutes les découpes dans une même direction n'est pas un réglage de lame : voir
   le **Calibrage** (Calibration) dans `docs/studio-template-setup.md`.
 
-## Option : couper la feuille en deux à la machine (désactivée par défaut)
+## Option : couper la feuille en trois tiers à la machine (désactivée par défaut)
 
-`templates/trim_line.svg` (et `.dxf`) contient une seule ligne de coupe traversante sur la ligne de
-coupe des moitiés (X 139.7 mm en paysage), en **bleu** sur le calque `TRIM`.
+`templates/trim_line.svg` (et `.dxf`) contient une ligne de coupe traversante sur chacune des
+2 lignes de coupe des tiers (X 93.133 et 186.267 mm
+en paysage), en **bleu** sur le calque `TRIM`.
 Pour l'utiliser : **Fichier** (File) → **Fusionner…** (Merge…) ce fichier dans le modèle, placez-le à X 0 / Y 0
 (les points d'ancrage), supprimez les ancrages, puis dans **Envoyer** (Send) choisissez
 **Découper par couleur de ligne** (Cut by Line Color) et donnez au bleu des réglages de coupe complète (plus de
 **Profondeur** (Depth) et de **Force**, 2 **Passages** (Passes)).
 
 **Attention :** une coupe traversante marque le tapis à chaque feuille. Sans elle, coupez aux
-ciseaux ou au massicot entre les repères de coupe imprimés.
+ciseaux ou au massicot aux repères de coupe imprimés.

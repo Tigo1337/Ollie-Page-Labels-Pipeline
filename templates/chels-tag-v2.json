@@ -1,18 +1,18 @@
 {
- "layout_id": "chels-tag-v1",
+ "layout_id": "chels-tag-v2",
  "size": "tag",
- "geometry_hash": "72539b0824383fee88ba0b00562297f66b63802fd14cd76758a453d20a67e5f2",
- "cells": 110,
- "cut_labels": 110,
+ "geometry_hash": "dfdb6c03b16fbc2ec246953241bf87db21ded7fd5dfb8198222e409c9088e9f2",
+ "cells": 102,
+ "cut_labels": 102,
  "page": {
   "w": 279.4,
   "h": 215.9,
   "orientation": "landscape"
  },
  "cut_bbox": {
-  "x": 12.8,
+  "x": 12.316,
   "y": 11.55,
-  "w": 253.8,
+  "w": 254.768,
   "h": 192.8
  },
  "anchors": [
@@ -33,9 +33,9 @@
   "inset": 10.0
  },
  "files": {
-  "svg": "chels-tag-v1.svg",
-  "dxf": "chels-tag-v1.dxf",
-  "json": "chels-tag-v1.json",
-  "calibration.pdf": "chels-tag-v1_calibration.pdf"
+  "svg": "chels-tag-v2.svg",
+  "dxf": "chels-tag-v2.dxf",
+  "json": "chels-tag-v2.json",
+  "calibration.pdf": "chels-tag-v2_calibration.pdf"
  }
 }

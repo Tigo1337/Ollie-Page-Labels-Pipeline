@@ -1,4 +1,4 @@
-"""Orders and their expansion into half-sheets (see packing.py)."""
+"""Orders and their expansion into sheet pieces (see packing.py)."""
 from __future__ import annotations
 
 import json
@@ -7,7 +7,7 @@ from pathlib import Path
 
 from .config import Catalog
 from .layout import Layout
-from .packing import Half, PackError, pack_halves_from
+from .packing import PackError, Piece, pack_pieces_from
 from .render import LabelSpec
 from .text import normalise_name
 
@@ -85,14 +85,14 @@ def validate_line(line: OrderLine, cat: Catalog) -> list[str]:
 
 @dataclass
 class Expanded:
-    halves: list[Half]
+    pieces: list[Piece]
     specs: dict[str, LabelSpec]          # key -> spec
     order_of_key: dict[str, list[str]]   # key -> order ids using it
 
-    def by_finish(self) -> dict[str, list[Half]]:
-        out: dict[str, list[Half]] = {}
-        for h in self.halves:
-            out.setdefault(h.finish, []).append(h)
+    def by_finish(self) -> dict[str, list[Piece]]:
+        out: dict[str, list[Piece]] = {}
+        for p in self.pieces:
+            out.setdefault(p.finish, []).append(p)
         return out
 
 
@@ -101,9 +101,9 @@ def spec_key(spec: LabelSpec) -> str:
 
 
 def expand(orders: list[Order], cat: Catalog, layouts: dict[str, Layout]) -> Expanded:
-    """Every order line's pack as whole halves, in (order, line, size) order: that is their age,
-    so pairing takes the oldest halves first. `layouts` maps size -> its current layout."""
-    halves: list[Half] = []
+    """Every order line's pack as whole pieces, in (order, line, size) order: that is their age,
+    so sheets are filled with the oldest pieces first. `layouts` maps size -> its current layout."""
+    pieces: list[Piece] = []
     specs: dict[str, LabelSpec] = {}
     users: dict[str, list[str]] = {}
     seq = 0
@@ -117,7 +117,7 @@ def expand(orders: list[Order], cat: Catalog, layouts: dict[str, Layout]) -> Exp
                                  + " ".join(errs))
             pack = cat.packs[line.pack]
             try:
-                counts = pack_halves_from(pack, cat, {s: lay.per_half for s, lay in layouts.items()})
+                counts = pack_pieces_from(pack, cat, {s: lay.per_piece for s, lay in layouts.items()})
             except PackError as e:
                 raise OrderError(str(e)) from e
             for size_id in sorted(counts, key=lambda s: size_rank.get(s, 99)):
@@ -129,8 +129,8 @@ def expand(orders: list[Order], cat: Catalog, layouts: dict[str, Layout]) -> Exp
                     users[key].append(order.order_id)
                 planned += [(li, line, size_id, key)] * counts[size_id]
         for i, (li, line, size_id, key) in enumerate(planned, 1):
-            halves.append(Half(order_id=order.order_id, line=li, size=size_id, key=key, finish=line.finish,
+            pieces.append(Piece(order_id=order.order_id, line=li, size=size_id, key=key, finish=line.finish,
                                layout_id=layouts[size_id].layout_id, name=normalise_name(line.name),
                                design=line.design, font=int(line.font), index=i, of=len(planned), seq=seq))
             seq += 1
-    return Expanded(halves, specs, users)
+    return Expanded(pieces, specs, users)

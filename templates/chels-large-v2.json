@@ -1,0 +1,41 @@
+{
+ "layout_id": "chels-large-v2",
+ "size": "large",
+ "geometry_hash": "eda6b376366ac132cf8c38d31e605d98ace444992108ad9dfec04c5972d8a584",
+ "cells": 18,
+ "cut_labels": 18,
+ "page": {
+  "w": 279.4,
+  "h": 215.9,
+  "orientation": "landscape"
+ },
+ "cut_bbox": {
+  "x": 17.316,
+  "y": 25.5,
+  "w": 244.768,
+  "h": 164.9
+ },
+ "anchors": [
+  [
+   0.0,
+   0.0
+  ],
+  [
+   279.4,
+   215.9
+  ]
+ ],
+ "registration": {
+  "type": 1,
+  "marks": 3,
+  "length": 10.0,
+  "thickness": 1.0,
+  "inset": 10.0
+ },
+ "files": {
+  "svg": "chels-large-v2.svg",
+  "dxf": "chels-large-v2.dxf",
+  "json": "chels-large-v2.json",
+  "calibration.pdf": "chels-large-v2_calibration.pdf"
+ }
+}

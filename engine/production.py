@@ -1,7 +1,7 @@
 """Production files for one order or a batch of orders (a "bundle").
 
-Orders fill whole halves of the fixed layouts; two halves of the same layout and finish make a
-sheet (packing.py). For each finish × layout used: a print PDF (landscape pages with /Rotate 270,
+Orders fill whole pieces of the fixed layouts; three pieces (thirds) of the same layout and finish
+make a sheet (packing.py). For each finish × layout used: a print PDF (landscape pages with /Rotate 270,
 like SCM's, one page per sheet). Plus, in the bundle ZIP:
   templates/<layout_id>.svg and .dxf   the layout's cut template (and its .studio3, when an
                                        up-to-date one was uploaded)
@@ -28,9 +28,9 @@ from . import cutfiles
 from .config import Sheet
 from .gallery import draw_cuts, draw_furniture, studio_canvas, to_printed_view
 from .geometry import PT_PER_MM, px, shape_mask
-from .layout import Layout, LayoutError, current_layout
+from .layout import Layout, LayoutError, current_layout, piece_name
 from .orders import Expanded, Order, OrderError, expand
-from .packing import BatchPlan, Half, SheetPlan, Unpaired, get_strategy
+from .packing import BatchPlan, Piece, SheetPlan, Unpaired, get_strategy
 from .render import RenderedLabel, Renderer
 from .sheetpdf import SheetPDF, studio_image
 from .studio_docs import label_fn, studio_labels
@@ -41,8 +41,8 @@ from .uifont import UIFonts
 REPO = Path(__file__).resolve().parent.parent
 GUTTER_PT = 6.0          # order text in the gutter
 GUTTER_START = 25.0      # mm from the printed left edge
-TOP_BASELINE = 1.5       # mm above the trim line (top half text, glyphs pointing away from the trim)
-BOTTOM_BASELINE = 3.0    # mm below the trim line (bottom half text: cap top ≈ 1.5 mm below the trim)
+TOP_BASELINE = 1.5       # mm above the trim line (top piece text, glyphs pointing away from the trim)
+BOTTOM_BASELINE = 3.0    # mm below the trim line (other pieces' text: cap top ≈ 1.5 mm below the trim)
 
 Studio3Provider = Callable[[str], "bytes | None"]
 
@@ -127,7 +127,8 @@ class Producer:
 
     def plan(self, orders: list[Order], unpaired: Unpaired = "bonus") -> tuple[Expanded, BatchPlan]:
         ex = self.expand(orders)
-        return ex, self.strategy.plan(ex.halves, unpaired, list(self.cat.sizes), list(self.cat.finishes))
+        return ex, self.strategy.plan(ex.pieces, unpaired, list(self.cat.sizes), list(self.cat.finishes),
+                                      per_sheet=self.cat.sheet.pieces)
 
     def run(self, orders: list[Order], out_dir: Path, prefix: str | None = None, lang: str | None = None,
             customer_proofs: bool = True, unpaired: Unpaired = "bonus",
@@ -219,24 +220,24 @@ class Producer:
 
     # ------------------------------------------------------------------
     def summary(self, orders: list[Order], res: ProductionResult, templates_used: list[dict]) -> dict:
-        def half(h: Half | None) -> dict | None:
-            if h is None:
+        def piece(p: Piece | None) -> dict | None:
+            if p is None:
                 return None
-            return {"order": h.order_id, "line": h.line, "size": h.size, "name": h.name, "finish": h.finish,
-                    "index": h.index, "of": h.of, "bonus": h.bonus, "tag": h.tag}
+            return {"order": p.order_id, "line": p.line, "size": p.size, "name": p.name, "finish": p.finish,
+                    "index": p.index, "of": p.of, "bonus": p.bonus, "tag": p.tag}
         finishes: dict[str, dict] = {}
         for sh in res.plan.sheets:
             f = finishes.setdefault(sh.finish, {"sheets": 0, "labels": 0})
             f["sheets"] += 1
-            per = len(self.layouts([sh.size])[sh.size].top) * (2 if self.cat.sizes[sh.size].shape == "pair" else 1)
-            f["labels"] += per * len(sh.halves)
+            per = self.layouts([sh.size])[sh.size].per_piece * (2 if self.cat.sizes[sh.size].shape == "pair" else 1)
+            f["labels"] += per * len(sh.filled)
         return {
             "prefix": res.prefix, "orders": [o.order_id for o in orders], "finishes": finishes,
             "sheets": [{"n": sh.n, "finish": sh.finish, "layout_id": sh.layout_id, "size": sh.size,
                         "pdf": res.sheet_pdf[sh.n][0], "page": res.sheet_pdf[sh.n][1],
                         "proof": f"{res.prefix}_sheet{sh.n:02d}_proof.png",
-                        "top": half(sh.top), "bottom": half(sh.bottom)} for sh in res.plan.sheets],
-            "waiting": [half(h) for h in res.plan.waiting],
+                        "pieces": [piece(p) for p in sh.pieces]} for sh in res.plan.sheets],
+            "waiting": [piece(p) for p in res.plan.waiting],
             "templates": templates_used, "warnings": res.warnings,
         }
 
@@ -256,7 +257,7 @@ class Producer:
 
     def write_pdf(self, sheets: list[SheetPlan], lay: Layout, labels: dict[str, RenderedLabel], path: Path) -> None:
         """Landscape pages with /Rotate 270: marks, art at true size in the layout's cells only,
-        trim ticks and guide, the order text in the gutter and a header line."""
+        trim ticks and guides, each piece's order text in the gutter and a header line."""
         sheet = self.cat.sheet
         size = self.cat.sizes[lay.size]
         pdf = SheetPDF(path, sheet, title=path.stem,
@@ -264,26 +265,36 @@ class Producer:
         regular, _ = self.ui.reportlab()
         cache: dict = {}
         for sh in sheets:
-            top = self._cell_image(labels[sh.top.key], sh.size, cache)
-            bottom = self._cell_image(labels[sh.bottom.key], sh.size, cache) if sh.bottom else None
+            images = []
+            for p, cells in zip(sh.pieces, lay.pieces):
+                im = self._cell_image(labels[p.key], sh.size, cache) if p is not None else None
+                images += [im] * len(cells)
             pdf.marks()
             pdf.trim()
-            pdf.art(lay, [top] * len(lay.top) + [bottom] * len(lay.bottom), size)
+            pdf.art(lay, images, size)
             self._gutter_pdf(pdf.c, sheet, sh, regular)
             pdf.header(f"sheet: {sh.n} · template: {lay.layout_id}", font=regular)
             pdf.end_page()
         pdf.save()
 
     @staticmethod
+    def gutter_spots(sheet: Sheet) -> list[float]:
+        """Studio X of each piece's gutter text baseline, in printed order: the top piece's text sits
+        just above the first trim line, every other piece's text just below its upper trim line."""
+        trims = list(reversed(sheet.trims))                     # printed top to bottom
+        return [trims[0] + TOP_BASELINE] + [T - BOTTOM_BASELINE for T in trims]
+
+    @staticmethod
     def _gutter_pdf(c: rl_canvas.Canvas, sheet: Sheet, sh: SheetPlan, font: str) -> None:
-        """6 pt grey text in the gutter, reading left to right on the printed sheet, one line per half."""
-        T, H = sheet.trim_x, sheet.paper_h
+        """6 pt grey text in the gutters, reading left to right on the printed sheet, one line per piece
+        beside its own trim line."""
+        H = sheet.paper_h
         k = PT_PER_MM
         c.saveState()
         c.setFillColorRGB(0.45, 0.45, 0.48)
         c.setFont(font, GUTTER_PT)
-        for half, X in ((sh.top, T + TOP_BASELINE), (sh.bottom, T - BOTTOM_BASELINE)):
-            text = "(blank)" if half is None else half.tag + (" · BONUS" if half.bonus else "")
+        for piece, X in zip(sh.pieces, Producer.gutter_spots(sheet)):
+            text = "(blank)" if piece is None else piece.tag + (" · BONUS" if piece.bonus else "")
             c.saveState()
             c.translate(X * k, (H - GUTTER_START) * k)
             c.rotate(-90)                     # Studio +Y = printed left to right; glyph tops toward +X
@@ -294,7 +305,7 @@ class Producer:
     # ------------------------------------------------------------------
     def page_proof(self, sh: SheetPlan, lay: Layout, labels: dict[str, RenderedLabel]) -> Image.Image:
         """The printed sheet at proof resolution (printed view): art, red cut lines, hatched keep-outs,
-        blue laminate notches, trim line, each half's order text; a bonus half is tinted."""
+        blue laminate notches, trim lines, each piece's order text; a bonus piece is tinted."""
         sheet = self.cat.sheet
         size = self.cat.sizes[sh.size]
         dpi = self.cat.production.proof_dpi
@@ -302,11 +313,10 @@ class Producer:
         b = sheet.bleed
         cache: dict = {}
         resized: dict[tuple[int, bool], Image.Image] = {}
-        halves = [(sh.top, lay.top), (sh.bottom, lay.bottom)]
-        for half, cells in halves:
-            if half is None:
+        for piece, cells in zip(sh.pieces, lay.pieces):
+            if piece is None:
                 continue
-            src = self._cell_image(labels[half.key], sh.size, cache)
+            src = self._cell_image(labels[piece.key], sh.size, cache)
             for X, Y, w, h, rot in cells:
                 key = (id(src), rot)
                 if key not in resized:
@@ -317,17 +327,20 @@ class Producer:
         d = ImageDraw.Draw(img, "RGBA")
         draw_furniture(d, sheet, k, gutter=False, margin=False)
         draw_cuts(d, lay, size, sheet, k, bleed_fill=False)
-        T, tm = sheet.trim_x, sheet.trim_margin
-        for half, x0, x1 in ((sh.top, T + tm, sheet.paper_w), (sh.bottom, 0, T - tm)):
-            if half is not None and half.bonus:
+        tm = sheet.trim_margin
+        for i, piece in enumerate(sh.pieces):
+            if piece is not None and piece.bonus:
+                x0, x1 = sheet.piece_span(i)
+                x0, x1 = (x0 + tm if x0 > 0 else 0), (x1 - tm if x1 < sheet.paper_w else sheet.paper_w)
                 d.rectangle([x0 * k, 0, x1 * k, sheet.paper_h * k], fill=(255, 200, 0, 50))
         img = to_printed_view(img)
         d = ImageDraw.Draw(img)
         f = self.ui.pil(max(10, int(2.4 * k)), "bold")
-        trim_y = (sheet.paper_w - T) * k
-        for half, dy in ((sh.top, -3.6), (sh.bottom, 1.0)):
-            text = "(blank)" if half is None else half.tag + ("  ·  BONUS (free copy)" if half.bonus else "")
-            d.text((GUTTER_START * k, trim_y + dy * k), text, font=f, fill=(40, 40, 40))
+        trims_y = [(sheet.paper_w - T) * k for T in reversed(sheet.trims)]   # printed, top to bottom
+        for i, piece in enumerate(sh.pieces):
+            y = trims_y[0] - 3.6 * k if i == 0 else trims_y[i - 1] + 1.0 * k
+            text = "(blank)" if piece is None else piece.tag + ("  ·  BONUS (free copy)" if piece.bonus else "")
+            d.text((GUTTER_START * k, y), text, font=f, fill=(40, 40, 40))
         head = self.ui.pil(max(10, int(3.2 * k)), "bold")
         finish = self.cat.finishes[sh.finish].label if sh.finish in self.cat.finishes else sh.finish
         d.text((GUTTER_START * k, 2.5 * k), f"Sheet {sh.n} · {lay.layout_id} · {finish}", font=head, fill=(0, 0, 0))
@@ -347,8 +360,9 @@ class Producer:
                 "n": sh.n, "pdf": pdf, "page": page, "layout_id": sh.layout_id,
                 "finish": self.cat.finishes[sh.finish].label if sh.finish in self.cat.finishes else sh.finish,
                 "template": f"{sh.layout_id}.studio3" if has_s3 else f"{sh.layout_id}.svg",
-                "top": sh.top.tag, "bottom": "(blank)" if sh.bottom is None else
-                sh.bottom.tag + (" · BONUS" if sh.bottom.bonus else ""),
+                "pieces": [{"where": piece_name(i, len(sh.pieces), "fr"),
+                            "tag": "(blank)" if p is None else p.tag + (" · BONUS" if p.bonus else "")}
+                           for i, p in enumerate(sh.pieces)],
             })
         tpl = self.env.get_template("info_sheet.txt.j2")
         return tpl.render(
@@ -359,39 +373,39 @@ class Producer:
         )
 
     def packing_slip(self, orders: list[Order], res: ProductionResult) -> str:
-        """Per order: its halves, the sheet each one is printed on and where (haut / bas)."""
+        """Per order: its pieces, the sheet each one is printed on and where (haut / milieu / bas)."""
         where: dict[tuple[str, int], list[str]] = {}
         for sh in res.plan.sheets:
-            for half, pos in ((sh.top, "haut (top)"), (sh.bottom, "bas (bottom)")):
-                if half is None:
+            n = len(sh.pieces)
+            for i, piece in enumerate(sh.pieces):
+                if piece is None:
                     continue
-                note = " — BONUS, copie gratuite (free copy), same envelope" if half.bonus else ""
-                where.setdefault((half.order_id, half.index), []).append(f"sheet {sh.n}, {pos}{note}")
-        waiting = {(h.order_id, h.index) for h in res.plan.waiting}
+                pos = f"{piece_name(i, n, 'fr')} ({piece_name(i, n)})"
+                note = " — BONUS, copie gratuite (free copy), same envelope" if piece.bonus else ""
+                where.setdefault((piece.order_id, piece.index), []).append(f"sheet {sh.n}, {pos}{note}")
+        waiting = {(p.order_id, p.index) for p in res.plan.waiting}
         out = [f"PACKING SLIP — {res.prefix}", "=" * 60, ""]
         for o in orders:
             out.append(f"Order #{o.order_id}" + (f" ({o.customer})" if o.customer else ""))
-            halves = [h for h in self._halves_of(res, o.order_id)]
-            for h in halves:
-                size = self.cat.sizes[h.size]
-                spots = where.get((h.order_id, h.index), [])
-                if (h.order_id, h.index) in waiting:
-                    spots = ["WAITING for a partner half (not printed yet)"]
-                out.append(f"  half {h.index}/{h.of}  {size.label:<34} {h.name:<24} {h.finish:<12} "
-                           + "; ".join(spots))
+            for p in self._pieces_of(res, o.order_id):
+                size = self.cat.sizes[p.size]
+                spots = where.get((p.order_id, p.index), [])
+                if (p.order_id, p.index) in waiting:
+                    spots = ["WAITING for more pieces to fill a sheet (not printed yet)"]
+                out.append(f"  tiers {p.index}/{p.of}  {size.label:<34} {p.name:<24} " + "; ".join(spots))
             out.append("")
         return "\n".join(out) + "\n"
 
     @staticmethod
-    def _halves_of(res: ProductionResult, order_id: str) -> list[Half]:
-        seen: dict[int, Half] = {}
+    def _pieces_of(res: ProductionResult, order_id: str) -> list[Piece]:
+        seen: dict[int, Piece] = {}
         for sh in res.plan.sheets:
-            for h in sh.halves:
-                if h.order_id == order_id and not h.bonus:
-                    seen.setdefault(h.index, h)
-        for h in res.plan.waiting:
-            if h.order_id == order_id:
-                seen.setdefault(h.index, h)
+            for p in sh.filled:
+                if p.order_id == order_id and not p.bonus:
+                    seen.setdefault(p.index, p)
+        for p in res.plan.waiting:
+            if p.order_id == order_id:
+                seen.setdefault(p.index, p)
         return [seen[i] for i in sorted(seen)]
 
     def text_pdf(self, text: str, path: Path) -> None:

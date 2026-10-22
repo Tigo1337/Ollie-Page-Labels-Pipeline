@@ -291,16 +291,16 @@ def font_chart(r: Renderer, ui: UIFonts, texts: dict, lang: str = "en", width: i
 
 
 def pack_table(cat: Catalog, layouts_dir) -> tuple[dict[str, dict], dict[str, dict]]:
-    """Labels per half / per sheet for each size (from its fixed layout), and per pack: the halves
+    """Labels per piece / per sheet for each size (from its fixed layout), and per pack: the pieces
     it uses and the sheets it takes (batched with other orders, or printed on its own)."""
     from .layout import current_layout
-    from .packing import pack_halves, pack_sheets
+    from .packing import pack_pieces, pack_sheets
     per = {}
     for sid, s in cat.sizes.items():
         lay = current_layout(cat.sheet, s, layouts_dir)
-        per[sid] = {"layout_id": lay.layout_id, "per_half": lay.per_half, "per_sheet": lay.per_sheet,
+        per[sid] = {"layout_id": lay.layout_id, "per_piece": lay.per_piece, "per_sheet": lay.per_sheet,
                     "pairs": s.shape == "pair"}
     packs = {}
     for pid, p in cat.packs.items():
-        packs[pid] = {"halves_by_size": pack_halves(p, cat, layouts_dir), **pack_sheets(p, cat, layouts_dir)}
+        packs[pid] = {"pieces_by_size": pack_pieces(p, cat, layouts_dir), **pack_sheets(p, cat, layouts_dir)}
     return per, packs
