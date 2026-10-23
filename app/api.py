@@ -11,7 +11,8 @@ from fastapi.responses import JSONResponse
 from PIL import Image
 from pydantic import BaseModel, Field
 
-from engine.art import auto_preset, effective_preset, fixed_name_box, has_fixed_name, validate_preset
+from engine.art import (ArtError, auto_preset, effective_preset, fixed_name_box, has_fixed_name, transfer_preset,
+                        validate_preset)
 from engine.layout import LayoutError, current_layout
 from engine.packing import PackError, pack_pieces, pack_sheets
 from engine.config import Preset
@@ -281,17 +282,31 @@ def reset_preset(design_id: str, size_id: str, request: Request):
 
 @router.post("/designs/{design_id}/presets/{size_id}/copy-to-rect")
 def copy_preset_to_rect(design_id: str, size_id: str, request: Request):
-    """Copy one size's saved crop to every rectangular size (fractions, so each keeps its own shape)."""
+    """Carry one strip size's saved art position over to the other strip sizes with a fixed name position
+    (skinny, small, medium, large): the same zoom and slide from each size's automatic crop. The clothing
+    tag, round and shoe labels are never touched."""
     s = svc(request)
     with s.lock:
         cat = s.catalog
-        preset = s.renderer.design(design_id).presets.get(size_id)
-    if preset is None:
-        raise ValueError("Save this size's crop first, then copy it.")
-    targets = [sid for sid, size in cat.sizes.items() if size.is_rect and sid != size_id]
-    for sid in targets:
-        repo(request).set_preset(design_id, sid, preset)
-    return {"ok": True, "copied_to": targets}
+        design = s.renderer.design(design_id)
+        preset = design.presets.get(size_id)
+        src = cat.sizes.get(size_id)
+        if src is None:
+            raise NotFound(f"Unknown size '{size_id}'.")
+        if not has_fixed_name(design, src):
+            raise ArtError("Only the skinny, small, medium and large crops can be copied (their name sits in the "
+                           "same place); the clothing tag, round and shoe labels each keep their own.")
+        if preset is None:
+            raise ValueError("Save this size's crop first, then copy it.")
+        dims = s.assets.art_sources(design_id)
+        if "wide" not in dims:
+            raise ArtError("This design has no wide artwork yet.")
+        w, h = dims["wide"]
+        targets = {sid: transfer_preset(design, preset, src, size, cat.sheet.bleed, w, h)
+                   for sid, size in cat.sizes.items() if sid != size_id and has_fixed_name(design, size)}
+    for sid, p in targets.items():
+        repo(request).set_preset(design_id, sid, p)
+    return {"ok": True, "copied_to": list(targets)}
 
 
 # ---------------------------------------------------------------- shop settings

@@ -160,6 +160,55 @@ def resolve_preset(design: Design, size: Size, bleed: float,
     return auto_preset(design, size, bleed, w, h), True
 
 
+def _window_size(height: float, src_w: int, src_h: int, aspect: float) -> tuple[float, float]:
+    """(width, height) in source px of the crop window for a preset height (as `crop_window` sizes it)."""
+    ch = max(1e-6, height) * src_h
+    cw = ch * aspect
+    if cw > src_w:
+        cw = float(src_w)
+        ch = cw / aspect
+    if ch > src_h:
+        ch = float(src_h)
+        cw = ch * aspect
+    return cw, ch
+
+
+def _auto_x0(design: Design, size: Size, bleed: float, src_w: int, ch: float, cw: float) -> float:
+    """Left edge (source px) of the automatic crop of a fixed-name size for a window ch px high:
+    the character ends NAME_GAP_MM before the name box, never past either end of the strip."""
+    name_x = size.name_start * size.w                                        # type: ignore[operator]
+    x0 = design.char_end * src_w - (name_x - NAME_GAP_MM + bleed) * ch / (size.h + 2 * bleed)
+    return min(max(x0, 0.0), src_w - cw)
+
+
+def transfer_preset(design: Design, preset: Preset, src: Size, dst: Size, bleed: float,
+                    src_w: int, src_h: int) -> Preset:
+    """A saved crop of one strip size carried over to another strip size with a fixed name position.
+
+    The sizes have different shapes and name positions, so the crop's fractions cannot be copied as
+    they are. What is carried over is the change from the automatic crop: the zoom, and how many mm
+    the art was slid. Each size starts from its own automatic crop (character just before the name),
+    so copying an automatic crop gives the other size its own automatic crop. Never past either end
+    of the strip."""
+    box = fixed_name_box(dst)
+    if box is None or src.name_start is None:
+        raise ArtError("The art position can only be copied between the skinny, small, medium and large labels.")
+    if preset.source != "wide":                     # square art on a strip: keep the plain fractions
+        return Preset(preset.source, preset.center, preset.height, box)
+    b = bleed
+    a_src, a_dst = bleed_aspect(src, b), bleed_aspect(dst, b)
+    x0, y0, x1, y1 = crop_window(preset, src_w, src_h, a_src)
+    cw_src, ch_src = x1 - x0, y1 - y0
+    zoom = ch_src / (auto_preset(design, src, b, src_w, src_h).height * src_h)
+    slid_mm = (x0 - _auto_x0(design, src, b, src_w, ch_src, cw_src)) * (src.h + 2 * b) / ch_src
+    height = min(1.0, max(0.02, auto_preset(design, dst, b, src_w, src_h).height * zoom))
+    cw, ch = _window_size(height, src_w, src_h, a_dst)
+    x0d = _auto_x0(design, dst, b, src_w, ch, cw) + slid_mm * ch / (dst.h + 2 * b)
+    x0d = min(max(x0d, 0.0), src_w - cw)
+    cy = (y0 + ch_src / 2) / src_h
+    return Preset("wide", ((x0d + cw / 2) / src_w, cy), ch / src_h, box)
+
+
 def validate_preset(p: Preset, src_dims: dict[str, tuple[int, int]]) -> Preset:
     """Plain-language checks for a preset coming from the crop editor."""
     if p.source not in ("wide", "square"):

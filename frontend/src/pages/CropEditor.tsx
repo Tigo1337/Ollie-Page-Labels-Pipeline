@@ -143,7 +143,7 @@ export default function CropEditor({ id }: { id: string }) {
           onCopy={() => act(async () => {
             if (dirty) await api.put(`/api/designs/${id}/presets/${sizeId}`, edit);
             await api.post(`/api/designs/${id}/presets/${sizeId}/copy-to-rect`);
-          }, "Copied to all rectangular sizes.")}
+          }, "Copied the art position to the other strip sizes.")}
         />
       ) : (
         <ErrorBox message={`Upload the ${size.is_rect ? "wide" : "square"} artwork to set up this size.`} />
@@ -394,7 +394,12 @@ function Editor(props: {
             {props.isAuto && !props.dirty ? "Save this automatic layout" : "Save preset"}
           </button>
           <button onClick={props.onReset} disabled={props.isAuto && !props.dirty}>Reset to automatic</button>
-          {size.is_rect && <button onClick={props.onCopy} disabled={props.isAuto && !props.dirty}>Copy to all rectangular sizes</button>}
+          {locked && (
+            <button onClick={props.onCopy} disabled={props.isAuto && !props.dirty}
+              title="Gives the skinny, small, medium and large labels the same zoom and slide from their own automatic crop. The clothing tag, round and shoe labels are not changed.">
+              Copy this art position to the other strip sizes
+            </button>
+          )}
           {props.dirty && <span className="bad small">Unsaved changes</span>}
         </div>
       </section>

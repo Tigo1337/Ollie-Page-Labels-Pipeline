@@ -119,3 +119,42 @@ def test_review_names_are_big_enough_or_flagged(ws, design):
             else:
                 assert not any("cap height" in w for w in lab.warnings)
     assert review_sheet(ws.renderer, ws.ui, design).width == 1700
+
+
+@pytest.mark.parametrize("dims", [(2752, 680), (1200, 680), (600, 400)])
+def test_copying_an_automatic_crop_gives_each_size_its_own_automatic_crop(dims):
+    from engine.art import transfer_preset
+    b = CAT.sheet.bleed
+    for design in list(CAT.designs.values())[:30]:
+        for s in FIXED:
+            for t in FIXED:
+                if s == t:
+                    continue
+                src, dst = CAT.sizes[s], CAT.sizes[t]
+                got = transfer_preset(design, auto_preset(design, src, b, *dims), src, dst, b, *dims)
+                want = auto_preset(design, dst, b, *dims)
+                assert got.center == pytest.approx(want.center, abs=1e-6) and got.height == pytest.approx(want.height)
+                assert tuple(got.text) == fixed_name_box(dst)
+
+
+def test_copying_carries_the_zoom_and_the_slide_in_mm():
+    from engine.art import transfer_preset
+    b, (w, h) = CAT.sheet.bleed, (2752, 680)
+    design = CAT.designs["dino"]
+    large, medium = CAT.sizes["large"], CAT.sizes["medium"]
+
+    def window(p, size):
+        return crop_window(p, w, h, bleed_aspect(size, b))
+    auto_l, auto_m = auto_preset(design, large, b, w, h), auto_preset(design, medium, b, w, h)
+    zoomed = Preset("wide", auto_l.center, 0.8, auto_l.text)
+    zx0, zy0, zx1, zy1 = window(zoomed, large)
+    px_mm = (zy1 - zy0) / (large.h + 2 * b)
+    slid = Preset("wide", ((zx0 + 3 * px_mm + (zx1 - zx0) / 2) / w, 0.5), 0.8, auto_l.text)   # art 3 mm further left
+    got = transfer_preset(design, slid, large, medium, b, w, h)
+    assert got.height == pytest.approx(0.8 * auto_m.height)
+    gx0, gy0, _, gy1 = window(got, medium)
+    ref = transfer_preset(design, Preset("wide", (((zx0 + zx1) / 2) / w, 0.5), 0.8, auto_l.text), large, medium, b, w, h)
+    rx0, _, _, _ = window(ref, medium)
+    assert (gx0 - rx0) / ((gy1 - gy0) / (medium.h + 2 * b)) == pytest.approx(3.0, abs=0.05)   # same 3 mm slide
+    with pytest.raises(Exception):
+        transfer_preset(design, auto_l, large, CAT.sizes["tag"], b, w, h)
