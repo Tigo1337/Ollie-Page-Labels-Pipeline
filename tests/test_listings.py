@@ -101,6 +101,7 @@ def test_csv_matches_the_binder_format(cfg, cat):
         assert "Test Shop © " in r["description"]
         assert r["is_personalizable"] == "TRUE" and "font" in r["personalization_instructions"]
         assert r["who_made"] == "i_did" and r["when_made"] == "made_to_order" and r["item_weight_unit"] == "kg"
+        assert (r["item_length"], r["item_width"], r["item_height"]) == ("24.1", "10.5", "0.5")   # #10 envelope
     # the shared font chart is the same file in every listing
     fonts = {u for row in rows[1:] for u in dict(zip(rows[0], row))["image_urls"].split(",") if "Fonts" in u}
     assert fonts == {"https://assets.example.com/Labels_Fonts.png"}
@@ -266,3 +267,24 @@ def test_seeded_listings_lose_the_other_business(tmp_path):
     new = repo.setting("listings")
     assert new["asset_base_url"] == "" and new["shop_name"] == ""
     assert new["description_template"] == "We prepay all U.S. duties.\n{shop_name} © 2026. All rights reserved."
+
+
+def test_csv_item_size_is_the_10_envelope(tmp_path, cat):
+    """The seed and the CSV give a #10 envelope (24.1 × 10.5 × 0.5 cm); a database still holding the old
+    half-sheet envelope size (23 × 16 × 1 cm) is updated, a size the shop changed is kept."""
+    from app.db import Setting
+    cfg = load_listings(REPO / "config")
+    assert {k: cfg["csv"][k] for k in ("item_length", "item_width", "item_height", "item_dimensions_unit")} == {
+        "item_length": "24.1", "item_width": "10.5", "item_height": "0.5", "item_dimensions_unit": "cm"}
+    st = Settings(data_dir=tmp_path, database_url=f"sqlite:///{tmp_path}/a.db", storage="local", api_secret=None,
+                  config_dir=REPO / "config", frontend_dist=tmp_path)
+    repo = create_app(st, start_font_download=False).state.repo
+    old = dict(repo.setting("listings"))
+    old["csv"] = {**old["csv"], "item_length": "23", "item_width": "16", "item_height": "2"}
+    with repo.Session() as s:
+        s.get(Setting, "listings").value = old
+        s.commit()
+    repo.ensure_defaults(REPO / "config")
+    c = repo.setting("listings")["csv"]
+    assert (c["item_length"], c["item_width"], c["item_height"]) == ("24.1", "10.5", "2")   # 2 cm was edited: kept
+    assert c["item_weight"] == old["csv"]["item_weight"]
