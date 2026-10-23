@@ -11,13 +11,18 @@ ocean, woodland, safari, farm, sports, sweets, patterns, pets). Buyers choose:
 
 | What | Where on Etsy | CSV columns |
 |---|---|---|
-| Bundle (60 Skinny, 30 Medium, Back to School…) | variation 1, with a price and a SKU per bundle | `variation_name`, `variation_values`, `variation_prices`, `variation_quantities`, `variation_skus` |
+| Bundle (51 Skinny, 24 Medium, Back to School…) | variation 1, with a price and a SKU per bundle | `variation_name`, `variation_values`, `variation_prices`, `variation_quantities`, `variation_skus` |
 | Design (Puppy Park, Dalmatian Pup…) | variation 2 | `variation2_name`, `variation2_values` |
 | Name, optional second line, font number | personalization box | `is_personalizable`, `personalization_is_required`, `personalization_char_count_max`, `personalization_instructions` |
 
 Etsy allows two variations only, so the font goes in the personalization box ("Emma Tremblay -
 font 3"). The listing price is the cheapest bundle. SKUs: `LBL-PETS` for the listing,
-`LBL-PETS-MED30` for one bundle.
+`LBL-PETS-MED24` for one bundle. The **Orders** page reads these back from Etsy's order CSV: the SKU
+gives the bundle, the Design option the design, and the personalization the name and font (see
+*Orders* in the README).
+
+The item weight and size columns are computed, not typed: the heaviest bundle (Back to School) in a
+#10 envelope, 24.1 × 10.5 cm, with the weights from the Settings page.
 
 The first 36 columns are the binder pipeline's, in the same order, with the same encoding
 (UTF-8 with a BOM, LF line ends, fields quoted only when they contain `"`, `,` or a line break,

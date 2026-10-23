@@ -40,10 +40,13 @@ def test_alt_texts_and_asset_names_follow_the_variants(cfg, ws):
     assert all("|" not in x and "{" not in x for x in a)
 
 
+SMALL = 600   # every group at this size: the drawing code is the same at every size, 16 times fewer pixels
+
+
 @pytest.fixture(scope="module")
 def every_group_images(ws, cfg, tmp_path_factory):
     out = tmp_path_factory.mktemp("listing-images")
-    li = ListingImages(ws.renderer, ws.ui, cfg, ws.texts)
+    li = ListingImages(ws.renderer, ws.ui, {**cfg, "image_size": SMALL}, ws.texts)
     paths = {}
     for g in groups_of(cfg):
         paths[g.id] = li.write_group(g, out / g.id, shared=False)
@@ -51,7 +54,7 @@ def every_group_images(ws, cfg, tmp_path_factory):
     return paths
 
 
-def test_every_groups_7_images_are_2400_square(every_group_images, cfg):
+def test_every_group_makes_its_7_images(every_group_images, cfg):
     from PIL import Image
     groups = groups_of(cfg)
     assert len(every_group_images) == len(groups) + 1
@@ -60,9 +63,22 @@ def test_every_groups_7_images_are_2400_square(every_group_images, cfg):
         assert [p.name for p in files] == [asset_name(cfg, g, v) for v in GROUP_VARIANTS]
         for p in files:
             with Image.open(p) as im:
-                assert im.size == (2400, 2400) and im.mode == "RGB", p.name
+                assert im.size == (SMALL, SMALL) and im.mode == "RGB", p.name
     with Image.open(every_group_images["_fonts"][0]) as im:
-        assert im.size == (2400, 2400)
+        assert im.size == (SMALL, SMALL)
+
+
+def test_listing_images_are_2400_square(ws, cfg, tmp_path):
+    """The real size, on one group and the shared Fonts image."""
+    from PIL import Image
+    assert cfg["image_size"] == 2400
+    li = ListingImages(ws.renderer, ws.ui, cfg, ws.texts)
+    g = groups_of(cfg)[0]
+    files = li.write_group(g, tmp_path / g.id, shared=False) + [li.write_shared(tmp_path)]
+    assert len(files) == 7
+    for p in files:
+        with Image.open(p) as im:
+            assert im.size == (2400, 2400) and im.mode == "RGB", p.name
 
 
 # ---------------------------------------------------------------- text inside its box

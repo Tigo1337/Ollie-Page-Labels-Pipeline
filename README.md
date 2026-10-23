@@ -18,7 +18,10 @@ Every US Letter sheet is trimmed into **three equal thirds**, so each piece ship
   (`docs/etsy-listings.md`)
 - **Thirds, bigger bundles, one finish, fixed name position, Mazie Page Creations brand**
   (`reference/pipeline-update-prompt.md`) ✅ layouts v2, geometry v3 migration, the 7 new listing images
-- Orders screen (CSV import, status tracking) – to do
+- **Orders screen** ✅ Etsy's order CSV imported, checked and kept until made; several orders made
+  together in one batch; status tracking (to make / made / shipped / cancelled). See *Orders* below.
+- **Packing guide and postage** ✅ a picture of every piece for packing, the postage class of every
+  envelope, and bonus copies only when they keep the postage
 
 ## Running the app (Replit)
 
@@ -60,12 +63,14 @@ engine/            pure-Python rendering engine (no web dependencies)
   art.py           white-band trimming, crop presets, automatic layout, fixed name position
   text.py          NFC normalising, glyph check, text fitting
   render.py        one label at 600 dpi (+ render cache)
-  packing.py       piece batching (three pieces of one layout make a sheet), pack math, envelope estimate
+  packing.py       piece batching (three pieces of one layout make a sheet), pack math, envelope and postage
+  packing_guide.py packing guide PDF: a card per envelope, a picture of every piece, look-alikes
   cutfiles.py      R12 DXF + SVG writers
   production.py    bundle: print PDFs per layout, templates, page proofs, info sheet, packing slip, ZIP
   proofs.py        customer proof (in the brand), review sheet, font chart
   brand.py         the brand's colours, logo and fonts for buyer-facing images
   listings.py      Etsy listings: design groups, checks, import CSV (binder pipeline's format)
+  etsy_orders.py   Etsy's Sold Order Items CSV -> orders (SKU, options, personalization)
   listing_images.py  the 7 listing images in the brand (hero, designs, bundles, sizes, fonts,
                    made to last, how to order)
   fonts_download.py  Google Fonts downloader (+ licence files)
@@ -78,7 +83,8 @@ docs/              studio-template-setup.md and cut-settings.md (generated, Fren
 brand/             Mazie Page Creations logo, icons (SVG masters + PNG exports), build_logo.py
 reference/         prototype code and specs the engine is ported from
 app/               FastAPI app: storage interface (repo.py), blob storage, auth,
-                   engine wiring, API routes (api.py), Etsy listings (listings_*.py, r2.py)
+                   engine wiring, API routes (api.py), Etsy listings (listings_*.py, r2.py),
+                   orders and batches (orders_*.py)
 frontend/          React + Vite + TypeScript UI, built into frontend/dist
 scripts/start.sh   one run command
 tests/             pytest suite (alignment, packing, text fit, golden, speed…)
@@ -116,7 +122,8 @@ corners, 22 mm laminate notch, 10 mm edge margin, 2.5 mm gap (2.0 mm between rou
 lines are computed, never typed in: Studio X = 279.4 × i / 3 = **93.133 and 186.267** (printed
 y 93.133 and 186.267), each with 5 mm clear on both sides. The print PDF holds only the labels,
 the registration marks and the trim ticks and dashed guides; which order each piece belongs to is
-on the page proofs, the info sheet and the packing slip (sheet number, then haut / milieu / bas).
+on the page proofs, the info sheet, the packing slip and the packing guide (sheet number, then
+haut / milieu / bas; the guide shows a picture of every piece).
 
 `config/production.json` keeps the 1 mm text safe zone, the 1.7 mm minimum cap height, the
 150 dpi proof resolution and the envelope estimate (6 g per piece + 5 g for the envelope,
@@ -148,7 +155,13 @@ A bundle (`config/packs.json`) is a whole number of single-size pieces; three pi
 size make a sheet, filled oldest first across orders. A sheet left with 1 or 2 pieces gets free
 bonus copies of its last piece (or blank pieces, or waits for more orders). Every piece ships
 flat in a #10 envelope; `python -m engine packs` and the Make page show the estimated weight and
-the Canada Post Lettermail class, and warn above 12 pieces (standard Lettermail is at most 5 mm).
+the Canada Post class: standard Lettermail up to 50 g and 5 mm (up to 7 pieces, priced at 30 g and
+50 g), an oversized letter up to 500 g and 20 mm (in 100 g steps), a parcel beyond. Bonus copies go
+in the envelope only when they keep the same postage; otherwise the packing guide says to keep them
+aside as spares. Every run has a **packing guide** (`<prefix>_packing_guide.pdf`): a card per
+envelope with a picture of each piece, its sheet and place (haut / milieu / bas), tick boxes, the
+postage, and the pieces that look alike from one order to another (same size and name). The Etsy
+CSV's item weight and size are computed from the heaviest bundle in a #10 envelope (24.1 × 10.5 cm).
 
 | bundle | contents | pieces | sheets alone |
 |---|---|---:|---:|
@@ -169,6 +182,29 @@ On the skinny, small, medium and large labels the name box starts at the same pl
 (`name_start` in `config/sizes.json`: 0.24, 0.36, 0.36, 0.42 of the label width) and the art slides
 so the character ends 0.8 mm before it. The crop editor locks the name box on these sizes; you slide
 and zoom the art behind it. Clothing tag, round and shoe labels keep their own name boxes.
+
+## Orders
+
+The **Orders** page keeps the shop's orders until they are made:
+
+1. **Import** Etsy's *Sold Order Items* CSV (Shop Manager → Settings → Options → Download Data →
+   Orders, type "Order Items"; the *Sold Orders* file is refused with that hint). A row is a label
+   bundle when its SKU is a listing SKU (`LBL-<listing code>-<bundle code>`, from the listings CSV),
+   an old `<design>-<pack>[-<finish>]` SKU, or has a known Bundle option; other rows (gift cards...)
+   are skipped and listed. The design comes from the Design option, the name, second line and font
+   number from the buyer's personalization (`Emma - font 3`, `Zoé / Gagnon, police 4`...). An order
+   already imported is never added twice. Proofs are in French for Québec addresses.
+2. **Check**: anything that is not clear (no font number, an unknown design, three lines, a number
+   left in the name) is kept and marked *to check*; it is never guessed silently. Open the order,
+   fix the line or press *Looks right*, then save. An order whose design has no artwork or whose name
+   uses a letter the font does not have is marked *cannot be made*. Orders can also be added by hand.
+3. **Make**: select several orders. The plan shows the sheets (and how many making each order on its
+   own would take), the bonus copies and each envelope. *Make these orders together* runs the batch
+   in the background; the files (print PDFs, packing guide, slip, proofs, ZIP) open below, and the
+   orders move to *made*, with a link to their files. Making an order again (a reprint) is allowed.
+4. **Ship**: select and *Mark shipped* (or *Cancel*).
+
+The API is under `/api/orders` (`app/orders_api.py`); the table is created automatically.
 
 ## Brand
 

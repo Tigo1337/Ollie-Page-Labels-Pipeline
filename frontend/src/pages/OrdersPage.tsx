@@ -403,7 +403,7 @@ function BatchBar(props: {
           {" "}({Object.entries(plan.sheets_by_size).map(([s, n]) => `${n} ${s}`).join(", ")})
           {plan.sheets_alone > plan.sheets
             ? <> · {plan.sheets_alone} if each order were made on its own: <strong>{plan.sheets_alone - plan.sheets} saved</strong></>
-            : null}
+            : plan.orders.length > 1 ? <span className="muted"> · same as one by one (each order fills its own sheets)</span> : null}
           {plan.bonus > 0 && <> · {plan.bonus} free bonus cop{plan.bonus === 1 ? "y" : "ies"}</>}
           {plan.blank > 0 && <> · {plan.blank} blank piece{plan.blank === 1 ? "" : "s"}</>}
           <br />
