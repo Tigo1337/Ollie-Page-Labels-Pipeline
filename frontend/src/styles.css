@@ -1,11 +1,18 @@
+/* Mazie Page Creations: Plum #3E2352, Lilac #C9B5F0, Blush #F5BFD0, Pearl #FBF7FB.
+   Text contrast: Plum on Pearl 12.6:1, Plum on Lilac 7.2:1, Pearl on Plum 12.6:1, muted on Pearl 5.8:1. */
 :root {
-  --bg: #f5f4f9;
+  --plum: #3E2352;
+  --lilac: #C9B5F0;
+  --blush: #F5BFD0;
+  --pearl: #FBF7FB;
+  --bg: var(--pearl);
   --card: #ffffff;
-  --ink: #22222f;
-  --muted: #6e6e7d;
-  --line: #e2e0ea;
-  --accent: #4a3fb0;
-  --accent-ink: #ffffff;
+  --ink: var(--plum);
+  --muted: #6E5A80;
+  --line: #E4D9F2;
+  --tint: #F3EDFB;
+  --accent: var(--plum);
+  --accent-ink: var(--pearl);
   --bad: #c81e1e;
   --ok: #1e7a3c;
   --warn-bg: #fff6dd;
@@ -18,14 +25,19 @@
 body { margin: 0; background: var(--bg); }
 a { color: var(--accent); }
 h1, h2, h3, h4 { margin: 0.2em 0 0.5em; }
-code { background: #efedf6; padding: 1px 4px; border-radius: 4px; font-size: 0.9em; }
+code { background: var(--tint); padding: 1px 4px; border-radius: 4px; font-size: 0.9em; }
 
-.topbar { display: flex; align-items: center; gap: 24px; padding: 10px 20px; background: var(--ink); color: #fff; }
-.topbar .brand { font-weight: 700; }
-.topbar nav { display: flex; gap: 4px; flex: 1; }
-.topbar nav a { color: #d8d6ea; text-decoration: none; padding: 6px 12px; border-radius: 6px; }
-.topbar nav a.active, .topbar nav a:hover { background: rgba(255,255,255,0.12); color: #fff; }
-.topbar .link { color: #d8d6ea; }
+.topbar { display: flex; align-items: center; gap: 24px; padding: 8px 20px; background: var(--pearl); color: var(--plum);
+          border-bottom: 3px solid var(--lilac); flex-wrap: wrap; }
+.topbar .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; color: var(--plum); text-decoration: none; }
+.topbar .brand img { height: 40px; width: auto; display: block; }
+.topbar .brand span { color: var(--muted); font-weight: 600; }
+.topbar nav { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
+.topbar nav a { color: var(--plum); text-decoration: none; padding: 6px 12px; border-radius: 99px; font-weight: 600; }
+.topbar nav a:hover { background: var(--tint); }
+.topbar nav a.active { background: var(--lilac); color: var(--plum); }
+.topbar .link { color: var(--plum); }
+.login .logo { height: 56px; width: auto; display: block; margin-bottom: 8px; }
 .banner { background: var(--warn-bg); padding: 8px 20px; border-bottom: 1px solid #f0dca0; }
 .page { max-width: 1280px; margin: 0 auto; padding: 20px 16px 60px; }
 
@@ -85,11 +97,11 @@ label small { font-weight: 400; }
 .design-card:hover { border-color: var(--accent); }
 .design-card img { width: 100%; height: 70px; object-fit: cover; object-position: left; display: block; }
 .design-card-body { padding: 10px 12px; }
-.no-art { height: 70px; display: grid; place-items: center; background: repeating-linear-gradient(45deg, #f1f0f6, #f1f0f6 8px, #e8e6f0 8px, #e8e6f0 16px); color: var(--muted); }
+.no-art { height: 70px; display: grid; place-items: center; background: repeating-linear-gradient(45deg, var(--tint), var(--tint) 8px, var(--line) 8px, var(--line) 16px); color: var(--muted); }
 .no-art.tall { height: 200px; border-radius: 8px; }
 .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 50%; outline: 3px solid; margin-right: 8px; vertical-align: -2px; }
 .badges { display: flex; gap: 6px; margin-top: 6px; font-size: 0.78em; }
-.badges span { padding: 1px 7px; border-radius: 99px; background: #efedf6; }
+.badges span { padding: 1px 7px; border-radius: 99px; background: var(--tint); }
 .badges .ok { background: #e3f4e8; }
 .badges .bad { background: #fdecec; }
 .art { width: 100%; border-radius: 6px; border: 1px solid var(--line); }
@@ -151,7 +163,7 @@ details summary { cursor: pointer; margin-top: 12px; font-weight: 600; }
 @media (max-width: 700px) { .listing-head { grid-template-columns: 1fr; } }
 .listing .small { margin: 0; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border-radius: 99px; background: #efedf6; font-size: 0.85em; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border-radius: 99px; background: var(--tint); font-size: 0.85em; }
 .chip select { width: auto; max-width: 92px; padding: 1px 4px; font-size: 0.9em; border-radius: 99px; }
 .thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
 .thumbs img { width: 110px; height: 110px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); display: block; }

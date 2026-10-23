@@ -39,14 +39,14 @@ SEP = "━━━━━━━━━━━━━━━"
 
 # listing images, in gallery order: (variant, shared across listings?, alt template)
 IMAGE_VARIANTS = [
-    ("Hero", False, "{group_name} kids name labels on a sheet — personalized laminated vinyl name stickers"),
+    ("Hero", False, "{group_name} kids name labels on a sheet — personalized waterproof name stickers by {shop_name}"),
     ("Designs", False, "The {design_count} {group_name} label designs, numbered — choose your design"),
+    ("Bundles", False, "Bundle options for the {group_name} name labels — label counts per bundle"),
+    ("Sizes", False, "{group_name} name label sizes at the same scale — large, medium, small, skinny, clothing tag, "
+                     "round and shoe pair"),
     ("Fonts", True, "The {font_count} numbered fonts for the kids name labels — choose your font"),
-    ("Bundles", False, "Bundle options for the {group_name} name labels — label counts and sizes"),
-    ("Sizes", False, "{group_name} name label sizes to scale — skinny, small, medium, large, clothing tag, round and "
-                     "shoe pair"),
-    ("Closeup_Small", False, "Close-up of small, skinny pencil and clothing tag {group_name} name labels on a sheet"),
-    ("Closeup_Round", False, "Close-up of round and shoe pair {group_name} name labels on a sheet"),
+    ("Durable", False, "Close-up of laminated {group_name} name labels — waterproof, peel and stick, made in Québec"),
+    ("HowToOrder", False, "How to order the {group_name} name labels in three steps"),
 ]
 
 
@@ -212,7 +212,8 @@ def description(cfg: dict, cat: Catalog, g: Group) -> str:
 
 
 def alts(cfg: dict, cat: Catalog, g: Group) -> list[str]:
-    ctx = {"group_name": g.name, "design_count": len(g.designs), "font_count": len(cat.fonts)}
+    ctx = {"group_name": g.name, "design_count": len(g.designs), "font_count": len(cat.fonts),
+           "shop_name": cfg.get("shop_name", "")}
     return [re.sub(r"\s+", " ", tpl.format(**ctx).replace("|", " ")).strip() for _, _, tpl in IMAGE_VARIANTS]
 
 

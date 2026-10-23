@@ -42,8 +42,8 @@ def holographic(img: Image.Image, strength: float = 0.55) -> Image.Image:
 
 
 def cut_out(lab: RenderedLabel, size: Size, bleed: float, px_per_mm: float, holo: bool = False,
-            shadow: bool = True) -> Image.Image:
-    """The label as the buyer sees it: cut to shape, with a soft shadow (RGBA)."""
+            shadow: bool = True, shadow_rgb: tuple[int, int, int] = (0, 0, 0)) -> Image.Image:
+    """The label as the buyer sees it: cut to shape, with a soft shadow (RGBA) in `shadow_rgb`."""
     bw, bh = size.w + 2 * bleed, size.h + 2 * bleed
     W, H = int(round(bw * px_per_mm)), int(round(bh * px_per_mm))
     im = lab.image.resize((W, H), Image.Resampling.LANCZOS)
@@ -54,7 +54,7 @@ def cut_out(lab: RenderedLabel, size: Size, bleed: float, px_per_mm: float, holo
     pad = int(3 * px_per_mm)
     out = Image.new("RGBA", (W + 2 * pad, H + 2 * pad), (0, 0, 0, 0))
     if shadow:
-        sh = Image.new("RGBA", out.size, (0, 0, 0, 0))
+        sh = Image.new("RGBA", out.size, shadow_rgb + (0,))
         alpha = Image.new("L", out.size, 0)
         alpha.paste(mask.point(lambda v: int(v * 0.35)), (pad + int(0.5 * px_per_mm), pad + int(0.8 * px_per_mm)))
         sh.putalpha(alpha.filter(ImageFilter.GaussianBlur(px_per_mm * 0.9)))
@@ -137,7 +137,9 @@ def customer_proof(producer: "Producer", order: Order, lang: str = "en", width: 
 
 def customer_proof_image(r: Renderer, ui: UIFonts, texts: dict, order: Order, lang: str = "en",
                          width: int = 1700) -> Image.Image:
-    """One of each unique label, grouped by design, as the buyer will see it."""
+    """One of each unique label, grouped by design, as the buyer will see it. In the brand: Pearl
+    background, Plum text and label shadows, Fredoka titles, the horizontal logo at the top."""
+    from .brand import PEARL, PLUM, brand_font, logo
     cat = r.cat
     T = _t(texts, lang)
     rank = {s: i for i, s in enumerate(proof_size_order(cat))}
@@ -158,17 +160,18 @@ def customer_proof_image(r: Renderer, ui: UIFonts, texts: dict, order: Order, la
         items = []
         for spec in specs:
             size = cat.sizes[spec.size]
-            im = cut_out(r.render(spec), size, cat.sheet.bleed, ppm, holo=spec.finish == "holographic")
+            im = cut_out(r.render(spec), size, cat.sheet.bleed, ppm, shadow_rgb=PLUM)
             label = T.get("size_labels", {}).get(size.id, size.label)
             caption = T["proof_caption"].format(size=label, dims=size.dims_label,
                                                 finish=T["finishes"].get(spec.finish, spec.finish))
-            items.append((im, int(3 * ppm), [(caption, CAPTION)]))
+            items.append((im, int(3 * ppm), [(caption, PLUM)]))
         flow, fh = _flow(items, inner, ui, cap, gap=28)
         sections.append((r.design(did).name, flow, fh))
 
     tmp = ImageDraw.Draw(Image.new("RGB", (10, 10)))
-    title_f, body_f, bold_f, small_f, sec_f = (ui.pil(54, "bold"), ui.pil(26), ui.pil(28, "bold"),
-                                               ui.pil(21), ui.pil(40, "bold"))
+    title_f, sec_f = brand_font(r.fonts, "display", 56, 600), brand_font(r.fonts, "display", 40, 600)
+    body_f, bold_f, small_f = (brand_font(r.fonts, "text", 26, 700), brand_font(r.fonts, "text", 28, 800),
+                               brand_font(r.fonts, "text", 21, 700))
     names = []
     for ln in order.lines:
         n = ln.name.strip() + (f" / {ln.line2.strip()}" if ln.line2 else "")
@@ -177,32 +180,35 @@ def customer_proof_image(r: Renderer, ui: UIFonts, texts: dict, order: Order, la
     names_l = wrap(tmp, T["proof_names"].format(names=", ".join(names)), bold_f, inner)
     intro = wrap(tmp, T["proof_intro"], body_f, inner)
     footer = wrap(tmp, T["proof_footer"], small_f, inner)
-    head_h = 70 + 44 + len(names_l) * 38 + 10 + len(intro) * 34 + 30
+    mark = logo(420)
+    logo_h = mark.height + 34
+    head_h = logo_h + 72 + 44 + len(names_l) * 38 + 10 + len(intro) * 34 + 30
     body_h = sum(64 + fh + 40 for _, _, fh in sections)
     H = margin + head_h + body_h + len(footer) * 28 + margin
 
-    img = Image.new("RGB", (width, H), SHEET_BG)
+    img = Image.new("RGB", (width, H), PEARL)
+    img.paste(mark, (margin, margin), mark)
     d = ImageDraw.Draw(img)
-    y = margin
-    d.text((margin, y), T["proof_title"], font=title_f, fill=INK)
-    y += 70
-    d.text((margin, y), T["proof_order"].format(order=order.order_id), font=body_f, fill=MUTED)
+    y = margin + logo_h
+    d.text((margin, y), T["proof_title"], font=title_f, fill=PLUM)
+    y += 72
+    d.text((margin, y), T["proof_order"].format(order=order.order_id), font=body_f, fill=PLUM)
     y += 44
     for ln in names_l:
-        d.text((margin, y), ln, font=bold_f, fill=INK)
+        d.text((margin, y), ln, font=bold_f, fill=PLUM)
         y += 38
     y += 10
     for ln in intro:
-        d.text((margin, y), ln, font=body_f, fill=INK)
+        d.text((margin, y), ln, font=body_f, fill=PLUM)
         y += 34
     y += 30
     for title, flow, fh in sections:
-        d.text((margin, y), title, font=sec_f, fill=INK)
+        d.text((margin, y), title, font=sec_f, fill=PLUM)
         y += 64
         _paste_flow(img, flow, margin, y, ui, cap)
         y += fh + 40
     for ln in footer:
-        d.text((margin, y), ln, font=small_f, fill=MUTED)
+        d.text((margin, y), ln, font=small_f, fill=PLUM)
         y += 28
     return img
 

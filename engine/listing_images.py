@@ -1,90 +1,213 @@
-"""Etsy listing images (2400 × 2400 PNG, like the binder pipeline's), made from the real label renders.
+"""Etsy listing images (2400 × 2400 PNG) in the Mazie Page Creations brand, made from the real label renders.
 
-Per listing (a group of designs):
-  Hero           a close-up of a sheet of the group's labels, turned at an angle (different names / fonts)
-  Designs        "Choose your design": every design of the group, numbered like the Design drop-down
-  Bundles        "Choose your bundle": each bundle's labels, with diagrams of its sheets
-  Sizes          every label size, to scale, with its size in mm and inches
-  Closeup_Small  a close-up of small, skinny pencil and clothing tag labels
-  Closeup_Round  a close-up of round labels and shoe pairs
+Every image is laid out on a 1200 × 1200 grid (the Claude Design templates) and drawn at 2× (K = S / 1200).
+Only things Pillow draws exactly are used: flat fills, rounded rectangles with a Plum outline and a Plum
+"ledge" under them (a sticker look), circles, text in the two brand fonts, and pasted PNGs (the logo, the
+icons, the label renders and the sheet close-ups). No gradients, blurs or blend modes.
+
+Per listing (a group of designs), in gallery order:
+  Hero        close-up of a sheet of the group's labels + a card with the group name, 4 chips, the logo mark
+              and an "up to N labels" badge (key content inside the 4:3 band Etsy thumbnails keep)
+  Designs     "Choose your design": numbered tiles, label render + design name
+  Bundles     "Choose your bundle": the combo bundles as cards (the largest marked "Most complete") and the
+              single-size bundles as pills
+  Sizes       the 7 sizes at the same scale, with mm, inches and what each is for
+  Durable     "Made to last": a close-up photo and 4 feature cards with the brand icons
+  HowToOrder  the 3 ordering steps
 Shared by every listing:
-  Fonts          "Choose your font": the numbered fonts with a sample name and the alphabet
+  Fonts       "Choose your font": the numbered fonts
 """
 from __future__ import annotations
 
 import math
+import re
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-from .config import Catalog, Size, hex_to_rgb
-from .frames import to_printed
-from .layout import current_layout
+from .config import Catalog, Size
 from .listings import IMAGE_VARIANTS, Group, asset_name
 from .proofs import cut_out
 from .render import LabelSpec, Renderer
 from .uifont import UIFonts
 
-BG = (250, 248, 244)
-INK = (34, 34, 48)
-MUTED = (110, 108, 125)
-VINYL = (251, 251, 249)
-NUMBER_COLOURS = [(214, 92, 120), (205, 64, 120), (98, 128, 214), (40, 150, 160), (122, 140, 40), (110, 70, 160),
-                  (60, 140, 70), (40, 70, 150), (90, 90, 30), (214, 110, 60)]
+REPO = Path(__file__).resolve().parent.parent
+BRAND_DIR = REPO / "brand"          # the contents of mazie-page-brand.zip (logo files, icons/)
+
+# -- brand ------------------------------------------------------------------------------------------
+PLUM = (0x3E, 0x23, 0x52)
+LILAC = (0xC9, 0xB5, 0xF0)
+BLUSH = (0xF5, 0xBF, 0xD0)
+PEARL = (0xFB, 0xF7, 0xFB)
+DISPLAY_FONT_ID = 1          # Fredoka (titles, numbers): weight 600, or 500 for small kickers
+TEXT_FONT_ID = 3             # Nunito (text): weight 700, or 800 for bold
+GRID = 1200                  # the templates' grid; everything below is in grid px
+LEDGE = 8                    # the Plum ledge under every card
+BORDER = 4                   # card outline
 RENDER_DPI = 400
 HERO_FONTS = [1, 7, 12, 2, 9, 4, 11, 3]
+
+SIZE_ORDER = ["large", "medium", "small", "pencil", "tag", "round", "shoe"]
+SIZE_COPY = {   # name on the images, the inch line (the sizes are inch-based), what it is for
+    "large": ("Large", "2.5 × 1 in", "Books, bins, lunch bags"),
+    "medium": ("Medium", "2.5 × 0.75 in", "Bottles, lunch boxes, folders"),
+    "small": ("Small", "1.75 × 0.5 in", "Supplies, containers"),
+    "pencil": ("Skinny", "2.25 × 0.375 in", "Pencils, markers, crayons"),
+    "tag": ("Clothing tag", "1 × 0.5 in", "Care tags inside clothes"),
+    "round": ("Round", "1.25 in", "Lids, caps, toys"),
+    "shoe": ("Shoe pair", "2 × (1.2 × 1.5 in)", "Left and right, one picture"),
+}
+COUNT_WORD = {"pencil": "Skinny", "small": "Small", "medium": "Medium", "large": "Large",
+              "tag": "Clothing tags", "round": "Round", "shoe": "Shoe pairs"}
+PILL_WORD = dict(COUNT_WORD, tag="Tags")
+FEATURES = [  # (title, text, icon file)
+    ("Waterproof laminate", "A clear layer over the ink keeps out water, juice and scratches.", "icons/icon-waterproof_256.png"),
+    ("Peel and stick", "Precisely cut, easy to peel. Sticks to plastic, glass, metal and wood.", "icons/icon-peel_256.png"),
+    ("Big, bold names", "Names little ones can spot on their own things, before they can read.", "icons/icon-heart_256.png"),
+    ("Made in Québec", "Printed, laminated and cut to order, then mailed flat in an envelope.", "icons/icon-quebec_256.png"),
+]
 
 
 class ListingImages:
     def __init__(self, renderer: Renderer, ui: UIFonts, cfg: dict, texts: dict | None = None,
-                 layouts_dir: Path | None = None):
+                 layouts_dir: Path | None = None, brand_dir: Path = BRAND_DIR):
         self.r = renderer
         self.cat: Catalog = renderer.cat
         self.ui = ui
         self.cfg = cfg
         self.S = int(cfg.get("image_size", 2400))
-        self.names = cfg.get("sample_names") or ["Emma", "Liam"]
+        self.K = self.S / GRID
+        self.names = cfg.get("sample_names") or ["Liam", "Emma"]
         self.texts = texts or {}
         self.layouts_dir = layouts_dir
+        self.brand_dir = Path(brand_dir)
+        self._fonts: dict[tuple, ImageFont.FreeTypeFont] = {}
+        self._pngs: dict[str, Image.Image] = {}
 
-    # -- helpers ---------------------------------------------------------------
+    # -- primitives (grid px in, output px out) -------------------------------------------------------
+    def px(self, v: float) -> int:
+        return int(round(v * self.K))
+
+    def font(self, kind: str, size: float, weight: int) -> ImageFont.FreeTypeFont:
+        """kind "display" (Fredoka) or "text" (Nunito), at `size` grid px and a `weight` (variable axis)."""
+        key = (kind, size, weight)
+        if key not in self._fonts:
+            lf = self.r.fonts.get(DISPLAY_FONT_ID if kind == "display" else TEXT_FONT_ID)
+            f = ImageFont.truetype(str(lf.path), self.px(size))
+            if lf.axes:
+                f.set_variation_by_axes([float(weight) if tag == "wght" else default
+                                         for tag, lo, default, hi in lf.axes])
+            self._fonts[key] = f
+        return self._fonts[key]
+
+    def png(self, name: str) -> Image.Image:
+        if name not in self._pngs:
+            self._pngs[name] = Image.open(self.brand_dir / name).convert("RGBA")
+        return self._pngs[name]
+
+    def paste(self, img: Image.Image, im: Image.Image, x: float, y: float, w: float, h: float,
+              align: str = "center") -> None:
+        """Paste `im` scaled to fit inside the grid box (x, y, w, h), keeping its aspect."""
+        W, H = self.px(w), self.px(h)
+        k = min(W / im.width, H / im.height)
+        sm = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.Resampling.LANCZOS)
+        ox = self.px(x) + (0 if align == "left" else (W - sm.width) // 2)
+        oy = self.px(y) + (H - sm.height) // 2
+        img.paste(sm, (ox, oy), sm if sm.mode == "RGBA" else None)
+
+    def card(self, d: ImageDraw.ImageDraw, x: float, y: float, w: float, h: float, r: float,
+             fill=PEARL, border: float = BORDER, ledge: float = LEDGE) -> None:
+        """A sticker card: a Plum ledge, then the card with a Plum outline."""
+        if ledge:
+            d.rounded_rectangle(self.box(x, y + ledge, w, h), radius=self.px(r), fill=PLUM)
+        d.rounded_rectangle(self.box(x, y, w, h), radius=self.px(r), fill=fill,
+                            outline=PLUM if border else None, width=self.px(border) if border else 0)
+
+    def box(self, x: float, y: float, w: float, h: float) -> list[int]:
+        return [self.px(x), self.px(y), self.px(x + w) - 1, self.px(y + h) - 1]
+
+    def text(self, d: ImageDraw.ImageDraw, x: float, y: float, s: str, font, fill=PLUM, align: str = "left",
+             width: float | None = None, spacing: float = 0.0) -> None:
+        """Text whose 1-line box (line height = font size) has its top-left at grid (x, y). align "center"
+        centres it in `width`. `spacing` = extra letter spacing in em (spaced capitals)."""
+        size = font.size / self.K
+        cy = self.px(y + size / 2)
+        if spacing:
+            tw = sum(d.textlength(c, font=font) for c in s) + spacing * font.size * (len(s) - 1)
+        else:
+            tw = d.textlength(s, font=font)
+        x0 = self.px(x) + ((self.px(width) - tw) / 2 if align == "center" and width else 0)
+        if not spacing:
+            d.text((x0, cy), s, font=font, fill=fill, anchor="lm")
+            return
+        for c in s:
+            d.text((x0, cy), c, font=font, fill=fill, anchor="lm")
+            x0 += d.textlength(c, font=font) + spacing * font.size
+
+    def wrap(self, d, s: str, font, width: float) -> list[str]:
+        words, lines, cur = s.split(), [], ""
+        for w in words:
+            t = f"{cur} {w}".strip()
+            if cur and d.textlength(t, font=font) > self.px(width):
+                lines.append(cur)
+                cur = w
+            else:
+                cur = t
+        return lines + ([cur] if cur else [])
+
+    def paragraph(self, d, x: float, y: float, s: str, font, width: float, line: float = 1.35, fill=PLUM) -> float:
+        """Wrapped text from grid (x, y); returns the y below it."""
+        size = font.size / self.K
+        for i, ln in enumerate(self.wrap(d, s, font, width)):
+            self.text(d, x, y + i * size * line + size * (line - 1) / 2, ln, font, fill)
+        return y + len(self.wrap(d, s, font, width)) * size * line
+
+    def fit_font(self, d, s: str, kind: str, size: float, weight: int, width: float, min_size: float = 14):
+        f = self.font(kind, size, weight)
+        while d.textlength(s, font=f) > self.px(width) and size > min_size:
+            size -= 1
+            f = self.font(kind, size, weight)
+        return f
+
+    def number(self, d, x: float, y: float, dia: float, n, size: float, ring: float = 0) -> None:
+        d.ellipse(self.box(x, y, dia, dia), fill=PLUM, outline=PEARL if ring else None,
+                  width=self.px(ring) if ring else 0)
+        f = self.font("display", size, 600)
+        d.text((self.px(x + dia / 2), self.px(y + dia / 2)), str(n), font=f, fill=PEARL, anchor="mm")
+
+    def canvas(self, bg) -> tuple[Image.Image, ImageDraw.ImageDraw]:
+        img = Image.new("RGB", (self.S, self.S), bg)
+        return img, ImageDraw.Draw(img)
+
+    def heading(self, d, title: str, subtitle: str | None) -> None:
+        self.text(d, 0, 60, title, self.fit_font(d, title, "display", 72, 600, 1080), align="center", width=GRID)
+        if subtitle:
+            self.text(d, 0, 150, subtitle, self.fit_font(d, subtitle, "text", 24, 800, 1080), align="center",
+                      width=GRID)
+
+    def footer(self, img: Image.Image) -> None:
+        self.paste(img, self.png("mazie-page-logo-horizontal_2400.png"), 490, 1104, 220, 56)
+
+    # -- label renders ----------------------------------------------------------------------------------
     def label(self, design: str, size_id: str, name: str, font: int = 1) -> Image.Image:
-        """The label cut to shape (RGBA, with a soft shadow) at RENDER_DPI."""
+        """The label cut to shape (RGBA, soft shadow, ~4.2 mm of padding each side) at RENDER_DPI."""
         lab = self.r.render(LabelSpec(design, size_id, name, "", font, "matte"), dpi=RENDER_DPI)
         return cut_out(lab, self.cat.sizes[size_id], self.cat.sheet.bleed, RENDER_DPI / 25.4, shadow=True)
 
-    def _scaled(self, im: Image.Image, size: Size, ppm: float) -> tuple[Image.Image, int]:
-        """A cut_out image scaled to `ppm` px/mm; returns it and its shadow padding (px)."""
-        k = ppm / (RENDER_DPI / 25.4)
-        out = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.Resampling.LANCZOS)
-        return out, round(3 * ppm)
-
-    def _canvas(self, title: str | None = None, subtitle: str | None = None) -> tuple[Image.Image, int]:
-        img = Image.new("RGB", (self.S, self.S), BG)
-        y = 0
-        if title:
-            d = ImageDraw.Draw(img)
-            f = self.ui.pil(int(self.S * 0.05), "bold")
-            tw = d.textlength(title, font=f)
-            d.text(((self.S - tw) / 2, self.S * 0.04), title, font=f, fill=INK)
-            y = int(self.S * 0.04 + self.S * 0.065)
-            if subtitle:
-                f2 = self.ui.pil(int(self.S * 0.022))
-                sw = d.textlength(subtitle, font=f2)
-                d.text(((self.S - sw) / 2, y), subtitle, font=f2, fill=MUTED)
-                y += int(self.S * 0.04)
-            y += int(self.S * 0.02)
-        return img, y
+    def at_scale(self, im: Image.Image, ppm_grid: float) -> Image.Image:
+        """A label render at `ppm_grid` grid px per mm (so every size shares one scale)."""
+        k = ppm_grid * self.K / (RENDER_DPI / 25.4)
+        return im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.Resampling.LANCZOS)
 
     def _sheet(self, rows: list[list[tuple[str, str, str, int]]], ppm: float, angle: float,
                gap_mm: float = 2.5) -> Image.Image:
-        """A close-up of a label sheet: rows of labels (design, size, name, font) on white vinyl,
-        turned by `angle` degrees, cropped to the square and lit softly from the top left."""
+        """A close-up of a label sheet: rows of labels (design, size, name, font) on white vinyl, turned by
+        `angle` degrees, cropped to the square and lit softly from the top left. (`ppm` in output px.)"""
         S = self.S
         W = H = int(S * 1.55)
-        sheet = Image.new("RGB", (W, H), VINYL)
-        cache: dict[tuple, tuple[Image.Image, int]] = {}
+        sheet = Image.new("RGB", (W, H), (251, 251, 249))
+        cache: dict[tuple, Image.Image] = {}
         y = int(-0.4 * ppm * 10)
         r = 0
         while y < H:
@@ -93,243 +216,266 @@ class ListingImages:
             x = int(-ppm * (size.w * 0.35 if r % 2 else size.w * 0.1))
             i = 0
             while x < W:
-                design, sid, name, font = row[i % len(row)]
-                key = (design, sid, name, font)
+                key = row[i % len(row)]
                 if key not in cache:
-                    cache[key] = self._scaled(self.label(design, sid, name, font), size, ppm)
-                im, pad = cache[key]
+                    k = ppm / (RENDER_DPI / 25.4)
+                    im = self.label(*key)
+                    cache[key] = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))),
+                                           Image.Resampling.LANCZOS)
+                im = cache[key]
+                pad = round(3 * ppm)
                 sheet.paste(im, (x - pad, y - pad), im)
                 x += round((size.w + gap_mm) * ppm)
                 i += 1
             y += round((size.h + gap_mm) * ppm)
             r += 1
-        turned = sheet.rotate(angle, resample=Image.Resampling.BICUBIC, fillcolor=VINYL)
+        turned = sheet.rotate(angle, resample=Image.Resampling.BICUBIC, fillcolor=(251, 251, 249))
         off = (W - S) // 2
-        out = turned.crop((off, off, off + S, off + S))
-        return _light(out)
+        return _light(turned.crop((off, off, off + S, off + S)))
 
-    # -- the images ------------------------------------------------------------
+    # -- data -----------------------------------------------------------------------------------------
+    def pack_labels(self, p) -> int:
+        """Labels in a pack, a shoe pair counting as 2."""
+        return sum(q * (2 if self.cat.sizes[s].shape == "pair" else 1) for s, q in p.contents.items())
+
+    def pack_title(self, p) -> str:
+        t = self.cfg.get("pack_short", {}).get(p.id, p.label)
+        return re.sub(r"\s*\(.*?\)\s*", "", t).replace(" pack", "").strip()
+
+    # -- the images ---------------------------------------------------------------------------------------
     def hero(self, g: Group) -> Image.Image:
-        rows = []
-        for i, d in enumerate(g.designs[:8]):
-            name = self.names[i % len(self.names)]
-            rows.append([(d, "medium", name, HERO_FONTS[i % len(HERO_FONTS)])])
-        return self._sheet(rows, ppm=self.S / 175, angle=-14)
-
-    def closeup_small(self, g: Group) -> Image.Image:
-        rows = []
-        for i, d in enumerate(g.designs[:6]):
-            name = self.names[(i + 3) % len(self.names)]
-            sid = ("small", "pencil", "tag")[i % 3]
-            rows.append([(d, sid, name, HERO_FONTS[(i + 2) % len(HERO_FONTS)])])
-        return self._sheet(rows, ppm=self.S / 120, angle=12)
-
-    def closeup_round(self, g: Group) -> Image.Image:
-        rows = []
-        for i, d in enumerate(g.designs[:6]):
-            name = self.names[(i + 5) % len(self.names)]
-            rows.append([(d, "round" if i % 2 == 0 else "shoe", name, HERO_FONTS[(i + 4) % len(HERO_FONTS)])])
-        return self._sheet(rows, ppm=self.S / 150, angle=-10, gap_mm=3.0)
-
-    def designs(self, g: Group) -> Image.Image:
-        n = len(g.designs)
-        img, top = self._canvas("Choose your design", f"{g.name} · {n} designs · the number matches the Design option")
+        rows = [[(dd, "medium", self.names[i % len(self.names)], HERO_FONTS[i % len(HERO_FONTS)])]
+                for i, dd in enumerate(g.designs[:8])]
+        img = self._sheet(rows, ppm=self.S / 175, angle=-14)
         d = ImageDraw.Draw(img)
-        margin = int(self.S * 0.05)
-        size = self.cat.sizes["medium"]
-        cap_h = self.S * 0.045                       # caption under each label
-        lw, lh = size.w + 2 * self.cat.sheet.bleed + 6, size.h + 2 * self.cat.sheet.bleed + 6
-
-        def fit(cols: int) -> float:                 # px per mm that fits `cols` columns
-            rows = math.ceil(n / cols)
-            cw, chh = (self.S - 2 * margin) / cols, (self.S - top - margin) / rows
-            return min(cw * 0.92 / lw, (chh - cap_h) * 0.9 / lh)
-        cols = max(range(1, 5), key=fit)
-        rows = math.ceil(n / cols)
-        ppm = fit(cols)
-        cell_w = (self.S - 2 * margin) / cols
-        cell_h = (self.S - top - margin) / rows
-        name = self.names[1 % len(self.names)]
-        cap = self.ui.pil(int(min(cap_h * 0.62, self.S * 0.026)), "bold")
-        for i, did in enumerate(g.designs):
-            c, rr = i % cols, i // cols
-            cx = margin + c * cell_w + cell_w / 2
-            cy = top + rr * cell_h + (cell_h - cap_h) / 2
-            im, pad = self._scaled(self.label(did, "medium", name, 1), size, ppm)
-            img.paste(im, (int(cx - im.width / 2), int(cy - im.height / 2)), im)
-            caption = f"{i + 1}. {self.cat.designs[did].name}"
-            tw = d.textlength(caption, font=cap)
-            d.text((cx - tw / 2, cy + im.height / 2 - pad + cap_h * 0.15), caption, font=cap, fill=INK)
+        # badge, top right (inside the 4:3 thumbnail band: y 150-1050)
+        most = max((self.pack_labels(p) for p in self.cat.packs.values()), default=0)
+        d.ellipse(self.box(930, 170, 210, 210), fill=BLUSH, outline=PLUM, width=self.px(BORDER))
+        self.text(d, 930, 210, "up to", self.font("display", 26, 500), align="center", width=210)
+        self.text(d, 930, 238, str(most), self.font("display", 80, 600), align="center", width=210)
+        self.text(d, 930, 318, "labels", self.font("display", 26, 500), align="center", width=210)
+        # the card
+        self.card(d, 60, 780, 1080, 262, 32)
+        self.text(d, 96, 810, "PERSONALIZED NAME LABELS", self.font("text", 22, 800), spacing=0.16)
+        self.text(d, 94, 844, g.name, self.fit_font(d, g.name, "display", 76, 600, 800))
+        chips = ["Waterproof", f"{len(self.cat.sizes)} sizes", f"{len(self.cat.fonts)} fonts", "Made in Québec"]
+        x = 96
+        f = self.font("text", 22, 800)
+        for i, c in enumerate(chips):
+            w = d.textlength(c, font=f) / self.K + 44
+            d.rounded_rectangle(self.box(x, 948, w, 52), radius=self.px(26),
+                                fill=BLUSH if i == len(chips) - 1 else LILAC, outline=PLUM, width=self.px(3))
+            self.text(d, x, 948 + 15, c, f, align="center", width=w)
+            x += w + 14
+        self.paste(img, self.png("mazie-page-mark_1024.png"), 966, 818, 140, 175)
         return img
 
-    def fonts(self) -> Image.Image:
-        T = self.texts.get("en", {})
-        sample = T.get("fontchart_sample", "Émilie-Rose")
-        fonts = list(self.r.fonts.specs.values())
-        img, top = self._canvas("Choose your font", "Write the font number in the personalization box")
-        d = ImageDraw.Draw(img)
-        margin = int(self.S * 0.045)
-        cols = 2
-        rows = math.ceil(len(fonts) / cols)
-        col_w = (self.S - 2 * margin) / cols
-        row_h = (self.S - top - margin) / rows
-        num_f = self.ui.pil(int(row_h * 0.30), "bold")
-        for i, spec in enumerate(fonts):
-            c, rr = divmod(i, rows)
-            x = margin + c * col_w
-            y = top + rr * row_h
-            colour = NUMBER_COLOURS[i % len(NUMBER_COLOURS)]
-            num = f"{spec.id}."
-            d.text((x, y + row_h * 0.42), num, font=num_f, fill=colour, anchor="ls")
-            tx = x + d.textlength("17.", font=num_f) + row_h * 0.12
-            avail = col_w - (tx - x) - row_h * 0.15
-            lf = self.r.fonts.get(spec.id)
-            # sample name, coloured
-            size = int(row_h * 0.30 / lf.cap_ratio)
-            f = lf.at(size)
-            while d.textlength(sample, font=f) > avail and size > 8:
-                size -= 2
-                f = lf.at(size)
-            d.text((tx, y + row_h * 0.42), sample, font=f, fill=colour, anchor="ls")
-            # alphabet, lower then upper case
-            for line, frac in (("abcdefghijklmnopqrstuvwxyz", 0.66), ("ABCDEFGHIJKLMNOPQRSTUVWXYZ", 0.88)):
-                size = int(row_h * 0.13 / lf.cap_ratio)
-                f = lf.at(size)
-                while d.textlength(line, font=f) > avail and size > 8:
-                    size -= 1
-                    f = lf.at(size)
-                d.text((tx, y + row_h * frac), line, font=f, fill=INK, anchor="ls")
+    def designs(self, g: Group) -> Image.Image:
+        img, d = self.canvas(LILAC)
+        n = len(g.designs)
+        self.heading(d, "Choose your design", f"{g.name} · the number matches the Design option")
+        rows = max(1, math.ceil(n / 2))
+        pitch = min(176.0, (1072 - 210) / rows)
+        th = pitch - LEDGE - 18                       # tile height (150 for up to 10 designs)
+        top = 210 + (1072 - 210 - rows * pitch) / 2   # centre a shorter grid
+        name = self.names[1 % len(self.names)]
+        for i, did in enumerate(g.designs):
+            x = 60 + (i % 2) * 550
+            y = top + (i // 2) * pitch
+            self.card(d, x, y, 530, th, 24)
+            k = th / 150
+            self.paste(img, self.label(did, "medium", name), x + 12, y + 11 * k, 316 * k, 120 * k, align="left")
+            self.number(d, x + 6, y + 6 * k, 50 * k, i + 1, 24 * k, ring=3)
+            # the design name in the column on the right: up to 2 lines, shrinking to fit
+            title = self.cat.designs[did].name
+            size = 28 * k
+            while True:
+                f = self.font("display", size, 600)
+                lines = self.wrap(d, title, f, 176)
+                if (len(lines) <= 2 and all(d.textlength(ln, font=f) <= self.px(176) for ln in lines)) or size < 14:
+                    break
+                size -= 1
+            lh = size * 1.1
+            y0 = y + (th - len(lines) * lh) / 2 + (lh - size) / 2
+            for j, ln in enumerate(lines):
+                self.text(d, x + 340, y0 + j * lh, ln, f)
+        self.footer(img)
         return img
 
     def bundles(self, g: Group) -> Image.Image:
-        img, top = self._canvas("Choose your bundle")
-        d = ImageDraw.Draw(img)
-        packs = list(self.cat.packs.values())
-        margin = int(self.S * 0.04)
-        cols = 2
-        rows = math.ceil(len(packs) / cols)
-        gap = int(self.S * 0.015)
-        cw = (self.S - 2 * margin - gap) / cols
-        ch = (self.S - top - margin - (rows - 1) * gap) / rows
-        title_f = self.ui.pil(int(ch * 0.17), "bold")
-        body_f = self.ui.pil(int(ch * 0.12))
-        colours = [_ink_colour(self.cat.designs[x]) for x in g.designs] or [INK]
-        for i, p in enumerate(packs):
-            c, rr = i % cols, i // cols
-            x0 = margin + c * (cw + gap)
-            y0 = top + rr * (ch + gap)
-            d.rounded_rectangle([x0, y0, x0 + cw, y0 + ch], radius=int(ch * 0.08), fill=(255, 255, 255),
-                                outline=(226, 222, 232), width=3)
-            text_w = cw * 0.44 - ch * 0.12
-            title = self.cfg["pack_short"].get(p.id, p.label)
-            tf, ts = title_f, int(ch * 0.17)
-            while d.textlength(title, font=tf) > text_w and ts > 12:
-                ts -= 2
-                tf = self.ui.pil(ts, "bold")
-            d.text((x0 + ch * 0.12, y0 + ch * 0.12), title, font=tf, fill=INK)
-            lines = []
-            for sid, q in p.contents.items():
-                s_ = self.cat.sizes[sid]
-                word = "shoe pairs" if s_.shape == "pair" else s_.label.split(" (")[0].lower()
-                lines.append(f"{q} {word}")
-            if len(p.contents) == 1:                     # the title says it all: give the size instead
-                lines = [_dims(self.cat.sizes[next(iter(p.contents))]).replace(" · ", "\n")]
-                lines = lines[0].split("\n")
-            bf, bs = body_f, int(ch * 0.12)
-            while max(d.textlength(ln, font=bf) for ln in lines) > text_w and bs > 10:
-                bs -= 1
-                bf = self.ui.pil(bs)
-            step = min(ch * 0.15, (ch * 0.84 - ch * 0.38) / max(1, len(lines)))
-            if step < bs * 1.15:                     # too many lines: shrink to fit the card
-                bs = max(10, int(step / 1.2))
-                bf = self.ui.pil(bs)
-            yy = y0 + ch * 0.38
-            for ln in lines:
-                d.text((x0 + ch * 0.12, yy), ln, font=bf, fill=MUTED)
-                yy += step
-            # the bundle's half sheets, as small diagrams
-            halves = [sid for sid, q in p.contents.items() for _ in range(self._halves(sid, q))]
-            per_row = min(3, max(1, len(halves)))
-            n_rows = math.ceil(len(halves[:6]) / per_row)
-            area_w, area_h = cw * 0.5, ch * 0.82
-            hw = area_w / per_row
-            scale = min(hw * 0.94 / 215.9, area_h / n_rows * 0.94 / 139.7)
-            for j, sid in enumerate(halves[:6]):
-                jj, jr = j % per_row, j // per_row
-                hx = x0 + cw * 0.47 + jj * hw
-                hy = y0 + ch * 0.09 + jr * (area_h / n_rows)
-                self._half_diagram(d, sid, hx, hy, scale, colours[(i + j) % len(colours)])
+        img, d = self.canvas(BLUSH)
+        self.heading(d, "Choose your bundle", "Every label has the same name, design and font")
+        combos = [p for p in self.cat.packs.values() if len(p.contents) > 1]
+        singles = [p for p in self.cat.packs.values() if len(p.contents) == 1]
+        best = max(combos, key=self.pack_labels) if combos else None
+        n = max(1, len(combos))
+        cw = (1080 - (n - 1) * 24) / n
+        for i, p in enumerate(combos):
+            x = 60 + i * (cw + 24)
+            self.card(d, x, 230, cw, 590, 28, fill=LILAC if p is best else PEARL)
+            self.text(d, x + 26, 260, self.pack_title(p), self.fit_font(d, self.pack_title(p), "display", 36, 600,
+                                                                         cw - 52))
+            total = str(self.pack_labels(p))
+            fnum = self.font("display", 88, 600)
+            self.text(d, x + 24, 310, total, fnum)
+            self.text(d, x + 32 + d.textlength(total, font=fnum) / self.K, 358, "labels", self.font("text", 24, 800))
+            rect_sizes = [s for s in p.contents if self.cat.sizes[s].shape == "rrect"]
+            big = max(rect_sizes, key=lambda s: self.cat.sizes[s].w * self.cat.sizes[s].h) if rect_sizes \
+                else next(iter(p.contents))
+            small = next((s for s in ("pencil", "tag") if s in p.contents and s != big), None) or \
+                min(p.contents, key=lambda s: self.cat.sizes[s].w * self.cat.sizes[s].h)
+            nm = self.names[(i + 2) % len(self.names)]
+            self.paste(img, self.label(g.designs[i % len(g.designs)], big, nm), x + 14, 412, cw - 44, 92,
+                       align="left")
+            self.paste(img, self.label(g.designs[(i + 1) % len(g.designs)], small, nm), x + 70, 498, cw - 104,
+                       74, align="left")
+            d.line([self.px(x + 26), self.px(587), self.px(x + cw - 26), self.px(587)], fill=PLUM,
+                   width=self.px(3))
+            f = self.font("text", 22, 700)
+            fb = self.font("text", 22, 800)
+            items = sorted(p.contents.items(), key=lambda kv: -kv[1])
+            for j, (sid, q) in enumerate(items):
+                yy = 608 + j * 30
+                self.text(d, x + 26, yy, COUNT_WORD.get(sid, sid), f)
+                qs = str(q)
+                d.text((self.px(x + cw - 26), self.px(yy + 11)), qs, font=fb, fill=PLUM, anchor="rm")
+            if p is best:
+                bw = 220
+                d.rounded_rectangle(self.box(x + (cw - bw) / 2, 210, bw, 40), radius=self.px(20), fill=PLUM)
+                self.text(d, x + (cw - bw) / 2, 210 + 11, "MOST COMPLETE", self.font("text", 18, 800), fill=PEARL,
+                          align="center", width=bw, spacing=0.08)
+        if singles:
+            self.text(d, 0, 862, "Or one size, a full sheet", self.font("display", 32, 600), align="center",
+                      width=GRID)
+            m = len(singles)
+            pw = (1080 - (m - 1) * 12) / m
+            for i, p in enumerate(singles):
+                x = 60 + i * (pw + 12)
+                sid, q = next(iter(p.contents.items()))
+                self.card(d, x, 922, pw, 112, 22, ledge=0)
+                self.text(d, x, 938, str(q), self.font("display", 42, 600), align="center", width=pw)
+                self.text(d, x, 988, PILL_WORD.get(sid, sid), self.fit_font(d, PILL_WORD.get(sid, sid), "text", 18,
+                                                                              800, pw - 16), align="center", width=pw)
+        self.footer(img)
         return img
 
     def sizes(self, g: Group) -> Image.Image:
-        img, top = self._canvas("Label sizes", "Shown to scale")
-        d = ImageDraw.Draw(img)
-        margin = int(self.S * 0.06)
-        order = [["large", "medium"], ["small", "pencil"], ["tag", "round"], ["shoe"]]
-        caption_h = self.S * 0.075                      # name + dims under each row
-        heights = sum(max(self.cat.sizes[x].h + 2 * self.cat.sheet.bleed for x in row) for row in order)
-        ppm = min((self.S - 2 * margin) / (2 * 63.5 + 40),
-                  (self.S - top - margin - len(order) * caption_h) / heights)
-        cap = self.ui.pil(int(self.S * 0.02), "bold")
-        sub = self.ui.pil(int(self.S * 0.017))
-        y = top + self.S * 0.01
-        k = 0
-        for row in order:
-            row_h = max(self.cat.sizes[s].h for s in row if s in self.cat.sizes) * ppm
-            col_w = (self.S - 2 * margin) / len(row)
-            for j, sid in enumerate(row):
-                if sid not in self.cat.sizes:
-                    continue
-                s = self.cat.sizes[sid]
-                did = g.designs[k % len(g.designs)]
-                k += 1
-                im, pad = self._scaled(self.label(did, sid, self.names[k % len(self.names)], 1), s, ppm)
-                cx = margin + col_w * j + col_w / 2
-                img.paste(im, (int(cx - im.width / 2), int(y + row_h / 2 - im.height / 2)), im)
-                name = s.label.split(" (")[0]
-                dims = _dims(s)
-                for txt, f, col, dy in ((name, cap, INK, 0), (dims, sub, MUTED, self.S * 0.026)):
-                    tw = d.textlength(txt, font=f)
-                    d.text((cx - tw / 2, y + row_h + self.S * 0.012 + dy), txt, font=f, fill=col)
-            y += row_h + caption_h
+        img, d = self.canvas(LILAC)
+        self.heading(d, f"{len(self.cat.sizes)} sizes, shown to scale", "All at the same scale, so you can compare them")
+        self.card(d, 60, 210, 1080, 852, 32)
+        ppm = 3.4
+        order = [s for s in SIZE_ORDER if s in self.cat.sizes] + [s for s in self.cat.sizes if s not in SIZE_ORDER]
+        for i, sid in enumerate(order[:7]):
+            s = self.cat.sizes[sid]
+            cx, cy = 90 + (i % 2) * 510, 236 + (i // 2) * 200
+            im = self.at_scale(self.label(g.designs[i % len(g.designs)], sid, self.names[(i + 1) % len(self.names)]),
+                               ppm)
+            img.paste(im, (self.px(cx + 125) - im.width // 2, self.px(cy + 100) - im.height // 2), im)
+            mm, inch = _dims(s)
+            title, inch, use = SIZE_COPY.get(sid, (s.label, inch, ""))
+            self.text(d, cx + 268, cy + 36, title, self.font("display", 30, 600))
+            fb = self.font("text", 19, 800)
+            self.text(d, cx + 268, cy + 76, mm, fb)
+            self.text(d, cx + 268, cy + 101, inch, fb)
+            self.paragraph(d, cx + 268, cy + 130, use, self.font("text", 19, 700), 230, line=1.3)
+        # the 8th cell: a pointer to the bundle with every size
+        combos = [p for p in self.cat.packs.values() if len(p.contents) > 1]
+        allp = next((p for p in combos if len(p.contents) >= len(self.cat.sizes)), None)
+        d.rounded_rectangle(self.box(620, 852, 480, 168), radius=self.px(24), fill=LILAC, outline=PLUM,
+                            width=self.px(3))
+        self.text(d, 646, 880, "Not sure which size?", self.font("display", 30, 600))
+        msg = (f"The {self.pack_title(allp)} bundle has all {len(self.cat.sizes)}, with extra clothing tags."
+               if allp else "Start with a bundle: it mixes the most useful sizes.")
+        self.paragraph(d, 646, 926, msg, self.font("text", 21, 700), 420)
+        self.footer(img)
         return img
 
-    # -- small parts -------------------------------------------------------------
-    def _halves(self, sid: str, q: int) -> int:
-        try:
-            return max(1, q // current_layout(self.cat.sheet, self.cat.sizes[sid], self.layouts_dir).per_piece) \
-                if self.layouts_dir else 1
-        except ValueError:
-            return 1
+    def fonts(self) -> Image.Image:
+        img, d = self.canvas(BLUSH)
+        self.heading(d, "Choose your font", "Write the font number in the personalization box")
+        self.card(d, 60, 210, 1080, 852, 32)
+        sample = self.texts.get("en", {}).get("fontchart_sample", "Émilie-Rose")
+        specs = list(self.r.fonts.specs.values())
+        per_col = math.ceil(len(specs) / 2)
+        rh = min(88.0, 800 / per_col)
+        for i, spec in enumerate(specs):
+            col, row = divmod(i, per_col)
+            x, y = (100, 640)[col], 240 + row * rh
+            self.number(d, x, y + (rh - 46) / 2, 46, spec.id, 22)
+            lf = self.r.fonts.get(spec.id)
+            size = 44.0
+            f = lf.at(self.px(size))
+            while d.textlength(sample, font=f) > self.px(420) and size > 16:
+                size -= 1
+                f = lf.at(self.px(size))
+            d.text((self.px(x + 66), self.px(y + rh / 2)), sample, font=f, fill=PLUM, anchor="lm")
+        if len(specs) % 2:
+            self.paragraph(d, 640, 240 + per_col * rh - rh + 18, "Accents, hyphens and a second line are all welcome",
+                           self.font("text", 20, 800), 460, line=1.3)
+        self.footer(img)
+        return img
 
-    def _half_diagram(self, d: ImageDraw.ImageDraw, sid: str, x0: float, y0: float, k: float,
-                      colour: tuple[int, int, int]) -> None:
-        """A half sheet (printed view, 215.9 × 139.7 mm) with its label cells."""
-        W, H = 215.9, self.cat.sheet.paper_w / 2
-        d.rounded_rectangle([x0, y0, x0 + W * k, y0 + H * k], radius=max(2, int(4 * k)), fill=(247, 246, 250),
-                            outline=(200, 196, 210), width=2)
-        if not self.layouts_dir:
-            return
-        size = self.cat.sizes[sid]
-        lay = current_layout(self.cat.sheet, size, self.layouts_dir)
-        light = tuple(int(c + (255 - c) * 0.45) for c in colour)
-        from .layout import cell_labels
-        for cell in lay.pieces[0]:
-            for lab in cell_labels(cell, size, self.cat.sheet):
-                px_, py, pw, ph = to_printed(*lab, studio_w=self.cat.sheet.paper_w)  # type: ignore[misc]
-                box = [x0 + px_ * k, y0 + py * k, x0 + (px_ + pw) * k, y0 + (py + ph) * k]
-                if size.shape == "circle":
-                    d.ellipse(box, fill=light, outline=colour)
-                else:
-                    d.rounded_rectangle(box, radius=max(1, int(size.r * k)), fill=light, outline=colour)
+    def durable(self, g: Group) -> Image.Image:
+        img, d = self.canvas(PEARL)
+        rows = []
+        for i, dd in enumerate(g.designs[:6]):
+            sid = ("small", "pencil", "tag")[i % 3]
+            rows.append([(dd, sid, self.names[(i + 3) % len(self.names)], HERO_FONTS[(i + 2) % len(HERO_FONTS)])])
+        photo = self._sheet(rows, ppm=self.S / 120, angle=12)
+        crop_h = round(self.S * 540 / GRID)
+        top = (self.S - crop_h) // 2
+        img.paste(photo.crop((0, top, self.S, top + crop_h)), (0, 0))
+        d.rectangle(self.box(0, 540, GRID, 4), fill=PLUM)
+        self.card(d, 60, 462, 420, 118, 28, fill=BLUSH)
+        self.text(d, 60, 488, "Made to last", self.font("display", 60, 600), align="center", width=420)
+        for i, (title, body, icon) in enumerate(FEATURES):
+            x, y = 60 + (i % 2) * 552, 616 + (i // 2) * 240
+            self.card(d, x, y, 528, 216, 28)
+            d.rounded_rectangle(self.box(x + 24, y + 26, 104, 104), radius=self.px(26), fill=LILAC)
+            self.paste(img, self.png(icon), x + 30, y + 32, 92, 92)
+            self.text(d, x + 152, y + 30, title, self.fit_font(d, title, "display", 34, 600, 356))
+            self.paragraph(d, x + 152, y + 80, body, self.font("text", 22, 700), 344)
+        self.footer(img)
+        return img
 
-    # -- all of a listing ------------------------------------------------------------
+    def how_to_order(self, g: Group) -> Image.Image:
+        img, d = self.canvas(BLUSH)
+        self.heading(d, "How to order", "Three steps, about a minute")
+        combos = [p for p in self.cat.packs.values() if len(p.contents) > 1]
+        best = max(combos, key=self.pack_labels) if combos else next(iter(self.cat.packs.values()))
+        steps = ["Pick a design and a bundle", "Type the name and the font number", "We print, laminate and cut"]
+        for i, t in enumerate(steps):
+            y = 210 + i * 280
+            self.card(d, 60, y, 1080, 262, 28)
+            self.number(d, 92, y + 79, 96, i + 1, 54)
+            self.text(d, 220, y + 40, t, self.font("display", 40, 600))
+        f = self.font("text", 23, 800)
+        for x, label in ((220, f"Design: 1. {self.cat.designs[g.designs[0]].name}"),
+                         (660, f"Bundle: {self.pack_title(best)}")):
+            d.rounded_rectangle(self.box(x, 330, 420, 66), radius=self.px(18), fill=LILAC, outline=PLUM,
+                                width=self.px(3))
+            self.text(d, x + 20, 352, label, self.fit_font(d, label, "text", 23, 800, 340))
+            cx, cy = x + 388, 363                    # the drop-down chevron
+            d.line([(self.px(cx - 6), self.px(cy - 3)), (self.px(cx), self.px(cy + 3)), (self.px(cx + 6), self.px(cy - 3))],
+                   fill=PLUM, width=self.px(3), joint="curve")
+        d.rounded_rectangle(self.box(220, 604, 860, 96), radius=self.px(18), fill=LILAC, outline=PLUM,
+                            width=self.px(3))
+        self.text(d, 240, 620, "ADD YOUR PERSONALIZATION", self.font("text", 16, 800), spacing=0.1)
+        self.text(d, 240, 648, f"{self.names[1 % len(self.names)]} Tremblay - font 3", self.font("text", 32, 700))
+        ship = self.cfg.get("ship_time", "[X] business days")
+        self.paragraph(d, 220, 878, f"Your labels ship flat in an envelope within {ship}.",
+                       self.font("text", 25, 700), 520)
+        self.paste(img, self.label(g.designs[0], "medium", self.names[1 % len(self.names)]), 770, 832, 340, 130)
+        self.footer(img)
+        return img
+
+    # -- all of a listing --------------------------------------------------------------------------------
     def image(self, variant: str, g: Group | None) -> Image.Image:
         """One listing image by its IMAGE_VARIANTS name ("Fonts" is shared: `g` may be None)."""
         if variant == "Fonts":
             return self.fonts()
         makers = {"Hero": self.hero, "Designs": self.designs, "Bundles": self.bundles, "Sizes": self.sizes,
-                  "Closeup_Small": self.closeup_small, "Closeup_Round": self.closeup_round}
+                  "Durable": self.durable, "HowToOrder": self.how_to_order}
         if variant not in makers or g is None:
             raise ValueError(f"Unknown listing image '{variant}'.")
         return makers[variant](g)
@@ -365,32 +511,13 @@ def _light(img: Image.Image) -> Image.Image:
     return out.filter(ImageFilter.UnsharpMask(radius=2, percent=40, threshold=2))
 
 
-def _ink_colour(design) -> tuple[int, int, int]:
-    """The design's name colour, or its outline colour when the name is printed in white."""
-    fill = hex_to_rgb(design.fill)
-    return fill if (0.2126 * fill[0] + 0.7152 * fill[1] + 0.0722 * fill[2]) < 215 else hex_to_rgb(design.stroke)
-
-
-def _dims(s: Size) -> str:
+def _dims(s: Size) -> tuple[str, str]:
+    """(mm line, inch line) for the Sizes image; SIZE_COPY's inch labels take precedence."""
     def inch(mm: float) -> str:
-        return f"{round(mm / 25.4 * 16) / 16:.3f}".rstrip("0").rstrip(".")
+        return f"{mm / 25.4:.2f}".rstrip("0").rstrip(".")
     if s.shape == "circle":
-        return f"{s.w:g} mm Ø · {inch(s.w)} in"
+        return f"{s.w:g} mm", f"{inch(s.w)} in"
     if s.shape == "pair":
         ew = s.pair["each_w"]  # type: ignore[index]
-        return f"2 × {ew:g} × {s.h:g} mm · {inch(ew)} × {inch(s.h)} in"
-    return f"{s.w:g} × {s.h:g} mm · {inch(s.w)} × {inch(s.h)} in"
-
-
-def _wrap_items(d: ImageDraw.ImageDraw, items: list[str], font, width: float) -> list[str]:
-    lines, cur = [], ""
-    for it in items:
-        t = f"{cur}, {it}" if cur else it
-        if cur and d.textlength(t, font=font) > width:
-            lines.append(cur + ",")
-            cur = it
-        else:
-            cur = t
-    if cur:
-        lines.append(cur)
-    return lines
+        return f"2 × ({ew:g} × {s.h:g} mm)", f"2 × ({inch(ew)} × {inch(s.h)} in)"
+    return f"{s.w:g} × {s.h:g} mm", f"{inch(s.w)} × {inch(s.h)} in"

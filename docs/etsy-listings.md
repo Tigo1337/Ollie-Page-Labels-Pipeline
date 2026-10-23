@@ -28,7 +28,8 @@ does not, untick "Add the personalization columns" (Shop fields) and turn on per
 ## Before the first export
 
 1. **Bundles:** a price for every bundle (the option names and SKU codes are already filled in).
-2. **Shop fields:** the shop name (used in the description), the shipping profile, return
+2. **Shop fields:** the shop name (used in the description), the shipping time (on the
+   How-to-order image), the shipping profile, return
    policy and processing profile IDs from this shop's Etsy settings, optionally the shop section
    and the taxonomy ID. Read the description template too: its U.S. duties notice and shipping
    wording are a starting point, check they match how this shop ships.
@@ -36,10 +37,15 @@ does not, untick "Add the personalization columns" (Shop fields) and turn on per
    no listing are shown at the bottom with an "Add to…" menu. Each listing has up to 13 tags:
    its own first, then the shop's.
 4. **Images:** set up image hosting (below), then **Make all listing images** (about
-   20 seconds per listing). Each listing gets 7 images, 2400 × 2400 PNG:
-   `Hero` (medium labels on a sheet), `Designs` (every design of the listing, numbered),
-   `Fonts` (the font chart, shared by every listing), `Bundles`, `Sizes` (to scale),
-   `Closeup_Small` (skinny, small, clothing tags) and `Closeup_Round` (round, shoe pairs).
+   10 seconds per listing). Each listing gets 7 images, 2400 × 2400 PNG, in the Mazie Page Creations
+   brand (`engine/listing_images.py`, logo and icons from `brand/`), in gallery order:
+   `Hero` (a close-up of a sheet of the listing's labels, the listing name, 4 chips and an "up to N
+   labels" badge, inside the band Etsy keeps for its 4:3 search thumbnails), `Designs` (every design
+   of the listing, numbered), `Bundles` (the bundles from `packs.json`: cards for the bundles with
+   several sizes, the largest marked "Most complete", pills for the single sizes), `Sizes` (the 7 sizes
+   at the same scale, no ruler on purpose), `Fonts` (the font chart, shared by every listing),
+   `Durable` (a close-up and the 4 "made to last" features) and `HowToOrder` (the 3 steps, with the
+   shipping time from the Listings page).
 5. **Download the Etsy CSV** and import it with the Etsy Connector.
 
 The page lists everything still missing; the CSV button stays off until the list is empty.
