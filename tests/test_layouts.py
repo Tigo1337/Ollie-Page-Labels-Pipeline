@@ -118,6 +118,18 @@ def test_middle_is_top_translated_and_bottom_is_top_mirrored(sid):
 
 
 @pytest.mark.parametrize("sid", list(PER_PIECE))
+def test_cuts_are_symmetric_top_to_bottom_in_studio(sid):
+    """docs/studio-template-setup.md relies on this: SCM's dxf_to_studio3.py flips the selection vertically
+    (Studio frame), which leaves every current layout unchanged."""
+    from engine.layout import cell_labels
+    L, size, H = lay(sid), CAT.sizes[sid], SHEET.paper_h
+    cuts = sorted((round(x, 2), round(y, 2), round(w, 2), round(h, 2))
+                  for c in L.cells for x, y, w, h in cell_labels(c, size, SHEET))
+    flipped = sorted((x, round(H - y - h, 2), w, h) for x, y, w, h in cuts)
+    assert all(a == pytest.approx(b, abs=0.02) for a, b in zip(cuts, flipped))
+
+
+@pytest.mark.parametrize("sid", list(PER_PIECE))
 def test_every_cell_lies_inside_its_own_piece(sid):
     L = lay(sid)
     for i, cells in enumerate(L.pieces):

@@ -4,14 +4,14 @@
   top-left, y down. All geometry (marks, keep-outs, layout cells, cut files, PDF content)
   lives here. The print PDF is a landscape page with /Rotate 270, like SCM's proxy PDFs.
 * **Printed view**: the portrait sheet as it comes out of the printer (after /Rotate 270),
-  215.9 × 279.4 mm, origin top-left, y down. Used for human wording (top half / bottom
-  half), proofs and previews, and by the layout optimizer, which reasons in it.
+  215.9 × 279.4 mm, origin top-left, y down. Used for human wording (top / middle /
+  bottom piece), proofs and previews, and by the layout optimizer, which reasons in it.
 
     point: printed (x, y)  <->  Studio (X, Y) = (W − y, x)          W = Studio width, 279.4
     rect:  printed (x, y, w, h)  ->  Studio (W − y − h, x, h, w)
 
-The Studio square mark at top-left lands at the printed bottom-left; the printed top half
-is the Studio right half (X > trim).
+The Studio square mark at top-left lands at the printed bottom-left; the printed top piece
+is the Studio right third (X > the upper trim line, 186.267).
 """
 from __future__ import annotations
 
