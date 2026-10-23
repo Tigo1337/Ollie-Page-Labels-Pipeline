@@ -231,7 +231,7 @@ export default function MakePage() {
   );
 }
 
-function RunResult({ run }: { run: Run }) {
+export function RunResult({ run }: { run: Run }) {
   const zip = run.files.find((f) => f.kind === "zip");
   const proof = run.files.find((f) => f.kind === "customer-proof");
   const pages = run.files.filter((f) => f.kind === "page-proof");

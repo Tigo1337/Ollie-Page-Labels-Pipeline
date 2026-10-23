@@ -23,6 +23,7 @@ from .settings import Settings, load_settings
 from .storage import BlobNotFound, make_store
 from .import_jobs import ImportJobs
 from .listings_service import Listings
+from .orders_service import Orders
 from .templates_store import Templates
 
 log = logging.getLogger("labels")
@@ -53,6 +54,7 @@ def create_app(settings: Settings | None = None, start_font_download: bool = Tru
     app.state.templates = Templates(store, settings.config_dir, settings.layouts_dir)
     app.state.imports = ImportJobs(repo, settings.data_dir / "imports")
     app.state.listings = Listings(repo, svc, store)
+    app.state.orders = Orders(repo, svc, app.state.templates)
     app.state.font_job = {"running": False, "report": []}
 
     # -- auth: one shared secret (Replit Secret LABELS_API_SECRET) -------------
@@ -88,10 +90,12 @@ def create_app(settings: Settings | None = None, start_font_download: bool = Tru
 
     from .api import router
     from .listings_api import router as listings_router
+    from .orders_api import router as orders_router
     from .templates_api import router as templates_router
     app.include_router(router, prefix="/api")
     app.include_router(templates_router, prefix="/api")
     app.include_router(listings_router, prefix="/api")
+    app.include_router(orders_router, prefix="/api")
 
     # -- brand files (logo, favicon): served from brand/, public like the frontend ----------
     @app.get("/brand/{name:path}", include_in_schema=False)

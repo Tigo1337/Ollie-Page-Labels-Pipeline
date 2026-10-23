@@ -9,6 +9,7 @@ import CropEditor from "./pages/CropEditor";
 import SettingsPage from "./pages/SettingsPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import ListingsPage from "./pages/ListingsPage";
+import OrdersPage from "./pages/OrdersPage";
 
 interface AppCtx {
   catalog: Catalog;
@@ -90,6 +91,7 @@ export default function App() {
   else if (top === "settings") page = <SettingsPage />;
   else if (top === "templates") page = <TemplatesPage />;
   else if (top === "listings") page = <ListingsPage />;
+  else if (top === "orders") page = <OrdersPage />;
   else page = <MakePage />;
 
   const link = (href: string, label: string, active: boolean) => (
@@ -103,6 +105,7 @@ export default function App() {
           <span>Label pipeline</span>
         </a>
         <nav>
+          {link("#/orders", "Orders", top === "orders")}
           {link("#/", "Make labels", !top || top === "make")}
           {link("#/designs", "Designs", top === "designs")}
           {link("#/templates", "Templates", top === "templates")}
