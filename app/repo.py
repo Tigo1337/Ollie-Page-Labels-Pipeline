@@ -33,6 +33,9 @@ LISTINGS_FIXUPS = (
     ("description_template", "At Ollie Page Creations, we prepay", "We prepay"),
     ("description_template", "Ollie Page Creations © ", "{shop_name} © "),
 )
+# the CSV's item size, from the half-sheet envelope (23 × 16 × 1 cm) to the #10 envelope the thirds ship in
+# (4 1/8 × 9 1/2 in, 5 mm Lettermail limit): (csv key, old seeded value, new value), changed only if unedited
+LISTINGS_CSV_FIXUPS = (("item_length", "23", "24.1"), ("item_width", "16", "10.5"), ("item_height", "1", "0.5"))
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
 MAX_IMAGE_PIXELS = 40_000_000
 
@@ -99,6 +102,9 @@ class Repo:
                 for key, old, new in LISTINGS_FIXUPS:
                     if isinstance(val.get(key), str):
                         val[key] = new if key == "asset_base_url" and val[key] == old else val[key].replace(old, new)
+                if isinstance(val.get("csv"), dict):
+                    val["csv"] = {**val["csv"], **{k: new for k, old, new in LISTINGS_CSV_FIXUPS
+                                                   if str(val["csv"].get(k, "")).strip() == old}}
                 if val != listings.value:
                     listings.value = val
             row = s.get(Setting, "shop")
