@@ -102,7 +102,9 @@ class LocalAssets:
         out = {}
         for src in ("wide", "square"):
             if self.original_path(design_id, src) is not None:  # type: ignore[arg-type]
-                out[src] = self.art(design_id, src).size  # type: ignore[arg-type]
+                # the size is in the file's header: no need to decode (and keep) the whole image
+                with Image.open(self._prepared_path(design_id, src)) as im:  # type: ignore[arg-type]
+                    out[src] = im.size
         return out
 
     def font_path(self, spec: FontSpec) -> Path:

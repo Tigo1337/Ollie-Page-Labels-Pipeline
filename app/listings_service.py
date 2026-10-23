@@ -19,6 +19,7 @@ import zipfile
 from engine.config import Catalog
 from engine.listing_images import ListingImages
 from engine.listings import (ETSY_MAX_TAGS, IMAGE_VARIANTS, Group, asset_name, build_csv, description, groups_of,
+                             item_fields,
                              image_files, problems, render_title)
 
 from .r2 import R2Config, R2Error, purge_cdn, put_object
@@ -181,6 +182,7 @@ class Listings:
             "unassigned": [d for d in cat.designs if d not in assigned],
             "designs": {d.id: d.name for d in cat.designs.values()},
             "asset_base": self.asset_base(cfg),
+            "item": item_fields(cat, self.svc.layouts_dir),
             "r2": {"configured": r2 is not None, "public_base": r2.public_base if r2 else None,
                    "cdn_purge": bool(r2 and r2.cf_token and r2.cf_zone)},
             "job": self.latest(),
@@ -189,7 +191,7 @@ class Listings:
     # -- CSV and ZIP ------------------------------------------------------------------
     def csv(self, group_ids: list[str] | None = None) -> str:
         cfg = self.cfg()
-        return build_csv(cfg, self.svc.catalog, self.asset_base(cfg), group_ids)
+        return build_csv(cfg, self.svc.catalog, self.asset_base(cfg), group_ids, self.svc.layouts_dir)
 
     def zip_bytes(self) -> bytes:
         """Every generated listing image, plus the CSV when the listings are ready."""

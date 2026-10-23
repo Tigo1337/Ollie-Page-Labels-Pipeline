@@ -97,6 +97,10 @@ export interface Design {
 }
 export interface Preview { image: string; cap_mm: number[]; warnings: string[]; preset: PresetData; preset_is_auto: boolean; min_cap_mm: number }
 export interface RunFile { name: string; size: number; kind: string }
+export interface RunEnvelope {
+  order: string; customer: string; waiting: number; pieces: number; real: number; bonus: number;
+  bonus_in_envelope: boolean; bonus_note?: string; weight_g: number; thickness_mm: number; kind: string; lettermail: string;
+}
 export interface RunPiece { order: string; size: string; name: string; finish: string; index: number; of: number; bonus: boolean; tag: string }
 // runs made before the thirds (geometry v3) have top / bottom halves instead of pieces
 export interface RunSheet {
@@ -112,6 +116,7 @@ export interface Run {
   id: string; title: string; prefix: string; created_at: string; request: Record<string, unknown>;
   files: RunFile[]; warnings: string[];
   summary: { finishes: Record<string, { sheets: number; labels: number }>; sheets?: RunSheet[]; waiting?: RunPiece[];
+             envelopes?: RunEnvelope[]; look_alikes?: { size: string; size_label: string; name: string; identical: boolean; orders: string[] }[];
              templates?: { layout_id: string; studio3: boolean }[] };
 }
 export interface FontStatus { id: number; name: string; installed: boolean; licence: string | null; mini_ok: boolean; weight: number | null; file: string }

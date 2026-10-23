@@ -81,6 +81,25 @@ class RunRow(Base):
     notes: Mapped[str] = mapped_column(Text, default="")
 
 
+class OrderRow(Base):
+    """A customer order waiting to be made (Orders page): imported from Etsy's CSV or added by hand.
+    `lines` are the order lines (design, pack, name, line2, font, finish, and `review`: notes to check
+    before making it); `runs` the production runs that made it, newest last."""
+    __tablename__ = "orders"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+    order_date: Mapped[str] = mapped_column(String(40), default="")
+    customer: Mapped[str] = mapped_column(String(200), default="")
+    lang: Mapped[str] = mapped_column(String(8), default="en")
+    status: Mapped[str] = mapped_column(String(16), default="new")       # new | made | shipped | cancelled
+    lines: Mapped[list] = mapped_column(JSON)
+    transactions: Mapped[list] = mapped_column(JSON, default=list)
+    source: Mapped[str] = mapped_column(String(20), default="manual")     # etsy-csv | manual
+    runs: Mapped[list] = mapped_column(JSON, default=list)
+    notes: Mapped[str] = mapped_column(Text, default="")
+
+
 def make_session_factory(url: str):
     kwargs = {}
     if url.startswith("sqlite"):

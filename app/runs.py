@@ -31,6 +31,8 @@ def file_kind(name: str) -> str:
         return "notch"
     if "packing_slip" in name:
         return "slip"
+    if "packing_guide" in name:
+        return "guide"
     if "info_sheet" in name:
         return "info"
     if name.endswith(".zip"):

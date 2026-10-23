@@ -8,6 +8,7 @@ interface GlyphCheck { ok: boolean; message?: string; alternatives?: { id: numbe
 const KIND_LABEL: Record<string, string> = {
   zip: "Everything (ZIP)", print: "Print PDF", template: "Cut template", "page-proof": "Page proof",
   "customer-proof": "Customer proof", notch: "Laminate notches", info: "Info sheet", slip: "Packing slip",
+  guide: "Packing guide",
   other: "Other",
 };
 const MINI_SIZES = ["pencil", "tag"];
@@ -230,11 +231,11 @@ export default function MakePage() {
   );
 }
 
-function RunResult({ run }: { run: Run }) {
+export function RunResult({ run }: { run: Run }) {
   const zip = run.files.find((f) => f.kind === "zip");
   const proof = run.files.find((f) => f.kind === "customer-proof");
   const pages = run.files.filter((f) => f.kind === "page-proof");
-  const order = ["zip", "print", "template", "notch", "info", "slip", "customer-proof", "page-proof", "other"];
+  const order = ["zip", "print", "template", "notch", "info", "guide", "slip", "customer-proof", "page-proof", "other"];
   const files = [...run.files].sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind) || a.name.localeCompare(b.name));
   const nPieces = Math.max(2, ...(run.summary.sheets ?? []).map((sh) => sheetPieces(sh).length));
   return (
@@ -281,6 +282,29 @@ function RunResult({ run }: { run: Run }) {
               ))}
             </tbody>
           </table>
+          {(run.summary.envelopes ?? []).length > 0 && (
+            <>
+              <h4>Envelopes</h4>
+              <table className="table small">
+                <thead><tr><th>Order</th><th>Pieces</th><th>Weight</th><th>Postage</th><th>Bonus copies</th></tr></thead>
+                <tbody>
+                  {run.summary.envelopes!.map((e) => (
+                    <tr key={e.order}>
+                      <td>#{e.order}{e.customer ? ` · ${e.customer}` : ""}</td>
+                      <td>{e.pieces}</td>
+                      <td>≈ {e.weight_g} g · {e.thickness_mm} mm</td>
+                      <td className={e.kind === "standard" ? "" : "bad"}>{e.lettermail}</td>
+                      <td>{e.bonus === 0 ? "—" : e.bonus_in_envelope ? `${e.bonus}, in the envelope` : `${e.bonus}, keep aside (would raise the postage)`}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+          {(run.summary.look_alikes ?? []).filter((a) => !a.identical).length > 0 && (
+            <Warnings items={run.summary.look_alikes!.filter((a) => !a.identical).map((a) =>
+              `${a.size_label} "${a.name}": orders ${a.orders.map((o) => "#" + o).join(", ")} have look-alike pieces — see the packing guide.`)} />
+          )}
           {(run.summary.waiting ?? []).length > 0 && (
             <Warnings items={(run.summary.waiting ?? []).map((h) => `Waiting for more thirds to fill a sheet: ${h.tag}`)} />
           )}

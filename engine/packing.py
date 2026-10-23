@@ -141,22 +141,57 @@ def pack_pieces_from(pack: Pack, cat: Catalog, per_piece_of: dict[str, int]) -> 
     return out
 
 
-LETTERMAIL_MAX_PIECES = 12      # above this, warn: standard Lettermail is at most 5 mm thick
-LETTERMAIL_MAX_THICKNESS = 5.0
-LETTERMAIL_CLASSES = ((30.0, "Lettermail, up to 30 g"), (50.0, "Lettermail, up to 50 g"))
+# Canada Post Lettermail. A #10 envelope (241 × 105 mm) fits the standard size (245 × 156 mm).
+STANDARD_MAX_G, STANDARD_MAX_MM = 50.0, 5.0         # standard letter: postage up to 30 g, then up to 50 g
+OVERSIZED_MAX_G, OVERSIZED_MAX_MM = 500.0, 20.0     # oversized letter: postage in 100 g steps up to 500 g
+STANDARD_TIERS = (30.0, 50.0)
+OVERSIZED_TIERS = (100.0, 200.0, 300.0, 400.0, 500.0)
 
 
 def envelope(pieces: int, production: Production) -> dict:
-    """The #10 envelope for an order of `pieces` pieces: estimated weight (pieces × piece_weight_g +
-    envelope_weight_g), its Canada Post Lettermail class, the thickness, and a warning above 12 pieces."""
+    """The #10 envelope holding `pieces` pieces: its estimated weight (pieces × piece_weight_g +
+    envelope_weight_g) and thickness, and its Canada Post Lettermail postage tier, decided by the
+    weight **and** the thickness (standard up to 50 g and 5 mm, oversized up to 500 g and 20 mm).
+    `tier` names the postage step (same tier = same postage); `warning` says why it is not a standard
+    letter, if it is not."""
     weight = round(pieces * production.piece_weight_g + production.envelope_weight_g, 1)
-    lettermail = next((name for limit, name in LETTERMAIL_CLASSES if weight <= limit), "Over 50 g (oversized)")
     thickness = round(pieces * production.piece_thickness_mm, 2)
-    warning = ""
-    if pieces > LETTERMAIL_MAX_PIECES:
-        warning = (f"{pieces} pieces (about {thickness:g} mm thick): standard Lettermail is limited to "
-                   f"{LETTERMAIL_MAX_THICKNESS:g} mm, check the envelope's thickness.")
-    return {"weight_g": weight, "lettermail": lettermail, "thickness_mm": thickness, "warning": warning}
+    if weight <= STANDARD_MAX_G and thickness <= STANDARD_MAX_MM:
+        limit = next(t for t in STANDARD_TIERS if weight <= t)
+        kind, tier = "standard", f"standard-{limit:g}"
+        label = f"Lettermail, up to {limit:g} g" if limit == STANDARD_TIERS[0] else \
+            f"Lettermail, {STANDARD_TIERS[0]:g}–{limit:g} g"
+    elif weight <= OVERSIZED_MAX_G and thickness <= OVERSIZED_MAX_MM:
+        limit = next(t for t in OVERSIZED_TIERS if weight <= t)
+        kind, tier = "oversized", f"oversized-{limit:g}"
+        label = f"Oversized letter, up to {limit:g} g"
+    else:
+        kind, tier, label = "parcel", "parcel", "Parcel (over 500 g or 20 mm)"
+    reasons = []
+    if weight > STANDARD_MAX_G:
+        reasons.append(f"over {STANDARD_MAX_G:g} g")
+    if thickness > STANDARD_MAX_MM:
+        reasons.append(f"about {thickness:g} mm thick (standard letters: {STANDARD_MAX_MM:g} mm)")
+    ships_as = "a parcel" if kind == "parcel" else f"an {label[0].lower()}{label[1:]}"
+    warning = f"{pieces} pieces, {' and '.join(reasons)}: ships as {ships_as}." if reasons else ""
+    return {"weight_g": weight, "thickness_mm": thickness, "kind": kind, "tier": tier, "lettermail": label,
+            "warning": warning}
+
+
+def order_envelope(real: int, bonus: int, production: Production) -> dict:
+    """An order's envelope: its real pieces, plus its bonus copies only when they keep the same postage
+    tier (free copies must never raise the postage); otherwise the bonus copies are kept aside as spares."""
+    alone = envelope(real, production)
+    with_bonus = envelope(real + bonus, production)
+    add = bonus > 0 and with_bonus["tier"] == alone["tier"]
+    env = dict(with_bonus if add else alone)
+    env.update(real=real, bonus=bonus, bonus_in_envelope=add, pieces=real + (bonus if add else 0))
+    if bonus and not add:
+        ships_as = "a parcel" if with_bonus["kind"] == "parcel" else \
+            f"an {with_bonus['lettermail'][0].lower()}{with_bonus['lettermail'][1:]}"
+        env["bonus_note"] = (f"keep the {bonus} bonus piece{'s' if bonus > 1 else ''} aside as spares: in the "
+                             f"envelope they would make it {ships_as}")
+    return env
 
 
 def pack_sheets(pack: Pack, cat: Catalog, layouts_dir) -> dict[str, float]:

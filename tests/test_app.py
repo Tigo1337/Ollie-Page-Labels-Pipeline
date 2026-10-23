@@ -90,7 +90,7 @@ def test_seeded_catalog(client):
     assert (school["pieces"], school["alone"]) == (14, 7)
     assert school["pieces_by_size"] == {"pencil": 3, "small": 3, "medium": 2, "large": 1, "round": 1, "tag": 2,
                                         "shoe": 2}
-    assert school["envelope"]["weight_g"] == 89.0 and "5 mm" in school["envelope"]["warning"]
+    assert school["envelope"]["weight_g"] == 89.0 and school["envelope"]["kind"] == "oversized"
     tag = next(s for s in cat["sizes"] if s["id"] == "tag")
     assert (tag["layout_id"], tag["per_piece"], tag["per_sheet"]) == ("chels-tag-v2", 34, 102)
     assert [f["id"] for f in cat["finishes"]] == ["matte"] and cat["finishes"][0]["label"] == "Matte laminate"
@@ -215,11 +215,15 @@ def test_crop_presets_are_saved_and_used_by_orders(client):
     lab = client.app.state.svc.renderer.render(LabelSpec("shark", "large", "Léo", "", 1, "matte"))
     assert lab.preset.to_dict() == preset
 
-    # copy to every rectangular size; round/square untouched
-    assert client.post("/api/designs/shark/presets/large/copy-to-rect").json()["copied_to"] == ["pencil", "small", "medium", "tag"]
+    # copy the art position to the other strip sizes; tag, round and shoe untouched
+    assert client.post("/api/designs/shark/presets/large/copy-to-rect").json()["copied_to"] == ["pencil", "small", "medium"]
     sizes = {s["size"]: s for s in client.get("/api/designs/shark/presets").json()["sizes"]}
-    assert all(not sizes[s]["is_auto"] for s in ("pencil", "small", "medium", "large", "tag"))
-    assert sizes["round"]["is_auto"] and sizes["shoe"]["is_auto"]
+    assert all(not sizes[s]["is_auto"] for s in ("pencil", "small", "medium", "large"))
+    assert sizes["tag"]["is_auto"] and sizes["round"]["is_auto"] and sizes["shoe"]["is_auto"]
+    assert all(sizes[s]["preset"]["text"] == sizes[s]["fixed_text"] for s in ("pencil", "small", "medium"))
+    assert sizes["medium"]["preset"]["height"] == pytest.approx(0.6, abs=0.01)      # the same zoom as large
+    r = client.post("/api/designs/shark/presets/tag/copy-to-rect")
+    assert r.status_code == 400 and "clothing tag" in r.json()["detail"]
 
     # reset goes back to automatic
     assert client.delete("/api/designs/shark/presets/pencil").status_code == 200

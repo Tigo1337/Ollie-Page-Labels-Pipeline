@@ -56,6 +56,7 @@ class ProductionResult:
     labels: dict[str, RenderedLabel] = field(default_factory=dict)
     zip_path: Path | None = None
     summary: dict = field(default_factory=dict)
+    envelopes: list[dict] = field(default_factory=list)   # one per order: pieces, bonus copies, postage
 
 
 def safe_name(s: str) -> str:
@@ -189,6 +190,12 @@ class Producer:
                          encoding="ascii")
             add(p)
 
+        from .packing_guide import envelopes, write_guide
+        res.envelopes = envelopes(self, orders, res)
+        guide = out_dir / f"{prefix}_packing_guide.pdf"
+        write_guide(self, res, res.envelopes, guide)
+        add(guide)
+
         info_txt = self.info_sheet_text(orders, res, templates_used)
         for name, text in ((f"{prefix}_info_sheet", info_txt), (f"{prefix}_packing_slip", self.packing_slip(orders, res))):
             p_txt = out_dir / f"{name}.txt"
@@ -218,6 +225,7 @@ class Producer:
 
     # ------------------------------------------------------------------
     def summary(self, orders: list[Order], res: ProductionResult, templates_used: list[dict]) -> dict:
+        from .packing_guide import look_alikes
         def piece(p: Piece | None) -> dict | None:
             if p is None:
                 return None
@@ -236,6 +244,13 @@ class Producer:
                         "proof": f"{res.prefix}_sheet{sh.n:02d}_proof.png",
                         "pieces": [piece(p) for p in sh.pieces]} for sh in res.plan.sheets],
             "waiting": [piece(p) for p in res.plan.waiting],
+            "envelopes": [{"order": e["order"], "customer": e["customer"], "waiting": e["waiting"],
+                           "labels": [{k: g[k] for k in ("size", "size_label", "name", "line2", "design_name", "font",
+                                                         "count", "where")} for g in e["groups"]],
+                           "bonus_where": [b["where"] for b in e["bonus"]], **e["envelope"]} for e in res.envelopes],
+            "look_alikes": [{k: a[k] for k in ("size", "size_label", "name", "identical")} |
+                            {"orders": [p["order"] for p in a["pieces"]]} for a in look_alikes(res.envelopes)],
+            "packing_guide": f"{res.prefix}_packing_guide.pdf",
             "templates": templates_used, "warnings": res.warnings,
         }
 
@@ -345,7 +360,9 @@ class Producer:
         )
 
     def packing_slip(self, orders: list[Order], res: ProductionResult) -> str:
-        """Per order: its pieces, the sheet each one is printed on and where (haut / milieu / bas)."""
+        """Per order: its pieces, the sheet each one is printed on and where (haut / milieu / bas), and its
+        envelope (postage; bonus copies go in only when they keep the same postage tier)."""
+        env_of = {e["order"]: e["envelope"] for e in res.envelopes}
         where: dict[tuple[str, int], list[str]] = {}
         for sh in res.plan.sheets:
             n = len(sh.pieces)
@@ -353,7 +370,11 @@ class Producer:
                 if piece is None:
                     continue
                 pos = f"{piece_name(i, n, 'fr')} ({piece_name(i, n)})"
-                note = " — BONUS, copie gratuite (free copy), same envelope" if piece.bonus else ""
+                note = ""
+                if piece.bonus:
+                    env = env_of.get(piece.order_id, {})
+                    note = (" — BONUS, copie gratuite (free copy), same envelope" if env.get("bonus_in_envelope")
+                            else " — BONUS, copie gratuite: keep aside as a spare (it would raise the postage)")
                 where.setdefault((piece.order_id, piece.index), []).append(f"sheet {sh.n}, {pos}{note}")
         waiting = {(p.order_id, p.index) for p in res.plan.waiting}
         out = [f"PACKING SLIP — {res.prefix}", "=" * 60, ""]
@@ -365,6 +386,11 @@ class Producer:
                 if (p.order_id, p.index) in waiting:
                     spots = ["WAITING for more pieces to fill a sheet (not printed yet)"]
                 out.append(f"  {f'tiers {p.index}/{p.of}':<12} {size.label:<37} {p.name:<24} " + "; ".join(spots))
+            env = env_of.get(o.order_id)
+            if env:
+                out.append(f"  Envelope: {env['pieces']} piece(s), about {env['weight_g']:g} g and "
+                           f"{env['thickness_mm']:g} mm — {env['lettermail']}"
+                           + (f"; {env['bonus_note']}" if env.get("bonus_note") else ""))
             out.append("")
         return "\n".join(out) + "\n"
 

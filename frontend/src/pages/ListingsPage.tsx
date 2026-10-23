@@ -20,6 +20,8 @@ interface Status {
   cfg: Cfg; problems: string[]; image_notes: string[]; groups: { id: string; title: string; images: Img[] }[];
   unassigned: string[]; designs: Record<string, string>; asset_base: string;
   r2: { configured: boolean; public_base: string | null; cdn_purge: boolean }; job: Job | null;
+  item?: { item_weight: string; item_length: string; item_width: string; item_height: string; basis: string | null;
+           postage: string | null };
 }
 
 const SHOP_FIELDS: [string, string, string][] = [
@@ -196,6 +198,14 @@ export default function ListingsPage() {
               <input value={cfg.csv[k] ?? ""} onChange={(e) => edit({ csv: { ...cfg.csv, [k]: e.target.value } })} />
             </label>
           ))}
+          {st.item && (
+            <p className="span2 muted small">
+              Item size and weight in the CSV (computed): {st.item.item_length} × {st.item.item_width} × {st.item.item_height} cm,
+              {" "}{st.item.item_weight} kg: a #10 envelope with the heaviest bundle
+              {st.item.basis ? ` (${catalog.packs.find((p) => p.id === st.item!.basis)?.label ?? st.item.basis}${st.item.postage ? `, ${st.item.postage.toLowerCase()}` : ""})` : ""}.
+              Etsy takes one weight per listing; it follows the piece and envelope weights in Settings.
+            </p>
+          )}
           {!st.r2.configured && (
             <label className="span2">Where the images are hosted<small className="muted">used when R2 is not set up, e.g. https://images.yourshop.com</small>
               <input value={cfg.asset_base_url} placeholder="https://" onChange={(e) => edit({ asset_base_url: e.target.value })} />

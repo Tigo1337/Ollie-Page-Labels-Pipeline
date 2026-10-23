@@ -40,10 +40,13 @@ def test_alt_texts_and_asset_names_follow_the_variants(cfg, ws):
     assert all("|" not in x and "{" not in x for x in a)
 
 
+SMALL = 600   # every group at this size: the drawing code is the same at every size, 16 times fewer pixels
+
+
 @pytest.fixture(scope="module")
 def every_group_images(ws, cfg, tmp_path_factory):
     out = tmp_path_factory.mktemp("listing-images")
-    li = ListingImages(ws.renderer, ws.ui, cfg, ws.texts)
+    li = ListingImages(ws.renderer, ws.ui, {**cfg, "image_size": SMALL}, ws.texts)
     paths = {}
     for g in groups_of(cfg):
         paths[g.id] = li.write_group(g, out / g.id, shared=False)
@@ -51,7 +54,7 @@ def every_group_images(ws, cfg, tmp_path_factory):
     return paths
 
 
-def test_every_groups_7_images_are_2400_square(every_group_images, cfg):
+def test_every_group_makes_its_7_images(every_group_images, cfg):
     from PIL import Image
     groups = groups_of(cfg)
     assert len(every_group_images) == len(groups) + 1
@@ -60,9 +63,22 @@ def test_every_groups_7_images_are_2400_square(every_group_images, cfg):
         assert [p.name for p in files] == [asset_name(cfg, g, v) for v in GROUP_VARIANTS]
         for p in files:
             with Image.open(p) as im:
-                assert im.size == (2400, 2400) and im.mode == "RGB", p.name
+                assert im.size == (SMALL, SMALL) and im.mode == "RGB", p.name
     with Image.open(every_group_images["_fonts"][0]) as im:
-        assert im.size == (2400, 2400)
+        assert im.size == (SMALL, SMALL)
+
+
+def test_listing_images_are_2400_square(ws, cfg, tmp_path):
+    """The real size, on one group and the shared Fonts image."""
+    from PIL import Image
+    assert cfg["image_size"] == 2400
+    li = ListingImages(ws.renderer, ws.ui, cfg, ws.texts)
+    g = groups_of(cfg)[0]
+    files = li.write_group(g, tmp_path / g.id, shared=False) + [li.write_shared(tmp_path)]
+    assert len(files) == 7
+    for p in files:
+        with Image.open(p) as im:
+            assert im.size == (2400, 2400) and im.mode == "RGB", p.name
 
 
 # ---------------------------------------------------------------- text inside its box
@@ -134,16 +150,25 @@ def test_groups_of_1_6_10_16_designs_keep_their_text_inside(ws, cfg, n):
         assert problems == [], f"{variant}: " + "; ".join(problems[:4])
 
 
-def test_design_tiles_shrink_and_names_wrap_to_two_lines(ws, cfg):
-    designs = [d for d in ws.catalog.designs if d != "solid"][:16]
-    g = Group(id="sixteen", code="S", name="Sixteen", designs=designs, tags=[])
+@pytest.mark.parametrize("n,cols,tile_w", [(10, 2, 530), (11, 3, 346.7), (13, 3, 346.7), (16, 3, 346.7),
+                                            (22, 4, 255)])
+def test_design_image_layout_by_group_size(ws, cfg, n, cols, tile_w):
+    """Up to 10 designs: the 2 × 5 tiles of the reference images. More: upright tiles in 3 columns (4 above 18),
+    every design numbered in order, names at least 20 px on the 1200 grid up to 18 designs."""
+    designs = [d for d in ws.catalog.designs if d != "solid"][:n]
+    g = Group(id=f"g{n}", code="G", name="Group", designs=designs, tags=[])
     li = ListingImages(ws.renderer, ws.ui, {**cfg, "image_size": 1200}, ws.texts)
     with record_draws(1200) as (boxes, texts):
         li.image("Designs", g)
     numbers = [s for s, _ in texts if s.isdigit()]
-    assert numbers == [str(i) for i in range(1, 17)]
-    tiles = [b for b in boxes if (b[2] - b[0]) > 500 and (b[3] - b[1]) < 160]     # 8 rows of 2, shorter tiles
-    assert len(tiles) >= 16
+    assert numbers == [str(i) for i in range(1, n + 1)]
+    tiles = [b for b in boxes if abs((b[2] - b[0] + 1) - tile_w) < 2 and (b[3] - b[1]) > 60]
+    assert len(tiles) >= n
+    assert len({round(b[0]) for b in tiles}) >= cols
+    if 10 < n <= 18:
+        names = {ws.catalog.designs[d].name for d in designs}
+        sizes = [y1 - y0 for s, (x0, y0, x1, y1) in texts if s in names]
+        assert len(sizes) == n and min(sizes) >= 14          # cap height of a >= 20 px font
 
 
 def test_listing_images_use_only_brand_colours_outside_the_labels(ws, cfg):

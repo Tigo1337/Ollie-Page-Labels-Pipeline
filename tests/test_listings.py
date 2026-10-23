@@ -101,7 +101,8 @@ def test_csv_matches_the_binder_format(cfg, cat):
         assert "Test Shop © " in r["description"]
         assert r["is_personalizable"] == "TRUE" and "font" in r["personalization_instructions"]
         assert r["who_made"] == "i_did" and r["when_made"] == "made_to_order" and r["item_weight_unit"] == "kg"
-        assert (r["item_length"], r["item_width"], r["item_height"]) == ("24.1", "10.5", "0.5")   # #10 envelope
+        assert (r["item_length"], r["item_width"], r["item_height"], r["item_weight"]) == ("24.1", "10.5", "0.5",
+                                                                                          "0.089")   # #10 envelope
     # the shared font chart is the same file in every listing
     fonts = {u for row in rows[1:] for u in dict(zip(rows[0], row))["image_urls"].split(",") if "Fonts" in u}
     assert fonts == {"https://assets.example.com/Labels_Fonts.png"}
@@ -269,22 +270,31 @@ def test_seeded_listings_lose_the_other_business(tmp_path):
     assert new["description_template"] == "We prepay all U.S. duties.\n{shop_name} © 2026. All rights reserved."
 
 
-def test_csv_item_size_is_the_10_envelope(tmp_path, cat):
-    """The seed and the CSV give a #10 envelope (24.1 × 10.5 × 0.5 cm); a database still holding the old
-    half-sheet envelope size (23 × 16 × 1 cm) is updated, a size the shop changed is kept."""
+def test_csv_item_size_and_weight_follow_the_heaviest_bundle(tmp_path, cat):
+    """Etsy takes one weight per listing and every listing offers every bundle: the CSV gives the #10 envelope
+    (24.1 × 10.5 cm) of the heaviest bundle, computed from the bundles and the envelope estimate. Values a
+    database stored before are dropped (they would be ignored anyway)."""
+    import dataclasses
+
     from app.db import Setting
-    cfg = load_listings(REPO / "config")
-    assert {k: cfg["csv"][k] for k in ("item_length", "item_width", "item_height", "item_dimensions_unit")} == {
-        "item_length": "24.1", "item_width": "10.5", "item_height": "0.5", "item_dimensions_unit": "cm"}
+    from engine.listings import item_fields
+    item = item_fields(cat)
+    assert {k: item[k] for k in ("item_weight", "item_weight_unit", "item_length", "item_width", "item_height",
+                                 "item_dimensions_unit")} == {
+        "item_weight": "0.089", "item_weight_unit": "kg", "item_length": "24.1", "item_width": "10.5",
+        "item_height": "0.5", "item_dimensions_unit": "cm"}
+    assert item["basis"] == "school" and item["postage"] == "Oversized letter, up to 100 g"
+    lighter = dataclasses.replace(cat, production=dataclasses.replace(cat.production, piece_weight_g=4.0))
+    assert item_fields(lighter)["item_weight"] == "0.061"                  # 14 × 4 + 5 g
+    assert "item_weight" not in load_listings(REPO / "config")["csv"]     # not stored any more
     st = Settings(data_dir=tmp_path, database_url=f"sqlite:///{tmp_path}/a.db", storage="local", api_secret=None,
                   config_dir=REPO / "config", frontend_dist=tmp_path)
     repo = create_app(st, start_font_download=False).state.repo
     old = dict(repo.setting("listings"))
-    old["csv"] = {**old["csv"], "item_length": "23", "item_width": "16", "item_height": "2"}
+    old["csv"] = {**old["csv"], "item_length": "23", "item_width": "16", "item_height": "1", "item_weight": "0.03"}
     with repo.Session() as s:
         s.get(Setting, "listings").value = old
         s.commit()
     repo.ensure_defaults(REPO / "config")
     c = repo.setting("listings")["csv"]
-    assert (c["item_length"], c["item_width"], c["item_height"]) == ("24.1", "10.5", "2")   # 2 cm was edited: kept
-    assert c["item_weight"] == old["csv"]["item_weight"]
+    assert not any(k.startswith("item_") for k in c) and c["quantity"] == old["csv"]["quantity"]

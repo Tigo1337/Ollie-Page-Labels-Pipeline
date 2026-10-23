@@ -63,8 +63,8 @@ def test_cli_commands(ws, tmp_path, capsys):
     assert main(["--data", data, "packs"]) == 0
     out = capsys.readouterr().out
     assert "Back-to-school pack (208 + 8 shoe pairs)" in out
-    assert "envelope ≈ 89 g, Over 50 g (oversized)" in out and "standard Lettermail is limited to 5 mm" in out
-    assert "envelope ≈ 35 g, Lettermail, up to 50 g" in out
+    assert "envelope ≈ 89 g, Oversized letter, up to 100 g" in out and "ships as an oversized letter" in out
+    assert "envelope ≈ 35 g, Lettermail, 30–50 g" in out
     order = tmp_path / "o.json"
     order.write_text(json.dumps({"order_id": "c1", "lines": [
         {"design": "dino", "pack": "starter", "name": "Zoë", "font": 1}]}))

@@ -1,4 +1,7 @@
+import hashlib
 import os
+import shutil
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -21,14 +24,36 @@ def fonts_dir():
     return FONTS
 
 
+def _write_test_art(root: Path) -> None:
+    for design in load_catalog(REPO / "config").designs.values():
+        write_design_art(design, root)
+    write_solid_art("solid", root)
+
+
 @pytest.fixture(scope="session")
-def data_dir(tmp_path_factory, fonts_dir):
+def data_dir(tmp_path_factory, fonts_dir, request):
+    """Placeholder art for every design. Making it takes ~10 s, so it is kept in pytest's cache between
+    runs, under a key that changes with the art generator and the designs (each run gets its own copy)."""
     d = tmp_path_factory.mktemp("data")
     os.symlink(fonts_dir, d / "fonts")
-    cat = load_catalog(REPO / "config")
-    for design in cat.designs.values():
-        write_design_art(design, d)
-    write_solid_art("solid", d)
+    cache = getattr(request.config, "cache", None)
+    if cache is None:                                    # -p no:cacheprovider
+        _write_test_art(d)
+        return d
+    key = hashlib.sha1(b"".join(p.read_bytes() for p in (REPO / "engine" / "testart.py",
+                                                         REPO / "config" / "designs.json"))).hexdigest()[:12]
+    stored = cache.mkdir("test-art") / key
+    if not stored.is_dir():
+        tmp = Path(tempfile.mkdtemp(dir=stored.parent))
+        _write_test_art(tmp)
+        try:
+            tmp.rename(stored)
+        except OSError:                                  # another run stored it first
+            shutil.rmtree(tmp, ignore_errors=True)
+        for old in stored.parent.iterdir():              # drop art for older keys
+            if old.name != key and not old.name.startswith("tmp"):
+                shutil.rmtree(old, ignore_errors=True)
+    shutil.copytree(stored / "designs", d / "designs")
     return d
 
 

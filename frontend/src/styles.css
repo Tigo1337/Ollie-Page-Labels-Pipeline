@@ -168,3 +168,22 @@ details summary { cursor: pointer; margin-top: 12px; font-weight: 600; }
 .thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
 .thumbs img { width: 110px; height: 110px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); display: block; }
 .thumb-missing { width: 110px; height: 110px; border-radius: 6px; border: 1px dashed var(--line); display: flex; align-items: center; justify-content: center; text-align: center; font-size: 0.8em; color: var(--muted); }
+
+/* orders page */
+.table.orders td { vertical-align: top; }
+.table.orders tr.selected td { background: var(--tint); }
+.table.orders .editor-row td { background: var(--pearl); padding: 12px; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 99px; background: var(--tint); font-size: 0.85em; white-space: nowrap; }
+.pill.lang { background: #fff; border: 1px solid var(--line); }
+.pill.state-ready, .pill.state-made { background: #e3f4e8; color: var(--ok); }
+.pill.state-to-check { background: var(--warn-bg); }
+.pill.state-cannot-be-made { background: #fdecec; color: var(--bad); }
+.pill.state-cancelled { color: var(--muted); }
+.warn-text { color: #8a5a00; }
+.order-editor { display: flex; flex-direction: column; gap: 10px; }
+.order-line { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: #fff; }
+.order-line .line-fields { grid-template-columns: 2fr 1.4fr 1.4fr 1.4fr 1.6fr auto; align-items: end; }
+@media (max-width: 1100px) { .order-line .line-fields { grid-template-columns: 1fr 1fr; } }
+.order-line p { margin: 6px 0 0; }
+.batch-bar { border-color: var(--accent); position: sticky; top: 0; z-index: 2; }
+.batch-bar p { margin: 8px 0; }

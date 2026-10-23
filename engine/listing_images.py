@@ -274,6 +274,10 @@ class ListingImages:
         img, d = self.canvas(LILAC)
         n = len(g.designs)
         self.heading(d, "Choose your design", f"{g.name} · the number matches the Design option")
+        if n > 10:                    # more than 2 × 5: upright tiles in 3 (or 4) columns, see _design_grid
+            self._design_grid(img, d, g, cols=3 if n <= 18 else 4)
+            self.footer(img)
+            return img
         rows = max(1, math.ceil(n / 2))
         pitch = min(176.0, (1072 - 210) / rows)
         th = pitch - LEDGE - 18                       # tile height (150 for up to 10 designs)
@@ -301,6 +305,33 @@ class ListingImages:
                 self.text(d, x + 340, y0 + j * lh, ln, f)
         self.footer(img)
         return img
+
+    def _design_grid(self, img: Image.Image, d: ImageDraw.ImageDraw, g: Group, cols: int) -> None:
+        """More than 10 designs: upright tiles (number, label render, then the design name under it) in
+        `cols` columns, so the labels and names stay readable instead of shrinking into thin rows."""
+        n = len(g.designs)
+        gap = 20
+        cw = (1080 - (cols - 1) * gap) / cols
+        rows = math.ceil(n / cols)
+        pitch = min(200.0, (1072 - 210) / rows)
+        th = pitch - LEDGE - 16                                   # tile height
+        top = 210 + (1072 - 210 - rows * pitch) / 2
+        name = self.names[1 % len(self.names)]
+        k = th / 150
+        dia = min(48.0, max(34.0, 40 * k))
+        for i, did in enumerate(g.designs):
+            row, col = divmod(i, cols)
+            in_row = min(cols, n - row * cols)                    # centre a short last row
+            x = 60 + (1080 - (in_row * cw + (in_row - 1) * gap)) / 2 + col * (cw + gap)
+            y = top + row * pitch
+            self.card(d, x, y, cw, th, 22)
+            title = self.cat.designs[did].name
+            f = self.fit_font(d, title, "display", min(28.0, max(20.0, 0.17 * th)), 600, cw - 28, min_size=16)
+            size = f.size / self.K
+            name_h = size * 1.25 + 12
+            self.paste(img, self.label(did, "medium", name), x + 12, y + 10, cw - 24, th - name_h - 14)
+            self.number(d, x + 6, y + 6, dia, i + 1, dia * 0.5, ring=3)
+            self.text(d, x, y + th - name_h + 2, title, f, align="center", width=cw)
 
     def bundles(self, g: Group) -> Image.Image:
         img, d = self.canvas(BLUSH)

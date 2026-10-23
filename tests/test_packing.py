@@ -8,7 +8,7 @@ import pytest
 
 from engine.config import Pack, load_catalog
 from engine.orders import Order, OrderError, OrderLine
-from engine.packing import PackError, envelope, pack_pieces, pack_sheets
+from engine.packing import PackError, envelope, order_envelope, pack_pieces, pack_sheets
 from engine.workspace import REPO
 
 CAT = load_catalog(REPO / "config")
@@ -41,17 +41,34 @@ def test_every_pack_is_whole_pieces():
 def test_envelope_estimate_and_lettermail_class():
     prod = CAT.production
     assert (prod.piece_weight_g, prod.envelope_weight_g, prod.piece_thickness_mm) == (6.0, 5.0, 0.35)
-    assert envelope(3, prod) == {"weight_g": 23.0, "lettermail": "Lettermail, up to 30 g", "thickness_mm": 1.05,
-                                 "warning": ""}
-    assert envelope(5, prod)["lettermail"] == "Lettermail, up to 50 g"              # starter: 35 g
-    assert envelope(7, prod)["weight_g"] == 47.0                                     # daycare
-    school = envelope(14, prod)
-    assert school["weight_g"] == 89.0 and school["lettermail"] == "Over 50 g (oversized)"
-    assert "5 mm" in school["warning"]                                               # above 12 pieces
-    assert envelope(12, prod)["warning"] == ""
+    assert envelope(3, prod) == {"weight_g": 23.0, "thickness_mm": 1.05, "kind": "standard", "tier": "standard-30",
+                                 "lettermail": "Lettermail, up to 30 g", "warning": ""}
+    assert envelope(5, prod)["lettermail"] == "Lettermail, 30–50 g"                  # starter: 35 g
+    assert envelope(7, prod)["weight_g"] == 47.0 and envelope(7, prod)["kind"] == "standard"   # daycare
+    school = envelope(14, prod)                                                        # 89 g, 4.9 mm
+    assert school["weight_g"] == 89.0 and school["kind"] == "oversized"
+    assert school["lettermail"] == "Oversized letter, up to 100 g"
+    assert school["warning"] == "14 pieces, over 50 g: ships as an oversized letter, up to 100 g."
+    # thickness alone can make a light envelope oversized; over 500 g or 20 mm it is a parcel
+    thin_heavy = dataclasses.replace(prod, piece_weight_g=1.0, piece_thickness_mm=0.6)
+    assert envelope(9, thin_heavy)["kind"] == "oversized" and "mm thick" in envelope(9, thin_heavy)["warning"]
+    assert envelope(58, prod)["kind"] == "parcel"
     heavy = dataclasses.replace(prod, piece_weight_g=10.0)
-    assert envelope(3, heavy)["lettermail"] == "Lettermail, up to 50 g"
+    assert envelope(3, heavy)["lettermail"] == "Lettermail, 30–50 g"
     assert pack_sheets(CAT.packs["daycare"], CAT, LAYOUTS)["envelope"]["weight_g"] == 47.0
+
+
+def test_bonus_copies_go_in_only_when_they_keep_the_postage():
+    prod = CAT.production
+    starter_alone = order_envelope(5, 7, prod)         # 35 g; with its 7 bonus copies 77 g = oversized
+    assert not starter_alone["bonus_in_envelope"] and starter_alone["pieces"] == 5
+    assert starter_alone["lettermail"] == "Lettermail, 30–50 g"
+    assert "oversized letter, up to 100 g" in starter_alone["bonus_note"]
+    school_alone = order_envelope(14, 7, prod)         # 89 g -> 131 g: 100 g step -> 200 g step
+    assert not school_alone["bonus_in_envelope"] and school_alone["weight_g"] == 89.0
+    small = order_envelope(2, 1, prod)                 # 17 g -> 23 g: still up to 30 g
+    assert small["bonus_in_envelope"] and small["pieces"] == 3 and "bonus_note" not in small
+    assert order_envelope(3, 0, prod)["bonus_in_envelope"] is False
 
 
 def test_three_starter_orders_fill_only_full_sheets(ws):
@@ -167,3 +184,48 @@ def test_unknown_pack_size_is_a_plain_error(ws, tmp_path):
             ws.producer.run([Order("x", [OrderLine("dino", "bad", "matte", "A")])], tmp_path)
     finally:
         del cat.packs["bad"]
+
+
+def test_packing_guide_tells_the_pieces_apart(ws, tmp_path):
+    """Nothing on the sheet; the packing guide lists each envelope's pieces (size, name, design, font, where)
+    and flags look-alikes between orders: identical labels are interchangeable, the others are not."""
+    from engine.packing_guide import look_alikes
+    orders = [Order("A1", [OrderLine("dino", "starter", "matte", "Léo")], customer="Ann"),
+              Order("B2", [OrderLine("fox", "starter", "matte", "Leo")]),
+              Order("C3", [OrderLine("dino", "starter", "matte", "Léo")]),
+              Order("D4", [OrderLine("dino", "round30", "matte", "Zoé", "", 3)])]
+    res = ws.producer.run(orders, tmp_path, customer_proofs=False)
+    guide = tmp_path / f"{res.prefix}_packing_guide.pdf"
+    assert guide in res.files
+    with zipfile.ZipFile(res.zip_path) as z:
+        assert guide.name in z.namelist()
+    text = "\n".join(p.get_textpage().get_text_range() for p in pdfium.PdfDocument(str(guide)))
+    for want in ("Envelope 1 · Order #A1 · Ann", "Envelope 4 · Order #D4", "3 pieces · Round · Zoé",
+                 "Look-alikes", "same label as #C3 (either will do)", "Forest Fox · font 1"):
+        assert want in text, want
+    envs = res.summary["envelopes"]
+    assert [e["order"] for e in envs] == ["A1", "B2", "C3", "D4"]
+    a1 = envs[0]
+    assert a1["real"] == 5 and a1["lettermail"] == "Lettermail, 30–50 g"
+    assert a1["pieces"] == 5 and sum(p["count"] for p in a1["labels"]) == 5
+    assert {p["size"] for p in a1["labels"]} == {"pencil", "small", "medium", "round"}
+    assert all(w.startswith("sheet ") for p in a1["labels"] for w in p["where"])
+    alikes = look_alikes(res.envelopes)
+    small = next(a for a in alikes if a["size"] == "small")
+    assert not small["identical"] and {p["order"] for p in small["pieces"]} == {"A1", "B2", "C3"}
+    same = {p["order"]: p["same_as"] for p in small["pieces"]}
+    assert same == {"A1": ["C3"], "B2": [], "C3": ["A1"]}
+    assert not any(a["name"] == "Zoé" for a in alikes)                     # only one order has Zoé
+    # every piece of the run is in exactly one envelope (or set aside as a bonus spare)
+    placed = sum(e["real"] + e["bonus"] for e in envs)
+    assert placed == sum(len(sh.filled) for sh in res.plan.sheets)
+
+
+def test_packing_slip_and_summary_follow_the_bonus_rule(ws, tmp_path):
+    res = ws.producer.run([Order("S", [OrderLine("dino", "school", "matte", "Sam")])], tmp_path,
+                          customer_proofs=False)
+    env = res.summary["envelopes"][0]
+    assert (env["real"], env["bonus"], env["bonus_in_envelope"], env["weight_g"]) == (14, 7, False, 89.0)
+    slip = (tmp_path / "S_packing_slip.txt").read_text(encoding="utf-8")
+    assert "keep aside as a spare" in slip and "same envelope" not in slip
+    assert "Envelope: 14 piece(s), about 89 g and 4.9 mm — Oversized letter, up to 100 g" in slip
