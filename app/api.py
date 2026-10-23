@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from PIL import Image
 from pydantic import BaseModel, Field
 
-from engine.art import auto_preset, validate_preset
+from engine.art import auto_preset, effective_preset, fixed_name_box, has_fixed_name, validate_preset
 from engine.layout import LayoutError, current_layout
 from engine.packing import PackError, pack_pieces, pack_sheets
 from engine.config import Preset
@@ -246,8 +246,12 @@ def get_presets(design_id: str, request: Request):
             if size.default_source in dims:
                 w, h = dims[size.default_source]
                 auto = auto_preset(design, size, cat.sheet.bleed, w, h).to_dict()
+            fixed = has_fixed_name(design, size)
+            if saved is not None:
+                saved = effective_preset(saved, size, design)
             out.append({"size": sid, "preset": saved.to_dict() if saved else auto, "auto": auto,
-                        "is_auto": saved is None, "review": review.get(sid)})
+                        "is_auto": saved is None, "review": review.get(sid),
+                        "fixed_text": list(fixed_name_box(size)) if fixed else None})
     return {"sizes": out, "art": {k: list(v) for k, v in dims.items()}, "bleed": cat.sheet.bleed,
             "safe": cat.production.safe}
 
@@ -263,6 +267,8 @@ def save_preset(design_id: str, size_id: str, body: dict, request: Request):
         except (KeyError, TypeError, ValueError) as e:
             raise ValueError("That crop could not be read.") from e
         validate_preset(preset, s.assets.art_sources(design_id))
+        # strip sizes: the name box is fixed, only the art's centre and height are saved
+        preset = effective_preset(preset, s.catalog.sizes[size_id], s.renderer.design(design_id))
     repo(request).set_preset(design_id, size_id, preset)
     return {"ok": True, "preset": preset.to_dict()}
 

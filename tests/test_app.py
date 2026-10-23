@@ -96,8 +96,15 @@ def test_seeded_catalog(client):
     assert [f["id"] for f in cat["finishes"]] == ["matte"] and cat["finishes"][0]["label"] == "Matte laminate"
     designs = client.get("/api/designs").json()
     assert len(designs) == 100
-    assert sorted(d["id"] for d in designs if d["presets"]) == ["airplane", "dino", "fire-truck", "moon-stars",
-                                                                "mushrooms", "sakura", "tractor"]
+    # the reference crops of config/designs.json were made for the old name position: archived, not used
+    assert [d["id"] for d in designs if d["presets"]] == []
+    from sqlalchemy import select
+
+    from app.db import ArchivedPresetRow
+    with client.app.state.repo.Session() as s:
+        archived = {(a.design_id, a.size_id): a.reason for a in s.scalars(select(ArchivedPresetRow))}
+    assert len(archived) == 19 and ("dino", "pencil") in archived and ("tractor", "large") in archived
+    assert set(archived.values()) == {"fixed name position (geometry v3)"}
     dino = next(d for d in designs if d["id"] == "dino")
     assert dino["mini_start"] == 0.24 and dino["no_character_sizes"] == ["tag"]
 
@@ -186,12 +193,21 @@ def test_crop_presets_are_saved_and_used_by_orders(client):
     r = client.get("/api/designs/shark/presets").json()
     large = next(s for s in r["sizes"] if s["size"] == "large")
     assert large["is_auto"] and large["preset"] == large["auto"] and r["art"]["wide"] == [2752, 680]
+    fixed = large["fixed_text"]
+    assert fixed[0] == 0.42 and large["auto"]["text"] == fixed
+    assert next(s for s in r["sizes"] if s["size"] == "tag")["fixed_text"] is None
 
     before = client.post("/api/preview", json={"design": "shark", "size": "large", "name": "Léo"}).json()
     preset = {"source": "wide", "center": [0.6, 0.5], "height": 0.6, "text": [0.35, 0.15, 0.95, 0.85]}
-    assert client.put("/api/designs/shark/presets/large", json=preset).status_code == 200
+    saved = client.put("/api/designs/shark/presets/large", json=preset).json()["preset"]
+    assert saved == {**preset, "text": fixed}            # the art is saved, the name box stays the fixed one
+    preset = saved
     after = client.post("/api/preview", json={"design": "shark", "size": "large", "name": "Léo"}).json()
     assert after["preset"] == preset and not after["preset_is_auto"] and after["image"] != before["image"]
+    # an editor preview with another box still prints the fixed one
+    moved = client.post("/api/preview", json={"design": "shark", "size": "large", "name": "Léo",
+                                              "preset": {**preset, "text": [0.1, 0.1, 0.5, 0.9]}}).json()
+    assert moved["preset"]["text"] == fixed
 
     # the saved crop is what an order prints
     run = client.post("/api/make", json={"design": "shark", "pack": "large18", "name": "Léo", "font": 1}).json()

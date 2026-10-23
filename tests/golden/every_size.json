@@ -798,8 +798,8 @@
     659
    ],
    "cap_mm": [
-    5.7,
-    3.35
+    5.07,
+    3.0
    ]
   },
   "[\"dino\", \"large\", \"Léo\", \"\", 1, \"matte\"]": {
@@ -817,7 +817,7 @@
     659
    ],
    "cap_mm": [
-    2.6
+    2.3
    ]
   },
   "[\"dino\", \"medium\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"matte\"]": {
@@ -827,7 +827,7 @@
    ],
    "cap_mm": [
     4.93,
-    3.26
+    3.2
    ]
   },
   "[\"dino\", \"medium\", \"Léo\", \"\", 1, \"matte\"]": {
@@ -845,7 +845,7 @@
     508
    ],
    "cap_mm": [
-    2.97
+    2.6
    ]
   },
   "[\"dino\", \"pencil\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"matte\"]": {
@@ -854,8 +854,8 @@
     283
    ],
    "cap_mm": [
-    2.37,
-    1.31
+    2.26,
+    1.45
    ]
   },
   "[\"dino\", \"pencil\", \"Léo\", \"\", 1, \"matte\"]": {
@@ -864,7 +864,7 @@
     283
    ],
    "cap_mm": [
-    4.14
+    3.94
    ]
   },
   "[\"dino\", \"pencil\", \"Maximilien-Alexandre\", \"\", 3, \"matte\"]": {
@@ -873,7 +873,7 @@
     283
    ],
    "cap_mm": [
-    2.17
+    2.82
    ]
   },
   "[\"dino\", \"round\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"matte\"]": {
@@ -957,7 +957,7 @@
     359
    ],
    "cap_mm": [
-    2.08
+    1.81
    ]
   },
   "[\"dino\", \"tag\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"matte\"]": {

@@ -36,13 +36,12 @@ from sqlalchemy import select
 from engine.config import load_catalog
 
 from .db import ArchivedPresetRow, DesignRow, PresetRow, Setting
-from .repo import GEOMETRY_VERSION, Repo, design_row_from
+from .repo import FIXED_NAME_NOTE, GEOMETRY_VERSION, Repo, design_row_from
 
 log = logging.getLogger(__name__)
 REVIEW_SIZES = ("small", "medium", "large", "round")
 REVIEW_NOTE = "à revoir : la taille a changé avec les mises en page fixes (géométrie v2)"
 FIXED_NAME_SIZES = ("pencil", "small", "medium", "large")
-FIXED_NAME_NOTE = "fixed name position (geometry v3)"
 OLD_PROOF_FOOTERS = {
     "en": "Colours can look slightly different on screen. The holographic shimmer is a simulation of the real finish.",
     "fr": "Les couleurs peuvent paraître légèrement différentes à l'écran. L'effet holographique est une simulation "

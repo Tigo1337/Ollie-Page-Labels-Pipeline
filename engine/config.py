@@ -109,11 +109,15 @@ class Size:
     r: float = 0.0
     gap: float | None = None  # gap between neighbouring cut lines; None = the sheet's gap
     pair: dict | None = None  # shape "pair": {"each_w": label width, "gap": gap between the two labels}
+    name_start: float | None = None  # strip sizes: fixed name position (fraction of the label width); not
+                                     # cut geometry, so it is not in the layout geometry hash
 
     def __post_init__(self) -> None:
         if self.shape == "pair":
             if not self.pair or abs(2 * self.pair["each_w"] + self.pair["gap"] - self.w) > 1e-6:
                 raise ValueError(f"Size '{self.id}': a pair needs pair.each_w × 2 + pair.gap = w.")
+        if self.name_start is not None and not (self.shape == "rrect" and 0 < self.name_start < 0.9):
+            raise ValueError(f"Size '{self.id}': name_start is a fraction (0-0.9) of a strip label's width.")
 
     @property
     def is_rect(self) -> bool:

@@ -4,9 +4,15 @@ from __future__ import annotations
 import numpy as np
 from PIL import Image
 
+from dataclasses import replace
+
 from .config import Design, Preset, Size
 
 TRIM_THRESHOLD = 245.0
+# Fixed name position: on a strip size with `name_start` (sizes.json), the name box starts at that
+# fraction of the label width on every design; the art slides left so the character ends
+# NAME_GAP_MM before it (a wide character's left side may be cut).
+NAME_GAP_MM = 0.8
 TRIM_SHAVE_PX = 4
 
 
@@ -72,6 +78,9 @@ def auto_preset(design: Design, size: Size, bleed: float, src_w: int, src_h: int
       (for a pair: fractions of each label);
     * sizes without the character (`no_character_sizes`, by default the clothing tag): the strip
       from `mini_start` onwards, and the name fills the label;
+    * strips with a fixed name position (`size.name_start`: pencil, small, medium, large): the name
+      box is the same on every design (`fixed_name_box`) and the strip slides so the character ends
+      just before it, never past either end of the strip;
     * other strips: the strip at label height + bleed, anchored left so the character shows,
       name box from the character's end (`char_end`) to the right edge.
     """
@@ -92,24 +101,58 @@ def auto_preset(design: Design, size: Size, bleed: float, src_w: int, src_h: int
         pad = max(1.0, 0.4 * size.r)
         return Preset(source="wide", center=((x0 + cw / 2) / src_w, 0.5), height=height,
                       text=(pad / size.w, 0.6 * pad / size.h, 1 - pad / size.w, 1 - 0.6 * pad / size.h))
-    center = ((cw / 2) / src_w, 0.5)
     mm_per_px = (size.h + 2 * b) / ch
-    strip_w_mm = src_w * mm_per_px
     pad = max(1.0, 0.45 * size.r)
     vpad = pad * 0.7
-    x0 = design.char_end * strip_w_mm - b + 1.0
     x1 = size.w - pad
+    t0 = size.name_start
+    if t0 is not None:
+        # slide the strip so the character's end (char_end) lands NAME_GAP_MM before the name box
+        name_x = t0 * size.w                                   # mm from the label's left cut edge
+        x0_src = design.char_end * src_w - (name_x - NAME_GAP_MM + b) / mm_per_px
+        x0_src = min(max(x0_src, 0.0), src_w - cw)             # never past the strip's ends
+        center = ((x0_src + cw / 2) / src_w, 0.5)
+        return Preset(source="wide", center=center, height=height, text=fixed_name_box(size))  # type: ignore[arg-type]
+    center = ((cw / 2) / src_w, 0.5)
+    strip_w_mm = src_w * mm_per_px
+    x0 = design.char_end * strip_w_mm - b + 1.0
     x0 = min(max(x0, pad), x1 - 0.25 * size.w)  # keep a usable box on narrow strips
     return Preset(source="wide", center=center, height=height,
                   text=(x0 / size.w, vpad / size.h, x1 / size.w, 1 - vpad / size.h))
 
 
+def fixed_name_box(size: Size) -> tuple[float, float, float, float] | None:
+    """The name box (fractions of the label) every design uses on a size with a fixed name position,
+    or None for sizes without one (tag, round, shoe)."""
+    if size.name_start is None:
+        return None
+    pad = max(1.0, 0.45 * size.r)
+    vpad = pad * 0.7
+    return (size.name_start, vpad / size.h, (size.w - pad) / size.w, 1 - vpad / size.h)
+
+
+def has_fixed_name(design: Design, size: Size) -> bool:
+    """True when this design's name box on this size is the fixed one (the size has `name_start` and
+    the design shows its character there)."""
+    return size.is_rect and size.name_start is not None and size.id not in design.no_character_sizes
+
+
+def effective_preset(preset: Preset, size: Size, design: Design) -> Preset:
+    """A preset as it prints: with a fixed name position the fixed box always wins over the preset's
+    own `text` (only the art's centre and height are the preset's)."""
+    box = fixed_name_box(size)
+    if box is None or not has_fixed_name(design, size) or tuple(preset.text) == box:
+        return preset
+    return replace(preset, text=box)
+
+
 def resolve_preset(design: Design, size: Size, bleed: float,
                    src_dims: dict[str, tuple[int, int]]) -> tuple[Preset, bool]:
-    """Saved preset if there is one, else the automatic one. Returns (preset, is_auto)."""
+    """Saved preset if there is one (with the fixed name box on strip sizes), else the automatic one.
+    Returns (preset, is_auto)."""
     p = design.presets.get(size.id)
     if p is not None:
-        return p, False
+        return effective_preset(p, size, design), False
     src = size.default_source
     if src not in src_dims:
         raise ArtError(f"Design '{design.id}' has no {src} artwork yet. Upload it in the design library.")

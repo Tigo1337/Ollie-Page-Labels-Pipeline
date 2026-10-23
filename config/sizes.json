@@ -1,8 +1,8 @@
 [
-  {"id": "pencil", "label": "Skinny (pencils, markers)",            "shape": "rrect",  "w": 57,   "h": 9.5,  "r": 3},
-  {"id": "small",  "label": "Small (supplies, containers)",         "shape": "rrect",  "w": 44.5, "h": 12.7, "r": 3},
-  {"id": "medium", "label": "Medium (bottles, lunch boxes)",        "shape": "rrect",  "w": 63.5, "h": 19,   "r": 4},
-  {"id": "large",  "label": "Large (books, bins, lunch bags)",      "shape": "rrect",  "w": 63.5, "h": 25.4, "r": 5},
+  {"id": "pencil", "label": "Skinny (pencils, markers)",            "shape": "rrect",  "w": 57,   "h": 9.5,  "r": 3, "name_start": 0.24},
+  {"id": "small",  "label": "Small (supplies, containers)",         "shape": "rrect",  "w": 44.5, "h": 12.7, "r": 3, "name_start": 0.36},
+  {"id": "medium", "label": "Medium (bottles, lunch boxes)",        "shape": "rrect",  "w": 63.5, "h": 19,   "r": 4, "name_start": 0.36},
+  {"id": "large",  "label": "Large (books, bins, lunch bags)",      "shape": "rrect",  "w": 63.5, "h": 25.4, "r": 5, "name_start": 0.42},
   {"id": "tag",    "label": "Clothing tag (care-tag sticker)",      "shape": "rrect",  "w": 25.4, "h": 12.7, "r": 2},
   {"id": "round",  "label": "Round (bottle caps, toys, shoe dots)", "shape": "circle", "w": 32,   "h": 32,   "r": 16, "gap": 2.0},
   {"id": "shoe",   "label": "Shoe pair (left + right)",             "shape": "pair",   "w": 62.5, "h": 38,   "r": 4,

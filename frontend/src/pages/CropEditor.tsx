@@ -4,7 +4,12 @@ import { useApp } from "../App";
 import { snapEdge, snapSpan } from "../snap";
 import { ErrorBox, Spinner, useAsync, useDebounced, Warnings } from "../ui";
 
-interface SizePreset { size: string; preset: PresetData | null; auto: PresetData | null; is_auto: boolean; review: string | null }
+type TextBox = [number, number, number, number];
+// fixed_text: on strip sizes with a fixed name position, the name box every design uses (locked)
+interface SizePreset {
+  size: string; preset: PresetData | null; auto: PresetData | null; is_auto: boolean; review: string | null;
+  fixed_text: TextBox | null;
+}
 interface PresetsResp { sizes: SizePreset[]; art: Record<string, [number, number]>; bleed: number; safe: number }
 
 const TEST_NAMES = ["Léo", "Maximilien"];
@@ -110,7 +115,9 @@ export default function CropEditor({ id }: { id: string }) {
       <h2>Crop &amp; name position · {d.name}</h2>
       <p className="muted">
         Set this once per size. Every order uses the saved setting until you change it. Drag the crop window to move it,
-        use the slider or mouse wheel to zoom, and drag or resize the dashed name box.
+        use the slider or mouse wheel to zoom, and drag or resize the dashed name box. On the skinny, small, medium and
+        large labels the name sits in the same place on every design: its box is locked, and you slide and zoom the
+        art behind it.
       </p>
       <div className="tabs">
         {catalog.sizes.map((s) => {
@@ -128,7 +135,7 @@ export default function CropEditor({ id }: { id: string }) {
       {entry?.review && <Warnings items={[`${size.label}: ${entry.review}. Check the crop and save it again.`]} />}
       {edit ? (
         <Editor key={sizeId} size={size} preset={edit} art={art} bleed={presets.data.bleed} safe={presets.data.safe}
-          design={d}
+          design={d} fixedText={entry?.fixed_text ?? null}
           onChange={(p) => { setEdit(p); setDirty(true); setMsg(""); }}
           isAuto={!!entry?.is_auto} dirty={dirty}
           onSave={() => act(() => api.put(`/api/designs/${id}/presets/${sizeId}`, edit), `Saved the ${size.label} crop.`)}
@@ -149,10 +156,14 @@ export default function CropEditor({ id }: { id: string }) {
 
 function Editor(props: {
   size: Size; preset: PresetData; art: Record<string, [number, number]>; bleed: number; safe: number; design: Design;
-  isAuto: boolean; dirty: boolean;
+  fixedText: TextBox | null; isAuto: boolean; dirty: boolean;
   onChange: (p: PresetData) => void; onSave: () => void; onReset: () => void; onCopy: () => void;
 }) {
-  const { size, preset: p, art, bleed: b, safe, design, onChange } = props;
+  const { size, art, bleed: b, safe, design, fixedText } = props;
+  // a fixed name box always wins over the preset's own (the server does the same)
+  const p: PresetData = fixedText ? { ...props.preset, text: fixedText } : props.preset;
+  const onChange = (q: PresetData) => props.onChange(fixedText ? { ...q, text: fixedText } : q);
+  const locked = !!fixedText;
   const { catalog } = useApp();
   const [sw, sh] = art[p.source] ?? [1, 1];
   const aspect = (size.w + 2 * b) / (size.h + 2 * b);
@@ -302,12 +313,14 @@ function Editor(props: {
               </button>
             ))}
           </div>
-          <div className="actions snap-controls">
-            <label className="inline"><input type="checkbox" checked={snap} onChange={(e) => setSnap(e.target.checked)} /> Snap name box</label>
-            <select value={gridMm} disabled={!snap} onChange={(e) => setGrid(Number(e.target.value))} aria-label="Grid size">
-              {GRID_STEPS.map((g) => <option key={g} value={g}>{g} mm grid</option>)}
-            </select>
-          </div>
+          {!locked && (
+            <div className="actions snap-controls">
+              <label className="inline"><input type="checkbox" checked={snap} onChange={(e) => setSnap(e.target.checked)} /> Snap name box</label>
+              <select value={gridMm} disabled={!snap} onChange={(e) => setGrid(Number(e.target.value))} aria-label="Grid size">
+                {GRID_STEPS.map((g) => <option key={g} value={g}>{g} mm grid</option>)}
+              </select>
+            </div>
+          )}
           <label className="zoom">Zoom
             <input type="range" min={0.05} max={hMax} step={0.001} value={hMax + 0.05 - Math.min(p.height, hMax)}
               onChange={(e) => setHeight(hMax + 0.05 - Number(e.target.value))} />
@@ -328,7 +341,7 @@ function Editor(props: {
             )}
             <g className="cut-line">{cut}</g>
             <g className="safe-line">{safeShape}</g>
-            {snap && (
+            {snap && !locked && (
               <g className="grid" pointerEvents="none">
                 {Array.from({ length: Math.floor(LW / gridMm) + 1 }, (_, i) => i * gridMm).map((x) => (
                   <line key={`gx${x}`} x1={lx(x)} x2={lx(x)} y1={ly(0)} y2={ly(LH)} />
@@ -341,12 +354,19 @@ function Editor(props: {
               </g>
             )}
             {pair && <rect className="name-box ghost" x={box.x + rightX * k} y={box.y} width={box.w} height={box.h} pointerEvents="none" />}
-            <rect className="name-box" x={box.x} y={box.y} width={box.w} height={box.h}
-              onPointerDown={(e) => start(e, { kind: "box", px: pt(e).x, py: pt(e).y, text: p.text })} />
-            {[[box.x, box.y], [box.x + box.w, box.y], [box.x + box.w, box.y + box.h], [box.x, box.y + box.h]].map(([x, y], i) => (
-              <rect key={i} className="handle" x={x - 6} y={y - 6} width={12} height={12}
-                onPointerDown={(e) => start(e, { kind: "corner", corner: i as 0 | 1 | 2 | 3, text: p.text })} />
-            ))}
+            {locked ? (
+              // shown, not draggable: drags fall through to the crop window so the art slides behind it
+              <rect className="name-box locked" x={box.x} y={box.y} width={box.w} height={box.h} pointerEvents="none" />
+            ) : (
+              <>
+                <rect className="name-box" x={box.x} y={box.y} width={box.w} height={box.h}
+                  onPointerDown={(e) => start(e, { kind: "box", px: pt(e).x, py: pt(e).y, text: p.text })} />
+                {[[box.x, box.y], [box.x + box.w, box.y], [box.x + box.w, box.y + box.h], [box.x, box.y + box.h]].map(([x, y], i) => (
+                  <rect key={i} className="handle" x={x - 6} y={y - 6} width={12} height={12}
+                    onPointerDown={(e) => start(e, { kind: "corner", corner: i as 0 | 1 | 2 | 3, text: p.text })} />
+                ))}
+              </>
+            )}
             <g className="snap-hit" pointerEvents="none">
               {hit.x !== undefined && <line x1={lx(hit.x)} x2={lx(hit.x)} y1={ly(-b)} y2={ly(size.h + b)} />}
               {hit.y !== undefined && <line x1={lx(-b)} x2={lx(size.w + b)} y1={ly(hit.y)} y2={ly(hit.y)} />}
@@ -358,7 +378,13 @@ function Editor(props: {
           <span className="key safe" /> 1 mm safe zone <span className="key name" /> name box
           {pair && <> · shoe pair: one picture split into two labels ({pair.gap} mm gap); set the name box on the left label, the right one copies it</>}
         </p>
-        {snap && (
+        {locked && (
+          <p className="muted small">
+            The name box is locked: on this size the name sits in the same place on every design. Drag the art and zoom
+            to place the character behind it; "Reset to automatic" puts the character back just before the name.
+          </p>
+        )}
+        {snap && !locked && (
           <p className="muted small">
             The name box snaps to the {gridMm} mm grid, the label centre (orange) and the safe zone. Hold Alt to move it freely.
           </p>

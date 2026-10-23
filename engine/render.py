@@ -8,13 +8,13 @@ from dataclasses import dataclass, field, replace
 
 from PIL import Image, ImageDraw
 
-from .art import crop_to_label, resolve_preset
+from .art import crop_to_label, effective_preset, resolve_preset
 from .assets import Assets
 from .config import Catalog, Design, Preset, Size, hex_to_rgb
 from .geometry import mm_to_px, px, rect_in_shape, shape_mask
 from .text import FittedLine, FontLibrary, draw_line, fit_line, normalise_name
 
-ENGINE_VERSION = "2"
+ENGINE_VERSION = "3"
 MINI_SIZES = ("pencil", "tag")  # fonts with mini_ok: false get a warning on these
 
 
@@ -112,6 +112,8 @@ class Renderer:
         is_auto = False
         if preset is None:
             preset, is_auto = self.preset_for(design, size)
+        else:
+            preset = effective_preset(preset, size, design)   # the fixed name box wins on strip sizes
         key = self.cache_key(spec, preset, design, dpi)
         hit = self._cache.get(key)
         if hit is not None:

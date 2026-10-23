@@ -186,8 +186,10 @@ def test_v2_database_is_migrated_to_v3(tmp_path):
     assert lst["shop_name"] == "Mazie Page Creations" and lst["ship_time"] == "[X] business days"
     # presets: strip sizes archived with the note, tag / round / shoe kept
     assert presets == {("fox", "tag"), ("fox", "round"), ("dino", "shoe")}
-    assert archived == {k: FIXED_NAME_NOTE for k in (("dino", "pencil"), ("dino", "small"), ("dino", "medium"),
-                                                     ("fox", "large"))}
+    want = (("dino", "pencil"), ("dino", "small"), ("dino", "medium"), ("fox", "large"))
+    assert set(want) <= set(archived) and set(archived.values()) == {FIXED_NAME_NOTE}
+    # (the rest are the old reference crops from config/designs.json, archived when the database was seeded)
+    assert all(s in ("pencil", "small", "medium", "large") for _, s in archived)
     # history untouched; the catalogue builds; only once
     assert run.summary["finishes"] == {"gloss": {"sheets": 1, "labels": 60}} and run.request["finish"] == "gloss"
     assert settings["geometry_version"] == {"version": 3} and settings["migration_log"]["from"] == 2
