@@ -17,7 +17,7 @@ import math
 from dataclasses import dataclass, field, replace
 from typing import Literal, Protocol, Sequence
 
-from .config import Catalog, Pack
+from .config import Catalog, Pack, Production
 
 Unpaired = Literal["wait", "bonus", "blank"]
 
@@ -141,10 +141,29 @@ def pack_pieces_from(pack: Pack, cat: Catalog, per_piece_of: dict[str, int]) -> 
     return out
 
 
+LETTERMAIL_MAX_PIECES = 12      # above this, warn: standard Lettermail is at most 5 mm thick
+LETTERMAIL_MAX_THICKNESS = 5.0
+LETTERMAIL_CLASSES = ((30.0, "Lettermail, up to 30 g"), (50.0, "Lettermail, up to 50 g"))
+
+
+def envelope(pieces: int, production: Production) -> dict:
+    """The #10 envelope for an order of `pieces` pieces: estimated weight (pieces × piece_weight_g +
+    envelope_weight_g), its Canada Post Lettermail class, the thickness, and a warning above 12 pieces."""
+    weight = round(pieces * production.piece_weight_g + production.envelope_weight_g, 1)
+    lettermail = next((name for limit, name in LETTERMAIL_CLASSES if weight <= limit), "Over 50 g (oversized)")
+    thickness = round(pieces * production.piece_thickness_mm, 2)
+    warning = ""
+    if pieces > LETTERMAIL_MAX_PIECES:
+        warning = (f"{pieces} pieces (about {thickness:g} mm thick): standard Lettermail is limited to "
+                   f"{LETTERMAIL_MAX_THICKNESS:g} mm, check the envelope's thickness.")
+    return {"weight_g": weight, "lettermail": lettermail, "thickness_mm": thickness, "warning": warning}
+
+
 def pack_sheets(pack: Pack, cat: Catalog, layouts_dir) -> dict[str, float]:
     """Material per pack, in sheets: pieces / pieces-per-sheet when batched with other orders, and
     the sheets used when the order is printed on its own (Σ ceil(pieces of a size / pieces-per-sheet))."""
     pieces = pack_pieces(pack, cat, layouts_dir)
     n = cat.sheet.pieces
-    return {"pieces": sum(pieces.values()), "batched": round(sum(pieces.values()) / n, 3),
-            "alone": sum(math.ceil(k / n) for k in pieces.values())}
+    total = sum(pieces.values())
+    return {"pieces": total, "batched": round(total / n, 3), "alone": sum(math.ceil(k / n) for k in pieces.values()),
+            "envelope": envelope(total, cat.production)}

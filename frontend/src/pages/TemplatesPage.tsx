@@ -5,7 +5,7 @@ import { ErrorBox, fmtBytes, Spinner } from "../ui";
 interface Studio3 { layout_id: string; geometry_hash: string; uploaded_at: string; filename: string; bytes: number; current: boolean }
 interface LayoutRow {
   layout_id?: string; size: string; size_label: string; dims?: string; arrangement?: string;
-  per_half?: number; per_sheet?: number; pairs?: boolean; rows?: number[]; geometry_hash?: string;
+  per_piece?: number; per_sheet?: number; pairs?: boolean; rows?: number[]; geometry_hash?: string;
   studio3?: Studio3 | null; error?: string;
 }
 interface Listing { layouts: LayoutRow[]; outdated: Studio3[] }
@@ -55,7 +55,7 @@ function TemplateCard({ row, reload }: { row: LayoutRow; reload: () => void }) {
         <h3>{id}</h3>
         <p className="muted small">
           {row.size_label} · {row.dims} · {row.arrangement}<br />
-          {row.per_half}{unit} per half · {row.per_sheet}{unit} per sheet · rows {row.rows?.join(" + ")}
+          {row.per_piece}{unit} per piece · {row.per_sheet}{unit} per sheet (3 pieces) · rows {row.rows?.join(" + ")}
         </p>
         <h4>Downloads</h4>
         <ul className="plain">

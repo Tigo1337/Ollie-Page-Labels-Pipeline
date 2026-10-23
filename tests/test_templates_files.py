@@ -84,9 +84,10 @@ def test_cut_settings_doc():
     doc = (REPO / "docs" / "cut-settings.md").read_text(encoding="utf-8")
     for want in ("**AutoLame** (AutoBlade)", "**Profondeur** (Depth) | 2", "**Force** | 12",
                  "**Vitesse** (Speed) | 4", "**Passages** (Passes) | 1", "**Test de découpe** (Test Cut)",
-                 "Chels – vinyle + lam. holo", "**Découper par couleur de ligne** (Cut by Line Color)",
-                 "marque le tapis"):
+                 "Chels – vinyle + lam. mat", "Un seul matériau personnalisé",
+                 "**Découper par couleur de ligne** (Cut by Line Color)", "93.133 et 186.267", "marque le tapis"):
         assert want in doc, want
+    assert "holo" not in doc and "brillant" not in doc
 
 
 def test_trim_lines_are_open_blue_cuts_with_anchors():

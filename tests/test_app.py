@@ -87,10 +87,13 @@ def test_seeded_catalog(client):
     cat = client.get("/api/catalog").json()
     assert [s["id"] for s in cat["sizes"]] == ["pencil", "small", "medium", "large", "tag", "round", "shoe"]
     school = next(p for p in cat["packs"] if p["id"] == "school")
-    assert (school["halves"], school["batched"], school["alone"]) == (5, 2.5, 5)
-    assert school["halves_by_size"] == {"pencil": 1, "small": 1, "medium": 1, "round": 1, "shoe": 1}
+    assert (school["pieces"], school["alone"]) == (14, 7)
+    assert school["pieces_by_size"] == {"pencil": 3, "small": 3, "medium": 2, "large": 1, "round": 1, "tag": 2,
+                                        "shoe": 2}
+    assert school["envelope"]["weight_g"] == 89.0 and "5 mm" in school["envelope"]["warning"]
     tag = next(s for s in cat["sizes"] if s["id"] == "tag")
-    assert (tag["layout_id"], tag["per_half"], tag["per_sheet"]) == ("chels-tag-v1", 55, 110)
+    assert (tag["layout_id"], tag["per_piece"], tag["per_sheet"]) == ("chels-tag-v2", 34, 102)
+    assert [f["id"] for f in cat["finishes"]] == ["matte"] and cat["finishes"][0]["label"] == "Matte laminate"
     designs = client.get("/api/designs").json()
     assert len(designs) == 100
     assert sorted(d["id"] for d in designs if d["presets"]) == ["airplane", "dino", "fire-truck", "moon-stars",
@@ -154,22 +157,25 @@ def test_plain_errors(client):
 def test_make_labels_end_to_end(client):
     data = art_zip(["axolotl"], client.app.state.svc.catalog)
     import_and_wait(client, data)
-    r = client.post("/api/make", json={"design": "axolotl", "pack": "starter", "finish": "gloss",
+    r = client.post("/api/make", json={"design": "axolotl", "pack": "starter",
                                        "name": "Émilie-Rose", "font": 3, "order_id": "1234"})
     assert r.status_code == 200, r.text
     run = r.json()
     kinds = {f["kind"] for f in run["files"]}
     assert {"print", "template", "page-proof", "customer-proof", "notch", "info", "slip", "zip"} <= kinds
-    assert [sh["layout_id"] for sh in run["summary"]["sheets"]] == ["chels-pencil-v1", "chels-small-v1"]
-    assert all(sh["bottom"]["bonus"] for sh in run["summary"]["sheets"])
+    assert [sh["layout_id"] for sh in run["summary"]["sheets"]] == [
+        "chels-pencil-v2", "chels-small-v2", "chels-medium-v2", "chels-round-v2"]
+    assert all(len(sh["pieces"]) == 3 and sh["pieces"][2]["bonus"] for sh in run["summary"]["sheets"])
+    assert set(run["summary"]["finishes"]) == {"matte"}
     z = next(f["name"] for f in run["files"] if f["kind"] == "zip")
     got = client.get(f"/api/runs/{run['id']}/files/{z}")
     assert got.status_code == 200 and zipfile.ZipFile(io.BytesIO(got.content)).namelist()
     assert client.get("/api/runs").json()[0]["id"] == run["id"]
-    r = client.post("/api/make", json={"design": "axolotl", "pack": "shoe8", "finish": "matte",
+    r = client.post("/api/make", json={"design": "axolotl", "pack": "daycare",
                                        "name": "Émilie", "font": 1, "unpaired": "blank"})
     assert r.status_code == 200
-    assert r.json()["summary"]["sheets"][0]["bottom"] is None
+    shoe = next(sh for sh in r.json()["summary"]["sheets"] if sh["size"] == "shoe")
+    assert shoe["pieces"][0] is not None and shoe["pieces"][1:] == [None, None]
     names = [f["name"] for f in r.json()["files"]]
     assert all(n.isascii() for n in names)
 
@@ -188,7 +194,7 @@ def test_crop_presets_are_saved_and_used_by_orders(client):
     assert after["preset"] == preset and not after["preset_is_auto"] and after["image"] != before["image"]
 
     # the saved crop is what an order prints
-    run = client.post("/api/make", json={"design": "shark", "pack": "large22", "name": "Léo", "font": 1}).json()
+    run = client.post("/api/make", json={"design": "shark", "pack": "large18", "name": "Léo", "font": 1}).json()
     assert run["request"]["finish"] == "matte"  # shop default
     lab = client.app.state.svc.renderer.render(LabelSpec("shark", "large", "Léo", "", 1, "matte"))
     assert lab.preset.to_dict() == preset
@@ -214,44 +220,71 @@ def test_bad_presets_are_refused_plainly(client):
     assert r.status_code == 400
 
 
-def test_shop_default_finish(client):
+def test_one_finish_and_old_finishes_are_made_in_matte(client):
     assert client.get("/api/shop").json() == {"default_finish": "matte"}
-    assert client.patch("/api/shop", json={"default_finish": "gloss"}).json()["default_finish"] == "gloss"
+    assert client.patch("/api/shop", json={"default_finish": "gloss"}).status_code == 400   # no such finish now
     data = art_zip(["bee"], client.app.state.svc.catalog)
     import_and_wait(client, data)
-    run = client.post("/api/make", json={"design": "bee", "pack": "pencil60", "name": "Zoë", "font": 1}).json()
-    assert "gloss" in run["summary"]["finishes"]
+    run = client.post("/api/make", json={"design": "bee", "pack": "pencil51", "name": "Zoë", "font": 1}).json()
+    assert set(run["summary"]["finishes"]) == {"matte"} and run["request"]["finish"] == "matte"
     assert any(f["kind"] == "notch" for f in run["files"])
-    assert client.patch("/api/shop", json={"default_finish": "shiny"}).status_code == 400
-    client.patch("/api/shop", json={"default_finish": "matte"})
+    old = client.post("/api/make", json={"design": "bee", "pack": "pencil51", "finish": "holographic",
+                                         "name": "Zoë", "font": 1}).json()
+    assert set(old["summary"]["finishes"]) == {"matte"}
+    assert any("'holographic' finish, produced in matte laminate" in w for w in old["warnings"])
+    assert client.post("/api/make", json={"design": "bee", "pack": "pencil51", "finish": "shiny",
+                                          "name": "Zoë"}).status_code == 400
+
+
+def test_envelope_settings(client):
+    prod = client.get("/api/production").json()
+    assert (prod["piece_weight_g"], prod["envelope_weight_g"], prod["piece_thickness_mm"]) == (6.0, 5.0, 0.35)
+    assert client.patch("/api/production", json={"piece_weight_g": 7.5}).json()["piece_weight_g"] == 7.5
+    starter = next(p for p in client.get("/api/catalog").json()["packs"] if p["id"] == "starter")
+    assert starter["envelope"]["weight_g"] == 5 * 7.5 + 5
+    assert client.patch("/api/production", json={"piece_weight_g": -1}).status_code == 400
+    assert client.patch("/api/production", json={"min_cap_mm": 1}).status_code == 400
+    client.patch("/api/production", json={"piece_weight_g": 6.0})
 
 
 # ---------------------------------------------------------------- templates
 def test_templates_page_files_and_studio3(client, tmp_path):
     data = client.get("/api/templates").json()
     ids = [row["layout_id"] for row in data["layouts"]]
-    assert ids == [f"chels-{s}-v1" for s in ("pencil", "small", "medium", "large", "tag", "round", "shoe")]
+    assert ids == [f"chels-{s}-v2" for s in ("pencil", "small", "medium", "large", "tag", "round", "shoe")]
     assert data["outdated"] == [] and all(row["studio3"] is None for row in data["layouts"])
-    assert client.get("/api/templates/chels-round-v1/preview.png").headers["content-type"] == "image/png"
-    svg = client.get("/api/templates/chels-round-v1/files/svg")
-    assert svg.status_code == 200 and svg.text.count("<circle") == 40
-    assert (REPO / "templates" / "chels-round-v1.svg").read_text() == svg.text
-    dxf = client.get("/api/templates/chels-shoe-v1/files/dxf")
+    assert all(row["per_sheet"] == 3 * row["per_piece"] for row in data["layouts"])
+    assert client.get("/api/templates/chels-round-v2/preview.png").headers["content-type"] == "image/png"
+    svg = client.get("/api/templates/chels-round-v2/files/svg")
+    assert svg.status_code == 200 and svg.text.count("<circle") == 30
+    assert (REPO / "templates" / "chels-round-v2.svg").read_text() == svg.text
+    dxf = client.get("/api/templates/chels-shoe-v2/files/dxf")
     assert "attachment" in dxf.headers["content-disposition"] and "ANCHOR" in dxf.text
-    assert client.get("/api/templates/chels-tag-v1/files/calibration.pdf").content.startswith(b"%PDF")
+    assert client.get("/api/templates/chels-tag-v2/files/calibration.pdf").content.startswith(b"%PDF")
     assert client.get("/api/templates/chels-mini-v1/files/svg").status_code == 404
-    assert client.get("/api/templates/chels-tag-v1/files/exe").status_code == 404
+    assert client.get("/api/templates/chels-tag-v2/files/exe").status_code == 404
+
+    # a .studio3 uploaded for a half-sheet (v1) layout is shown as outdated and never bundled
+    t: Templates = client.app.state.templates
+    v1 = t.layout("chels-medium-v1")
+    t.store.put("templates/chels-medium-v1.studio3", b"OLD")
+    t.store.put("templates/chels-medium-v1.studio3.json", json.dumps(
+        {"geometry_hash": v1.geometry_hash, "filename": "chels-medium-v1.studio3", "bytes": 3,
+         "uploaded_at": "2026-01-01T00:00:00+00:00"}).encode())
+    outdated = client.get("/api/templates").json()["outdated"]
+    assert [(o["layout_id"], o["current"]) for o in outdated] == [("chels-medium-v1", False)]
+    assert t.current_studio3_bytes("chels-medium-v1") is None
+    client.delete("/api/templates/chels-medium-v1/studio3")
 
     # .studio3 upload: stored with the geometry hash, current until the geometry changes
-    r = client.post("/api/templates/chels-small-v1/studio3", files={"file": ("x.png", b"nope")})
+    r = client.post("/api/templates/chels-small-v2/studio3", files={"file": ("x.png", b"nope")})
     assert r.status_code == 400 and ".studio3" in r.json()["detail"]
-    r = client.post("/api/templates/chels-small-v1/studio3", files={"file": ("chels-small-v1.studio3", b"STUDIO")})
+    r = client.post("/api/templates/chels-small-v2/studio3", files={"file": ("chels-small-v2.studio3", b"STUDIO")})
     assert r.status_code == 200 and r.json()["current"] is True
-    row = next(x for x in client.get("/api/templates").json()["layouts"] if x["layout_id"] == "chels-small-v1")
+    row = next(x for x in client.get("/api/templates").json()["layouts"] if x["layout_id"] == "chels-small-v2")
     assert row["studio3"]["current"] and row["studio3"]["geometry_hash"] == row["geometry_hash"]
-    assert client.get("/api/templates/chels-small-v1/studio3").content == b"STUDIO"
-    t: Templates = client.app.state.templates
-    assert t.current_studio3_bytes("chels-small-v1") == b"STUDIO"
+    assert client.get("/api/templates/chels-small-v2/studio3").content == b"STUDIO"
+    assert t.current_studio3_bytes("chels-small-v2") == b"STUDIO"
 
     # sheet.json changes (no new layout yet): the upload is outdated and never bundled
     cfg = tmp_path / "config"
@@ -260,13 +293,13 @@ def test_templates_page_files_and_studio3(client, tmp_path):
     sheet["edge_margin"] = 10.5
     (cfg / "sheet.json").write_text(json.dumps(sheet))
     changed = Templates(t.store, cfg, t.layouts_dir)
-    st = changed.studio3("chels-small-v1")
+    st = changed.studio3("chels-small-v2")
     assert st is not None and st.current is False
-    assert changed.current_studio3_bytes("chels-small-v1") is None
+    assert changed.current_studio3_bytes("chels-small-v2") is None
     listing = changed.listing()
     assert all("error" in row for row in listing["layouts"])
-    assert [o["layout_id"] for o in listing["outdated"]] == ["chels-small-v1"]
+    assert [o["layout_id"] for o in listing["outdated"]] == ["chels-small-v2"]
     with pytest.raises(ValueError, match="not the current layout"):
-        changed.save_studio3("chels-small-v1", "a.studio3", b"x")
-    assert client.delete("/api/templates/chels-small-v1/studio3").json() == {"ok": True}
-    assert t.studio3("chels-small-v1") is None
+        changed.save_studio3("chels-small-v2", "a.studio3", b"x")
+    assert client.delete("/api/templates/chels-small-v2/studio3").json() == {"ok": True}
+    assert t.studio3("chels-small-v2") is None

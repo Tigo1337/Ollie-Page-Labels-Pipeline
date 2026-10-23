@@ -16,18 +16,15 @@ Ce sont des **points de départ**, pas des valeurs garanties. Le but est une **d
 | **Vitesse** (Speed) | 4 |
 | **Passages** (Passes) | 1 |
 
-## Un matériau personnalisé par finition
+## Un seul matériau personnalisé
 
-Chaque finition commence par un **Test de découpe** (Test Cut), puis ses réglages sont enregistrés comme un
-**Matériau** (Material) ⚠ personnalisé (**Ajouter un matériau** (Add Material) ⚠), pour ne plus avoir à les chercher :
+Toutes les étiquettes ont la même finition : vinyle blanc imprimable jet d'encre + laminé transparent mat.
+Commencez par un **Test de découpe** (Test Cut), puis enregistrez les réglages comme un **Matériau** (Material) ⚠
+personnalisé (**Ajouter un matériau** (Add Material) ⚠), pour ne plus avoir à les chercher :
 
-| Finition | Nom du matériau |
-|---|---|
-| Matte | `Chels – vinyle + lam. mat` |
-| Glossy | `Chels – vinyle + lam. brillant` |
-| Holographic | `Chels – vinyle + lam. holo` |
+**`Chels – vinyle + lam. mat`** (Matte laminate)
 
-1. Panneau **Envoyer** (Send) : choisissez le matériau de la finition.
+1. Panneau **Envoyer** (Send) : choisissez ce matériau.
 2. Faites un **Test de découpe** (Test Cut) dans un coin libre (hors des zones des repères).
 3. Le petit carré doit se décoller proprement **sans** marquer le support. Trop léger : montez la
    **Force** ; le support est coupé : baissez la **Force** ou la **Profondeur** (Depth).
@@ -35,7 +32,6 @@ Chaque finition commence par un **Test de découpe** (Test Cut), puis ses régla
 
 ## Notes
 
-* Le laminé **holographique** demande en général plus de **Force** : montez de 2 à la fois.
 * Utilisez une lame neuve de bonne qualité.
 * Le tapis doit bien coller ; s'il est fatigué, scotchez les bords de la feuille.
 * Si le bord gauche est mal coupé, vérifiez d'abord l'adhérence du tapis et la position des

@@ -23,7 +23,7 @@ from .db import DesignRow, PresetRow, Setting
 from .storage import BlobStore
 
 SETTING_KEYS = ("production", "sizes", "packs", "finishes", "fonts", "texts", "shop", "listings")
-GEOMETRY_VERSION = 2   # 2 = fixed half-sheet layouts (sheet.json); see app/migrate.py
+GEOMETRY_VERSION = 3   # 2 = fixed half-sheet layouts, 3 = thirds, one finish, fixed name position; app/migrate.py
 SHOP_DEFAULTS = {"default_finish": "matte"}
 # changes to text the first listings seed put in the database: (key, old text, new text)
 LISTINGS_FIXUPS = (

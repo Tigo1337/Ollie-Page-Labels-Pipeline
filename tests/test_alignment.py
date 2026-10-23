@@ -38,7 +38,7 @@ def outward_samples(path, d):
 @pytest.fixture(scope="module")
 def produced(ws, tmp_path_factory):
     out = tmp_path_factory.mktemp("align")
-    lines = [OrderLine("solid", p, "matte", "Léo", "", 1) for p in ("school", "large22", "daycare")]
+    lines = [OrderLine("solid", p, "matte", "Léo", "", 1) for p in ("school", "large18", "daycare")]
     res = ws.producer.run([Order("align", lines)], out, customer_proofs=False)
     return res, out
 

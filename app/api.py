@@ -119,7 +119,8 @@ def catalog(request: Request):
         try:
             per_pack[pid] = {"pieces_by_size": pack_pieces(p, cat, layouts_dir), **pack_sheets(p, cat, layouts_dir)}
         except (LayoutError, PackError) as e:
-            per_pack[pid] = {"pieces_by_size": {}, "pieces": 0, "batched": 0, "alone": 0, "error": str(e)}
+            per_pack[pid] = {"pieces_by_size": {}, "pieces": 0, "batched": 0, "alone": 0, "envelope": None,
+                             "error": str(e)}
     return {
         "production": prod.__dict__,
         "sheet": {k: v for k, v in cat.sheet.__dict__.items() if k != "raw"},
@@ -305,6 +306,35 @@ def update_shop(body: dict, request: Request):
     return shop
 
 
+PRODUCTION_EDITABLE = {"piece_weight_g": (0.1, 100.0), "envelope_weight_g": (0.0, 100.0),
+                       "piece_thickness_mm": (0.01, 5.0)}
+
+
+@router.get("/production")
+def get_production(request: Request):
+    return svc(request).catalog.production.__dict__
+
+
+@router.patch("/production")
+def update_production(body: dict, request: Request):
+    """The envelope-estimate numbers (Settings page); the rest of production.json is not edited here."""
+    r = repo(request)
+    prod = dict(r.setting("production"))
+    for k, v in body.items():
+        if k not in PRODUCTION_EDITABLE:
+            raise ValueError(f"'{k}' cannot be edited here.")
+        lo, hi = PRODUCTION_EDITABLE[k]
+        try:
+            v = float(v)
+        except (TypeError, ValueError):
+            raise ValueError(f"{k} must be a number.") from None
+        if not lo <= v <= hi:
+            raise ValueError(f"{k} must be between {lo:g} and {hi:g}.")
+        prod[k] = v
+    r.set_setting("production", prod)
+    return svc(request).catalog.production.__dict__
+
+
 # ---------------------------------------------------------------- previews
 class PreviewBody(BaseModel):
     design: str
@@ -384,12 +414,12 @@ class MakeBody(BaseModel):
     order_id: str = ""
     design: str
     pack: str
-    finish: str = ""      # empty = the shop's default finish
+    finish: str = ""      # empty = the one finish (matte); an old gloss / holographic is produced in matte
     name: str
     line2: str = ""
     font: int = 1
     lang: str = "en"
-    unpaired: Literal["bonus", "blank"] = "bonus"   # the other half of a sheet printed alone
+    unpaired: Literal["bonus", "blank"] = "bonus"   # the empty pieces of a sheet printed without enough pieces
 
 
 @router.post("/make")

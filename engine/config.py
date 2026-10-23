@@ -20,6 +20,9 @@ class Production:
     safe: float = 1.0             # text at least this far inside the cut line (mm)
     proof_dpi: int = 150
     min_cap_mm: float = 1.7       # readability warning below this capital-letter height
+    piece_weight_g: float = 6.0   # one laminated third with its backing (envelope estimate; weigh a real one)
+    envelope_weight_g: float = 5.0  # an empty #10 envelope
+    piece_thickness_mm: float = 0.35  # one piece, for the Lettermail 5 mm thickness limit
 
     @staticmethod
     def from_dict(d: dict) -> "Production":

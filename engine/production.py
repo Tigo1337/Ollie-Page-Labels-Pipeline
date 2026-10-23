@@ -39,10 +39,7 @@ from .text import GlyphError
 from .uifont import UIFonts
 
 REPO = Path(__file__).resolve().parent.parent
-GUTTER_PT = 6.0          # order text in the gutter
-GUTTER_START = 25.0      # mm from the printed left edge
-TOP_BASELINE = 1.5       # mm above the trim line (top piece text, glyphs pointing away from the trim)
-BOTTOM_BASELINE = 3.0    # mm below the trim line (other pieces' text: cap top ≈ 1.5 mm below the trim)
+GUTTER_START = 25.0      # mm from the printed left edge (page proofs: each piece's order text)
 
 Studio3Provider = Callable[[str], "bytes | None"]
 
@@ -142,6 +139,7 @@ class Producer:
         out_dir.mkdir(parents=True, exist_ok=True)
         ex, plan = self.plan(orders, unpaired)
         labels, warnings = self.render_all(ex)
+        warnings = ex.warnings + warnings
         res = ProductionResult(out_dir=out_dir, prefix=prefix, warnings=warnings, labels=labels, plan=plan)
         layouts = self.layouts(sorted({sh.size for sh in plan.sheets}))
         sheet = self.cat.sheet
@@ -256,13 +254,14 @@ class Producer:
         return cache[key]
 
     def write_pdf(self, sheets: list[SheetPlan], lay: Layout, labels: dict[str, RenderedLabel], path: Path) -> None:
-        """Landscape pages with /Rotate 270: marks, art at true size in the layout's cells only,
-        trim ticks and guides, each piece's order text in the gutter and a header line."""
+        """Landscape pages with /Rotate 270 holding only what belongs on the sheet: the registration
+        marks, the art at true size in the layout's cells, and the trim ticks and guides delimiting the
+        pieces. No text: which sheet and piece is which is on the page proofs, info sheet and packing
+        slip (sheet number = page order, haut / milieu / bas)."""
         sheet = self.cat.sheet
         size = self.cat.sizes[lay.size]
         pdf = SheetPDF(path, sheet, title=path.stem,
                        keywords=f"layout_id={lay.layout_id}; geometry_hash={lay.geometry_hash}")
-        regular, _ = self.ui.reportlab()
         cache: dict = {}
         for sh in sheets:
             images = []
@@ -272,35 +271,8 @@ class Producer:
             pdf.marks()
             pdf.trim()
             pdf.art(lay, images, size)
-            self._gutter_pdf(pdf.c, sheet, sh, regular)
-            pdf.header(f"sheet: {sh.n} · template: {lay.layout_id}", font=regular)
             pdf.end_page()
         pdf.save()
-
-    @staticmethod
-    def gutter_spots(sheet: Sheet) -> list[float]:
-        """Studio X of each piece's gutter text baseline, in printed order: the top piece's text sits
-        just above the first trim line, every other piece's text just below its upper trim line."""
-        trims = list(reversed(sheet.trims))                     # printed top to bottom
-        return [trims[0] + TOP_BASELINE] + [T - BOTTOM_BASELINE for T in trims]
-
-    @staticmethod
-    def _gutter_pdf(c: rl_canvas.Canvas, sheet: Sheet, sh: SheetPlan, font: str) -> None:
-        """6 pt grey text in the gutters, reading left to right on the printed sheet, one line per piece
-        beside its own trim line."""
-        H = sheet.paper_h
-        k = PT_PER_MM
-        c.saveState()
-        c.setFillColorRGB(0.45, 0.45, 0.48)
-        c.setFont(font, GUTTER_PT)
-        for piece, X in zip(sh.pieces, Producer.gutter_spots(sheet)):
-            text = "(blank)" if piece is None else piece.tag + (" · BONUS" if piece.bonus else "")
-            c.saveState()
-            c.translate(X * k, (H - GUTTER_START) * k)
-            c.rotate(-90)                     # Studio +Y = printed left to right; glyph tops toward +X
-            c.drawString(0, 0, text)
-            c.restoreState()
-        c.restoreState()
 
     # ------------------------------------------------------------------
     def page_proof(self, sh: SheetPlan, lay: Layout, labels: dict[str, RenderedLabel]) -> Image.Image:
@@ -392,7 +364,7 @@ class Producer:
                 spots = where.get((p.order_id, p.index), [])
                 if (p.order_id, p.index) in waiting:
                     spots = ["WAITING for more pieces to fill a sheet (not printed yet)"]
-                out.append(f"  tiers {p.index}/{p.of}  {size.label:<34} {p.name:<24} " + "; ".join(spots))
+                out.append(f"  {f'tiers {p.index}/{p.of}':<12} {size.label:<37} {p.name:<24} " + "; ".join(spots))
             out.append("")
         return "\n".join(out) + "\n"
 

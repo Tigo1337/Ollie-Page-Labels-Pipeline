@@ -17,17 +17,15 @@ Ce sont des **points de départ**, pas des valeurs garanties. Le but est une **d
 | {{ L('speed') }} | 4 |
 | {{ L('passes') }} | 1 |
 
-## Un matériau personnalisé par finition
+## Un seul matériau personnalisé
 
-Chaque finition commence par un {{ L('test_cut') }}, puis ses réglages sont enregistrés comme un
-{{ L('material') }} personnalisé ({{ L('add_material') }}), pour ne plus avoir à les chercher :
-
-| Finition | Nom du matériau |
-|---|---|
-{% for f in finishes -%}
-| {{ f.label }} | `Chels – vinyle + lam. {{ f.short }}` |
+Toutes les étiquettes ont la même finition : vinyle blanc imprimable jet d'encre + laminé transparent mat.
+Commencez par un {{ L('test_cut') }}, puis enregistrez les réglages comme un {{ L('material') }}
+personnalisé ({{ L('add_material') }}), pour ne plus avoir à les chercher :
+{% for f in finishes %}
+**`Chels – vinyle + lam. {{ f.short }}`** ({{ f.label }})
 {% endfor %}
-1. Panneau {{ L('send') }} : choisissez le matériau de la finition.
+1. Panneau {{ L('send') }} : choisissez ce matériau.
 2. Faites un {{ L('test_cut') }} dans un coin libre (hors des zones des repères).
 3. Le petit carré doit se décoller proprement **sans** marquer le support. Trop léger : montez la
    {{ L('force') }} ; le support est coupé : baissez la {{ L('force') }} ou la {{ L('depth') }}.
@@ -35,7 +33,6 @@ Chaque finition commence par un {{ L('test_cut') }}, puis ses réglages sont enr
 
 ## Notes
 
-* Le laminé **holographique** demande en général plus de {{ L('force') }} : montez de 2 à la fois.
 * Utilisez une lame neuve de bonne qualité.
 * Le tapis doit bien coller ; s'il est fatigué, scotchez les bords de la feuille.
 * Si le bord gauche est mal coupé, vérifiez d'abord l'adhérence du tapis et la position des

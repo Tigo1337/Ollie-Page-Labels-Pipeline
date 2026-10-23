@@ -32,7 +32,7 @@ INDEX_KEY = PREFIX + "index.json"
 FILE_RE = re.compile(r"^[A-Za-z0-9_-]{1,120}\.png$")
 GROUP_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
 GROUP_CODE_RE = re.compile(r"^[A-Z0-9]{1,8}$")
-EDITABLE = ("shop_name", "sku_prefix", "asset_prefix", "asset_base_url", "sample_names", "pack_short", "pack_code", "prices",
+EDITABLE = ("shop_name", "ship_time", "sku_prefix", "asset_prefix", "asset_base_url", "sample_names", "pack_short", "pack_code", "prices",
             "csv", "variation_names", "personalization", "title_template", "tags_base", "description_template",
             "groups")
 CSV_NAME = "etsy_import_labels.csv"
@@ -62,6 +62,9 @@ def validate(current: dict, body: dict, cat: Catalog) -> dict:
     cfg["shop_name"] = str(cfg.get("shop_name", "")).strip()
     if len(cfg["shop_name"]) > 60:
         raise ValueError("The shop name can be at most 60 characters.")
+    cfg["ship_time"] = str(cfg.get("ship_time", "")).strip()
+    if len(cfg["ship_time"]) > 40:
+        raise ValueError("The shipping time can be at most 40 characters (e.g. 3-5 business days).")
     cfg["asset_base_url"] = str(cfg.get("asset_base_url", "")).strip()
     if cfg["asset_base_url"] and not cfg["asset_base_url"].startswith(("https://", "http://")):
         raise ValueError("Where the images are hosted must be a web address starting with https://.")

@@ -152,7 +152,7 @@ Les libellés marqués ⚠ sont à confirmer dans votre Studio.*
    une feuille à la fois sur l'Epson ET-2980. Le PDF se tourne tout seul en portrait : ne changez pas
    l'orientation.
 2. **Sécher** : laissez sécher l'encre, idéalement une nuit (encre à colorant).
-3. **Encocher le laminé**, pour toutes les finitions : découpez `laminate_notches.dxf` dans la feuille
+3. **Encocher le laminé** : découpez `laminate_notches.dxf` dans la feuille
    de laminé (coupe simple, sans repères, placée à X 0 / Y 0) pour ouvrir les trois coins de
    22 × 22 mm. Posez le laminé encoches sur les
    trois repères, puis laminez.
@@ -161,9 +161,11 @@ Les libellés marqués ⚠ sont à confirmer dans votre Studio.*
    10 mm, **Épaisseur** (Thickness) 1 mm,
    **Retrait** (Inset) 10 mm. Posez la feuille sur le tapis en paysage,
    comme les cartes : le carré noir en haut à gauche.
-5. **Découper** : **Envoyer** (Send), le **Matériau** (Material) ⚠ de la finition (réglages et
+5. **Découper** : **Envoyer** (Send), le **Matériau** (Material) ⚠ `Chels – vinyle + lam. mat` (réglages et
    **Test de découpe** (Test Cut) : `docs/cut-settings.md`). Découpe à mi-chair : laminé et vinyle, pas le support.
 6. **Couper** la feuille aux traits de coupe en trois tiers (haut / milieu / bas), puis rangez
-   chaque tiers selon le bordereau (`packing_slip`) : chaque tiers indique sa commande, son prénom et
-   son numéro de tiers. Chaque tiers part à plat dans une enveloppe n° 10.
+   chaque tiers selon le bordereau (`packing_slip`) : rien n'est imprimé sur la feuille à part les
+   étiquettes, les repères et les traits de coupe ; le bordereau et l'aperçu de chaque feuille disent
+   quelle commande va dans chaque tiers (numéro de feuille = ordre des pages, puis haut / milieu / bas).
+   Chaque tiers part à plat dans une enveloppe n° 10.
 <!-- /generated:print-and-cut -->

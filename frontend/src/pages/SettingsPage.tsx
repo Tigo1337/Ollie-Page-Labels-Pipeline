@@ -3,44 +3,70 @@ import { api } from "../api";
 import { useApp } from "../App";
 import { ErrorBox } from "../ui";
 
-interface Shop { default_finish: string }
+interface Production { piece_weight_g: number; envelope_weight_g: number; piece_thickness_mm: number }
+
+const FIELDS: [keyof Production, string, string][] = [
+  ["piece_weight_g", "Weight of one third (g)", "Weigh a real laminated third with its backing and put the number here."],
+  ["envelope_weight_g", "Weight of an empty #10 envelope (g)", ""],
+  ["piece_thickness_mm", "Thickness of one third (mm)", "Standard Lettermail is at most 5 mm thick."],
+];
 
 export default function SettingsPage() {
-  const { catalog } = useApp();
-  const [shop, setShop] = useState<Shop | null>(null);
+  const { catalog, reloadCatalog } = useApp();
+  const [prod, setProd] = useState<Production | null>(null);
+  const [draft, setDraft] = useState<Record<string, string>>({});
   const [err, setErr] = useState("");
   const [saved, setSaved] = useState(false);
-  useEffect(() => { api.get<Shop>("/api/shop").then(setShop).catch((e) => setErr(e.message)); }, []);
-  const update = async (patch: Partial<Shop>) => {
+  useEffect(() => {
+    api.get<Production>("/api/production").then((p) => {
+      setProd(p);
+      setDraft(Object.fromEntries(FIELDS.map(([k]) => [k, String(p[k])])));
+    }).catch((e) => setErr(e.message));
+  }, []);
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
     setErr("");
     try {
-      setShop(await api.patch<Shop>("/api/shop", patch));
+      const p = await api.patch<Production>("/api/production", Object.fromEntries(FIELDS.map(([k]) => [k, Number(draft[k])])));
+      setProd(p);
+      reloadCatalog();
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
-    } catch (e) {
-      setErr((e as Error).message);
+    } catch (x) {
+      setErr((x as Error).message);
     }
   };
-  if (!shop) return err ? <ErrorBox message={err} /> : null;
-  const finish = catalog.finishes.find((f) => f.id === shop.default_finish);
+  const finish = catalog.finishes[0];
   return (
     <div>
       <h2>Settings</h2>
       <section className="card">
         <h3>Finish</h3>
-        <p className="muted">Orders don't choose a finish yet: every order uses this one.</p>
-        <label>Finish for all orders
-          <select value={shop.default_finish} onChange={(e) => update({ default_finish: e.target.value })}>
-            {catalog.finishes.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
-          </select>
-        </label>
         {finish && (
-          <p className="muted small">
-            {finish.media} with {finish.laminate}.{" "}
-            {finish.notch ? "The laminate is notched at the three mark corners (a laminate_notches.dxf is included)." : "No laminate notch needed."}
+          <p>
+            <strong>{finish.label}</strong> on every label: {finish.media} with {finish.laminate}.{" "}
+            {finish.notch ? "The laminate is notched at the three mark corners (a laminate_notches.dxf is included)." : ""}
           </p>
         )}
-        {saved && <span className="ok">Saved</span>}
+      </section>
+      <section className="card">
+        <h3>Envelope estimate</h3>
+        <p className="muted">Every third ships flat in a #10 envelope. The Make page estimates the envelope's weight
+          (thirds × weight of a third + the envelope) and its Canada Post Lettermail class.</p>
+        {prod && (
+          <form onSubmit={save} className="grid-form">
+            {FIELDS.map(([k, label, hint]) => (
+              <label key={k}>{label}{hint && <small className="muted">{hint}</small>}
+                <input type="number" step="any" min="0" value={draft[k] ?? ""}
+                       onChange={(e) => setDraft({ ...draft, [k]: e.target.value })} />
+              </label>
+            ))}
+            <div className="span2 actions">
+              <button className="primary">Save</button>
+              {saved && <span className="ok">Saved</span>}
+            </div>
+          </form>
+        )}
         {err && <ErrorBox message={err} />}
       </section>
     </div>

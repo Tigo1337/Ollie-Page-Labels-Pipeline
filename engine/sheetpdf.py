@@ -25,7 +25,9 @@ from .geometry import PT_PER_MM as PT
 from .layout import Layout, cell_labels
 from .marks import mark_rects
 
-HEADER_AT = (150.0, 212.0)   # header baseline (Studio mm): bottom margin, right of the trim tick, as SCM
+HEADER_END = (181.0, 212.0)  # header baseline end (Studio mm): bottom margin, right-aligned so it ends
+                             # before the upper trim line (X 186.267) and its tick. Calibration sheets only:
+                             # the print sheets carry no text (only marks, art and trim marks)
 
 
 def studio_image(img: Image.Image, rotated: bool) -> Image.Image:
@@ -86,7 +88,7 @@ class SheetPDF:
         c.saveState()
         c.setFillColorRGB(0.4, 0.4, 0.45)
         c.setFont(font, 7)
-        c.drawString(HEADER_AT[0] * PT, (self.H - HEADER_AT[1]) * PT, text)
+        c.drawRightString(HEADER_END[0] * PT, (self.H - HEADER_END[1]) * PT, text)
         c.restoreState()
 
     # -- cells -----------------------------------------------------------------

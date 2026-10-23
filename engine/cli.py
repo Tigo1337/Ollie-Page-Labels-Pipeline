@@ -109,11 +109,17 @@ def cmd_packs(args) -> int:
         unit = " pairs" if x["pairs"] else ""
         print(f"  {cat.sizes[sid].label:<38} {x['layout_id']:<17} {x['per_piece']:>4}{unit} per piece "
               f"{x['per_sheet']:>4}{unit} per sheet")
-    print("\nPacks (pieces; sheets of material when batched / when printed alone)")
+    p = cat.production
+    print(f"\nPacks (pieces per size; sheets of material when batched / when printed alone; #10 envelope at "
+          f"{p.piece_weight_g:g} g a piece + {p.envelope_weight_g:g} g)")
     for pid, x in packs.items():
         pieces = ", ".join(f"{n} {s}" for s, n in x["pieces_by_size"].items())
-        print(f"  {cat.packs[pid].label:<42} {x['pieces']} pieces ({pieces})  "
-              f"{x['batched']:g} / {x['alone']} sheet(s)")
+        env = x["envelope"]
+        print(f"  {cat.packs[pid].label:<42} {x['pieces']:>2} pieces ({pieces})")
+        print(f"  {'':<42} sheets {x['batched']:g} batched / {x['alone']} alone · envelope ≈ {env['weight_g']:g} g, "
+              f"{env['lettermail']}")
+        if env["warning"]:
+            print(f"  {'':<42} WARNING: {env['warning']}")
     return 0
 
 

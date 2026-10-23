@@ -1,12 +1,12 @@
 [
-  {"id": "pencil60", "label": "60 Skinny pencil labels",                 "contents": {"pencil": 60}},
-  {"id": "small62",  "label": "62 Small labels",                         "contents": {"small": 62}},
-  {"id": "medium30", "label": "30 Medium labels",                        "contents": {"medium": 30}},
-  {"id": "large22",  "label": "22 Large labels",                         "contents": {"large": 22}},
-  {"id": "tag110",   "label": "110 Clothing tag labels",                 "contents": {"tag": 110}},
-  {"id": "round40",  "label": "40 Round labels",                         "contents": {"round": 40}},
-  {"id": "shoe8",    "label": "8 pairs of shoe labels",                  "contents": {"shoe": 8}},
-  {"id": "starter",  "label": "Starter pack (61)",                       "contents": {"pencil": 30, "small": 31}},
-  {"id": "daycare",  "label": "Daycare pack (86)",                       "contents": {"small": 31, "tag": 55}},
-  {"id": "school",   "label": "Back-to-school pack (96 + 8 shoe pairs)", "contents": {"pencil": 30, "small": 31, "medium": 15, "round": 20, "shoe": 8}}
+  {"id": "pencil51", "label": "51 Skinny pencil labels",                    "contents": {"pencil": 51}},
+  {"id": "small57",  "label": "57 Small labels",                            "contents": {"small": 57}},
+  {"id": "medium24", "label": "24 Medium labels",                           "contents": {"medium": 24}},
+  {"id": "large18",  "label": "18 Large labels",                            "contents": {"large": 18}},
+  {"id": "tag102",   "label": "102 Clothing tag labels",                    "contents": {"tag": 102}},
+  {"id": "round30",  "label": "30 Round labels",                            "contents": {"round": 30}},
+  {"id": "shoe12",   "label": "12 pairs of shoe labels",                    "contents": {"shoe": 12}},
+  {"id": "starter",  "label": "Starter pack (73)",                          "contents": {"pencil": 17, "small": 38, "medium": 8, "round": 10}},
+  {"id": "daycare",  "label": "Daycare pack (113 + 4 shoe pairs)",          "contents": {"tag": 68, "medium": 16, "small": 19, "round": 10, "shoe": 4}},
+  {"id": "school",   "label": "Back-to-school pack (208 + 8 shoe pairs)",   "contents": {"pencil": 51, "small": 57, "medium": 16, "large": 6, "round": 10, "tag": 68, "shoe": 8}}
 ]

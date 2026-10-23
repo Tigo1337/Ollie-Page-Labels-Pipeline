@@ -25,8 +25,7 @@ export default function DesignPage({ id }: { id: string }) {
       </div>
       <CropSummary design={d} />
       <SettingsPanel design={d} onSaved={refresh} />
-      <ReviewPanel design={d} fonts={catalog.fonts.map((f) => ({ id: f.id, name: f.name }))}
-        finishes={catalog.finishes.map((f) => ({ id: f.id, label: f.label }))} />
+      <ReviewPanel design={d} fonts={catalog.fonts.map((f) => ({ id: f.id, name: f.name }))} />
     </div>
   );
 }
@@ -142,9 +141,9 @@ function SettingsPanel({ design, onSaved }: { design: Design; onSaved: () => voi
   );
 }
 
-function ReviewPanel({ design, fonts, finishes }: { design: Design; fonts: { id: number; name: string }[]; finishes: { id: string; label: string }[] }) {
+function ReviewPanel({ design, fonts }: { design: Design; fonts: { id: number; name: string }[] }) {
   const [font, setFont] = useState(1);
-  const [finish, setFinish] = useState("matte");
+  const finish = "matte";   // the one finish
   const [nonce, setNonce] = useState(0);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
@@ -158,9 +157,6 @@ function ReviewPanel({ design, fonts, finishes }: { design: Design; fonts: { id:
         <div className="actions">
           <select value={font} onChange={(e) => setFont(Number(e.target.value))}>
             {fonts.map((f) => <option key={f.id} value={f.id}>{f.id} · {f.name}</option>)}
-          </select>
-          <select value={finish} onChange={(e) => setFinish(e.target.value)}>
-            {finishes.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
           </select>
           <button onClick={() => setNonce((n) => n + 1)} disabled={!ready}>Refresh</button>
           {ready && <a className="button" href={`/api/designs/${design.id}/review.png?font=${font}&finish=${finish}&download=1`}>Download PNG</a>}
