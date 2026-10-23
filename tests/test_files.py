@@ -49,7 +49,7 @@ def test_laminate_outline_has_22mm_notches_at_the_mark_corners(ws):
 def test_calibration_sheet(ws, tmp_path):
     from engine.calibration import write_calibration
     from engine.workspace import REPO
-    p = write_calibration(ws.catalog, "chels-small-v1", tmp_path, REPO / "layouts")
-    assert p.name == "chels-small-v1_calibration.pdf" and p.stat().st_size > 0
+    p = write_calibration(ws.catalog, "chels-small-v2", tmp_path, REPO / "layouts")
+    assert p.name == "chels-small-v2_calibration.pdf" and p.stat().st_size > 0
     with pytest.raises(ValueError, match="No layout"):
         write_calibration(ws.catalog, "chels-mini-v1", tmp_path, REPO / "layouts")

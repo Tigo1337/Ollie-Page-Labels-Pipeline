@@ -274,10 +274,10 @@ def test_marks_rasterize_where_scm_puts_them(case):
             b = (int((m[2] + 0.3 - z[0]) * K), int((m[3] + 0.3 - z[1]) * K))
             win[max(a[1], 0):max(b[1], 0), max(a[0], 0):max(b[0], 0)] = 255
         assert win.min() > 200, f"ink inside the keep-out {z}"
-    T = SHEET.trim_x
-    gutter = img[int(12 * K):int((SHEET.paper_h - 12) * K), int((T - 3.5) * K):int((T + 3.5) * K)]
-    coloured = (gutter.max(axis=2).astype(int) - gutter.min(axis=2)) > 15
-    assert not coloured.any(), "label art inside the trim gutter"
+    for T in SHEET.trims:
+        gutter = img[int(12 * K):int((SHEET.paper_h - 12) * K), int((T - 3.5) * K):int((T + 3.5) * K)]
+        coloured = (gutter.max(axis=2).astype(int) - gutter.min(axis=2)) > 15
+        assert not coloured.any(), f"label art inside the trim gutter at X {T}"
 
 
 def test_printed_view_has_the_square_bottom_left(case):

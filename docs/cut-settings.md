@@ -16,18 +16,15 @@ Ce sont des **points de départ**, pas des valeurs garanties. Le but est une **d
 | **Vitesse** (Speed) | 4 |
 | **Passages** (Passes) | 1 |
 
-## Un matériau personnalisé par finition
+## Un seul matériau personnalisé
 
-Chaque finition commence par un **Test de découpe** (Test Cut), puis ses réglages sont enregistrés comme un
-**Matériau** (Material) ⚠ personnalisé (**Ajouter un matériau** (Add Material) ⚠), pour ne plus avoir à les chercher :
+Toutes les étiquettes ont la même finition : vinyle blanc imprimable jet d'encre + laminé transparent mat.
+Commencez par un **Test de découpe** (Test Cut), puis enregistrez les réglages comme un **Matériau** (Material) ⚠
+personnalisé (**Ajouter un matériau** (Add Material) ⚠), pour ne plus avoir à les chercher :
 
-| Finition | Nom du matériau |
-|---|---|
-| Matte | `Chels – vinyle + lam. mat` |
-| Glossy | `Chels – vinyle + lam. brillant` |
-| Holographic | `Chels – vinyle + lam. holo` |
+**`Chels – vinyle + lam. mat`** (Matte laminate)
 
-1. Panneau **Envoyer** (Send) : choisissez le matériau de la finition.
+1. Panneau **Envoyer** (Send) : choisissez ce matériau.
 2. Faites un **Test de découpe** (Test Cut) dans un coin libre (hors des zones des repères).
 3. Le petit carré doit se décoller proprement **sans** marquer le support. Trop léger : montez la
    **Force** ; le support est coupé : baissez la **Force** ou la **Profondeur** (Depth).
@@ -35,7 +32,6 @@ Chaque finition commence par un **Test de découpe** (Test Cut), puis ses régla
 
 ## Notes
 
-* Le laminé **holographique** demande en général plus de **Force** : montez de 2 à la fois.
 * Utilisez une lame neuve de bonne qualité.
 * Le tapis doit bien coller ; s'il est fatigué, scotchez les bords de la feuille.
 * Si le bord gauche est mal coupé, vérifiez d'abord l'adhérence du tapis et la position des
@@ -43,14 +39,15 @@ Chaque finition commence par un **Test de découpe** (Test Cut), puis ses régla
 * Un décalage de toutes les découpes dans une même direction n'est pas un réglage de lame : voir
   le **Calibrage** (Calibration) dans `docs/studio-template-setup.md`.
 
-## Option : couper la feuille en deux à la machine (désactivée par défaut)
+## Option : couper la feuille en trois tiers à la machine (désactivée par défaut)
 
-`templates/trim_line.svg` (et `.dxf`) contient une seule ligne de coupe traversante sur la ligne de
-coupe des moitiés (X 139.7 mm en paysage), en **bleu** sur le calque `TRIM`.
+`templates/trim_line.svg` (et `.dxf`) contient une ligne de coupe traversante sur chacune des
+2 lignes de coupe des tiers (X 93.133 et 186.267 mm
+en paysage), en **bleu** sur le calque `TRIM`.
 Pour l'utiliser : **Fichier** (File) → **Fusionner…** (Merge…) ce fichier dans le modèle, placez-le à X 0 / Y 0
 (les points d'ancrage), supprimez les ancrages, puis dans **Envoyer** (Send) choisissez
 **Découper par couleur de ligne** (Cut by Line Color) et donnez au bleu des réglages de coupe complète (plus de
 **Profondeur** (Depth) et de **Force**, 2 **Passages** (Passes)).
 
 **Attention :** une coupe traversante marque le tapis à chaque feuille. Sans elle, coupez aux
-ciseaux ou au massicot entre les repères de coupe imprimés.
+ciseaux ou au massicot aux repères de coupe imprimés.

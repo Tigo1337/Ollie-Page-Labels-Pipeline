@@ -2,5 +2,8 @@
   "_comment": "Production numbers that are not sheet geometry (page, marks, keep-outs, gap, bleed and dpi are in sheet.json).",
   "safe": 1.0,
   "proof_dpi": 150,
-  "min_cap_mm": 1.7
+  "min_cap_mm": 1.7,
+  "piece_weight_g": 6.0,
+  "envelope_weight_g": 5.0,
+  "piece_thickness_mm": 0.35
 }

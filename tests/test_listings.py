@@ -3,6 +3,7 @@ import copy
 import csv
 import datetime as dt
 import io
+import json
 import time
 import zipfile
 
@@ -45,11 +46,16 @@ def test_seed_groups_cover_every_design_once(cat):
     seen = [d for g in groups_of(cfg) for d in g.designs]
     assert sorted(seen) == sorted(cat.designs) and len(seen) == len(set(seen))
     assert 6 <= len(cfg["groups"]) <= 15
-    # only the prices, the shop name and the image address are left for the shop to fill in
+    # only the prices and the image address are left for the shop to fill in
     msgs = problems(cfg, cat, cfg["asset_base_url"])
-    assert all(m.startswith(("Set the price", "Set the shop name", "Set where the listing images")) for m in msgs)
-    assert len(msgs) == len(cat.packs) + 2
+    assert all(m.startswith(("Set the price", "Set where the listing images")) for m in msgs)
+    assert len(msgs) == len(cat.packs) + 1
     assert "Ollie" not in str(cfg) and cfg["asset_base_url"] == ""
+    assert cfg["shop_name"] == "Mazie Page Creations" and cfg["ship_time"] == "[X] business days"
+    assert list(cfg["pack_short"]) == list(cat.packs) == list(cfg["pack_code"]) == list(cfg["prices"])
+    assert cfg["pack_short"]["daycare"] == "Daycare (121)" and cfg["pack_code"]["tag102"] == "TAG102"
+    text = json.dumps(cfg, ensure_ascii=False).lower()
+    assert "half sheet" not in text and "letter envelope" not in text and "#10 envelope" in text
 
 
 def test_problems(cfg, cat):
@@ -183,17 +189,19 @@ def wait(client, timeout=30):
 def test_api_listings_flow(client, cat, monkeypatch):
     st = client.get("/api/listings").json()
     assert st["unassigned"] == [] and st["r2"]["configured"] is False
-    assert st["asset_base"] == "" and st["cfg"]["shop_name"] == ""
+    assert st["asset_base"] == "" and st["cfg"]["shop_name"] == "Mazie Page Creations"
     assert any(p.startswith("Set the price") for p in st["problems"])
-    assert any("hosted" in p for p in st["problems"]) and any("shop name" in p for p in st["problems"])
+    assert any("hosted" in p for p in st["problems"])
     r = client.get("/api/listings/csv")
     assert r.status_code == 400 and "not ready" in r.json()["detail"]
 
     cfg = st["cfg"]
     cfg["prices"] = {pid: "14.95" for pid in cat.packs}
-    cfg.update(shop_name="Test Shop", asset_base_url="https://images.example.com")
+    cfg.update(shop_name="Test Shop", asset_base_url="https://images.example.com", ship_time=" 3-5 business days ")
     st = client.put("/api/listings", json=cfg).json()
     assert st["problems"] == [] and st["asset_base"] == "https://images.example.com"
+    assert st["cfg"]["ship_time"] == "3-5 business days"
+    assert client.put("/api/listings", json={**cfg, "ship_time": "x" * 41}).status_code == 400
     assert client.put("/api/listings", json={"groups": "x"}).status_code == 400
     r = client.get("/api/listings/csv")
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv")

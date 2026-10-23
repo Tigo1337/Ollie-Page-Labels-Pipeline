@@ -43,7 +43,7 @@ def setup_doc(cat: Catalog, config_dir: Path, layouts_dir: Path) -> str:
 # Every generated document: docs/*.md and the generated sections of README.md
 # ---------------------------------------------------------------------------
 README_BLOCKS = {"layouts": "readme_layouts.md.j2", "print-and-cut": "readme_print_and_cut.md.j2"}
-FINISH_SHORT = {"matte": "mat", "gloss": "brillant", "holographic": "holo"}
+FINISH_SHORT = {"matte": "mat"}
 
 
 def _env(config_dir: Path) -> Environment:
@@ -60,9 +60,10 @@ def render_docs(cat: Catalog, config_dir: Path, layouts_dir: Path) -> dict[str, 
     for s in cat.sizes.values():
         lay = current_layout(cat.sheet, s, layouts_dir)
         lays.append({"layout_id": lay.layout_id, "dims": s.dims_label, "arrangement": lay.arrangement,
-                     "per_half": lay.per_half, "per_sheet": lay.per_sheet, "rows": " + ".join(map(str, lay.rows)),
+                     "per_piece": lay.per_piece, "per_sheet": lay.per_sheet, "rows": " + ".join(map(str, lay.rows)),
                      "unit": " pairs" if s.shape == "pair" else ""})
-    finishes = [{"id": f.id, "label": f.label, "short": FINISH_SHORT.get(f.id, f.id)} for f in cat.finishes.values()]
+    finishes = [{"id": f.id, "label": f.label, "media": f.media, "laminate": f.laminate,
+                 "short": FINISH_SHORT.get(f.id, f.id)} for f in cat.finishes.values()]
     out = {
         "docs/studio-template-setup.md": setup_doc(cat, config_dir, layouts_dir),
         "docs/cut-settings.md": env.get_template("cut_settings.md.j2").render(finishes=finishes, **ctx),

@@ -75,11 +75,13 @@ export const api = {
 export interface Size {
   id: string; label: string; shape: "rrect" | "circle" | "pair"; w: number; h: number; r: number;
   gap: number | null; pair: { each_w: number; gap: number } | null;
-  is_rect: boolean; dims: string; layout_id: string | null; per_half: number; per_sheet: number;
+  is_rect: boolean; dims: string; layout_id: string | null; per_piece: number; per_sheet: number;
 }
+export interface Envelope { weight_g: number; lettermail: string; thickness_mm: number; warning: string }
 export interface Pack {
   id: string; label: string; contents: Record<string, number>; total: number;
-  halves_by_size: Record<string, number>; halves: number; batched: number; alone: number; error?: string;
+  pieces_by_size: Record<string, number>; pieces: number; batched: number; alone: number;
+  envelope: Envelope | null; error?: string;
 }
 export interface Finish { id: string; label: string; media: string; laminate: string; notch: boolean; cost_per_sheet: number | null }
 export interface FontSpec { id: number; name: string; repo_dir: string; file: string; weight: number | null; mini_ok: boolean }
@@ -95,12 +97,21 @@ export interface Design {
 }
 export interface Preview { image: string; cap_mm: number[]; warnings: string[]; preset: PresetData; preset_is_auto: boolean; min_cap_mm: number }
 export interface RunFile { name: string; size: number; kind: string }
-export interface RunHalf { order: string; size: string; name: string; finish: string; index: number; of: number; bonus: boolean; tag: string }
-export interface RunSheet { n: number; finish: string; layout_id: string; size: string; pdf: string; page: number; proof: string; top: RunHalf; bottom: RunHalf | null }
+export interface RunPiece { order: string; size: string; name: string; finish: string; index: number; of: number; bonus: boolean; tag: string }
+// runs made before the thirds (geometry v3) have top / bottom halves instead of pieces
+export interface RunSheet {
+  n: number; finish: string; layout_id: string; size: string; pdf: string; page: number; proof: string;
+  pieces?: (RunPiece | null)[]; top?: RunPiece; bottom?: RunPiece | null;
+}
+export const sheetPieces = (sh: RunSheet): (RunPiece | null)[] =>
+  sh.pieces ?? [sh.top ?? null, sh.bottom ?? null];
+export const pieceNames = (n: number): string[] =>
+  n === 2 ? ["Haut (top)", "Bas (bottom)"] : n === 3 ? ["Haut (top)", "Milieu (middle)", "Bas (bottom)"]
+    : Array.from({ length: n }, (_, i) => `Tiers ${i + 1}`);
 export interface Run {
   id: string; title: string; prefix: string; created_at: string; request: Record<string, unknown>;
   files: RunFile[]; warnings: string[];
-  summary: { finishes: Record<string, { sheets: number; labels: number }>; sheets?: RunSheet[]; waiting?: RunHalf[];
+  summary: { finishes: Record<string, { sheets: number; labels: number }>; sheets?: RunSheet[]; waiting?: RunPiece[];
              templates?: { layout_id: string; studio3: boolean }[] };
 }
 export interface FontStatus { id: number; name: string; installed: boolean; licence: string | null; mini_ok: boolean; weight: number | null; file: string }

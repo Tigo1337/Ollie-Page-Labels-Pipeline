@@ -10,6 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 
 from engine.art import ArtError
+from engine.brand import BRAND_DIR
 from engine.orders import OrderError
 from engine.render import RenderError
 from engine.text import FontError, GlyphError
@@ -44,7 +45,7 @@ def create_app(settings: Settings | None = None, start_font_download: bool = Tru
     migrate(repo, settings.config_dir, settings.database_url, settings.data_dir)
     svc = EngineService(repo, store, settings.cache_dir, settings.config_dir, settings.layouts_dir)
 
-    app = FastAPI(title="Label Pipeline", docs_url="/api/docs", openapi_url="/api/openapi.json")
+    app = FastAPI(title="Mazie Page Creations · Label pipeline", docs_url="/api/docs", openapi_url="/api/openapi.json")
     app.state.settings = settings
     app.state.repo = repo
     app.state.svc = svc
@@ -91,6 +92,14 @@ def create_app(settings: Settings | None = None, start_font_download: bool = Tru
     app.include_router(router, prefix="/api")
     app.include_router(templates_router, prefix="/api")
     app.include_router(listings_router, prefix="/api")
+
+    # -- brand files (logo, favicon): served from brand/, public like the frontend ----------
+    @app.get("/brand/{name:path}", include_in_schema=False)
+    async def brand_file(name: str):
+        f = (BRAND_DIR / name).resolve()
+        if f.suffix.lower() in (".png", ".svg") and f.is_file() and BRAND_DIR.resolve() in f.parents:
+            return FileResponse(f, headers={"Cache-Control": "public, max-age=86400"})
+        return JSONResponse({"detail": "Not found."}, status_code=404)
 
     # -- frontend -----------------------------------------------------------
     dist = settings.frontend_dist

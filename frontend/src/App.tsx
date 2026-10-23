@@ -42,7 +42,8 @@ function Login({ onDone }: { onDone: () => void }) {
   return (
     <div className="login">
       <form className="card" onSubmit={submit}>
-        <h1>Label Pipeline</h1>
+        <img className="logo" src="/brand/mazie-page-logo-horizontal_2400.png" alt="Mazie Page Creations" />
+        <h1>Label pipeline</h1>
         <label>
           Secret
           <input type="password" value={secret} autoFocus onChange={(e) => setSecret(e.target.value)} />
@@ -97,7 +98,10 @@ export default function App() {
   return (
     <Ctx.Provider value={{ catalog, reloadCatalog }}>
       <header className="topbar">
-        <span className="brand">Label Pipeline</span>
+        <a className="brand" href="#/">
+          <img src="/brand/mazie-page-logo-horizontal_2400.png" alt="Mazie Page Creations" />
+          <span>Label pipeline</span>
+        </a>
         <nav>
           {link("#/", "Make labels", !top || top === "make")}
           {link("#/designs", "Designs", top === "designs")}

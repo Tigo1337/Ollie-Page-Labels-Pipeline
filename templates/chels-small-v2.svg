@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- chels-small-v2 · geometry af0e6f7f1d2eb3262d01762531c07a43370f383dd1ce815a29029033a1da664f · Studio frame (landscape Letter), mm, y down. Select all, place at X 0 / Y 0, then delete the two anchor dots. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="279.4mm" height="215.9mm" viewBox="0 0 279.4 215.9" data-layout-id="chels-small-v2" data-geometry-hash="af0e6f7f1d2eb3262d01762531c07a43370f383dd1ce815a29029033a1da664f">
+<g id="cut" fill="none" stroke="#FF0000" stroke-width="0.1">
+<rect x="254.384" y="38.7" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="254.384" y="85.7" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="254.384" y="132.7" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="239.184" y="15.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="239.184" y="62.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="239.184" y="109.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="239.184" y="156.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="223.984" y="15.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="223.984" y="62.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="223.984" y="109.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="223.984" y="156.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="208.784" y="15.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="208.784" y="62.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="208.784" y="109.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="208.784" y="156.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="193.584" y="15.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="193.584" y="62.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="193.584" y="109.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="193.584" y="156.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="161.251" y="38.7" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="161.251" y="85.7" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="161.251" y="132.7" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="146.051" y="15.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="146.051" y="62.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="146.051" y="109.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="146.051" y="156.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="130.851" y="15.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="130.851" y="62.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="130.851" y="109.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="130.851" y="156.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="115.651" y="15.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="115.651" y="62.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="115.651" y="109.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="115.651" y="156.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="100.451" y="15.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="100.451" y="62.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="100.451" y="109.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="100.451" y="156.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="12.316" y="38.7" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="12.316" y="85.7" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="12.316" y="132.7" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="27.516" y="15.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="27.516" y="62.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="27.516" y="109.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="27.516" y="156.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="42.716" y="15.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="42.716" y="62.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="42.716" y="109.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="42.716" y="156.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="57.916" y="15.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="57.916" y="62.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="57.916" y="109.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="57.916" y="156.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="73.116" y="15.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="73.116" y="62.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="73.116" y="109.2" width="12.7" height="44.5" rx="3" ry="3"/>
+<rect x="73.116" y="156.2" width="12.7" height="44.5" rx="3" ry="3"/>
+</g>
+<g id="anchors" fill="#000000" stroke="none">
+<rect x="0" y="0" width="0.01" height="0.01"/>
+<rect x="279.39" y="215.89" width="0.01" height="0.01"/>
+</g>
+</svg>

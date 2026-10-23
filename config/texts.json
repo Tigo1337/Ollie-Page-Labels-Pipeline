@@ -4,7 +4,7 @@
     "proof_order": "Order {order}",
     "proof_names": "Names: {names}",
     "proof_intro": "This is exactly how your labels will print. Please check every name carefully and reply to approve, or tell us what to change.",
-    "proof_footer": "Colours can look slightly different on screen. The holographic shimmer is a simulation of the real finish.",
+    "proof_footer": "Colours can look slightly different on screen.",
     "proof_caption": "{size} · {finish}",
     "review_title": "Design review · {design}",
     "fontchart_title": "Choose your font",
@@ -19,7 +19,7 @@
       "shoe": "Shoe pair"
     },
     "finishes": {
-      "matte": "Matte",
+      "matte": "Matte laminate",
       "gloss": "Glossy",
       "holographic": "Holographic"
     },
@@ -38,7 +38,7 @@
     "proof_order": "Commande {order}",
     "proof_names": "Prénoms : {names}",
     "proof_intro": "Voici exactement comment vos étiquettes seront imprimées. Vérifiez bien chaque prénom, puis répondez pour approuver ou pour nous dire quoi changer.",
-    "proof_footer": "Les couleurs peuvent paraître légèrement différentes à l'écran. L'effet holographique est une simulation du fini réel.",
+    "proof_footer": "Les couleurs peuvent paraître légèrement différentes à l'écran.",
     "proof_caption": "{size} · {finish}",
     "review_title": "Révision du design · {design}",
     "fontchart_title": "Choisissez votre police",
@@ -53,7 +53,7 @@
       "shoe": "Souliers"
     },
     "finishes": {
-      "matte": "Mat",
+      "matte": "Laminé mat",
       "gloss": "Brillant",
       "holographic": "Holographique"
     },

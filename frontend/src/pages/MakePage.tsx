@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, Design, fileUrl, Preview, Run } from "../api";
+import { api, Design, fileUrl, pieceNames, Preview, Run, sheetPieces } from "../api";
 import { useApp } from "../App";
 import { ErrorBox, fmtBytes, Spinner, useAsync, useDebounced, Warnings } from "../ui";
 
@@ -15,11 +15,11 @@ const MINI_SIZES = ["pencil", "tag"];
 export default function MakePage() {
   const { catalog } = useApp();
   const designs = useAsync(() => api.get<Design[]>("/api/designs"), []);
-  const shop = useAsync(() => api.get<{ default_finish: string }>("/api/shop"), []);
-  const finishId = shop.data?.default_finish ?? "matte";
-  const finishLabel = catalog.finishes.find((f) => f.id === finishId)?.label ?? finishId;
+  // one finish for every order (matte laminate): shown, not chosen
+  const finishId = catalog.finishes[0]?.id ?? "matte";
+  const finishLabel = catalog.finishes[0]?.label ?? "Matte laminate";
   const [form, setForm] = useState({
-    order_id: "", design: "", pack: "starter", finish: "", font: 1, name: "", line2: "", lang: "en",
+    order_id: "", design: "", pack: "starter", font: 1, name: "", line2: "", lang: "en",
     unpaired: "bonus",
   });
   const [busy, setBusy] = useState(false);
@@ -78,11 +78,12 @@ export default function MakePage() {
   const fontSpec = catalog.fonts.find((f) => f.id === form.font);
   const miniSizes = pack ? MINI_SIZES.filter((s) => s in pack.contents) : [];
   const miniWarn = fontSpec && !fontSpec.mini_ok && miniSizes.length > 0;
-  const halvesText = pack ? Object.entries(pack.halves_by_size).map(([s, n]) => {
+  const piecesText = pack ? Object.entries(pack.pieces_by_size).map(([s, n]) => {
     const size = catalog.sizes.find((x) => x.id === s);
-    const per = size ? `${size.per_half}${size.shape === "pair" ? " pairs" : ""}` : "?";
-    return `${n} × ${sizeLabel(s)} half (${per})`;
+    const per = size ? `${size.per_piece}${size.shape === "pair" ? " pairs" : ""}` : "?";
+    return `${n} × ${sizeLabel(s)} third (${per})`;
   }).join(", ") : "";
+  const env = pack?.envelope;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,13 +135,17 @@ export default function MakePage() {
             {pack && (
               <small className="muted">
                 {pack.error ? <span className="bad">{pack.error}</span> : <>
-                  {halvesText} · {pack.alone} sheet{pack.alone === 1 ? "" : "s"} on its own
-                  ({pack.batched} of material when batched) · {finishLabel} (<a href="#/settings">change</a>)
-                  · <a href="#/templates">cut templates</a>
+                  {piecesText} · {pack.alone} sheet{pack.alone === 1 ? "" : "s"} on its own
+                  ({pack.batched} of material when batched) · <a href="#/templates">cut templates</a>
+                  {env && <><br />#10 envelope ≈ {env.weight_g} g ({pack.pieces} pieces): {env.lettermail}
+                    {env.warning && <span className="bad"> · {env.warning}</span>}</>}
                 </>}
               </small>
             )}
           </label>
+          <div>Finish
+            <p className="muted">{finishLabel}</p>
+          </div>
           <label>Font
             <select value={form.font} onChange={set("font")}>
               {catalog.fonts.map((f) => <option key={f.id} value={f.id}>{f.id} · {f.name}</option>)}
@@ -155,12 +160,12 @@ export default function MakePage() {
           <label>Order number <small className="muted">(optional)</small>
             <input value={form.order_id} onChange={set("order_id")} placeholder="Etsy order #" />
           </label>
-          <label>Half without a partner
+          <label>Sheet not full
             <select value={form.unpaired} onChange={set("unpaired")}>
-              <option value="bonus">Print alone, other half = free bonus copy</option>
-              <option value="blank">Print alone, other half blank</option>
+              <option value="bonus">Fill the empty thirds with free bonus copies</option>
+              <option value="blank">Leave the empty thirds blank</option>
             </select>
-            <small className="muted">A sheet holds two halves of the same size; this order's odd halves are printed now.</small>
+            <small className="muted">A sheet holds three thirds of the same size; a size with 1 or 2 thirds in this order is printed now.</small>
           </label>
           <label>Proof language
             <select value={form.lang} onChange={set("lang")}>
@@ -231,6 +236,7 @@ function RunResult({ run }: { run: Run }) {
   const pages = run.files.filter((f) => f.kind === "page-proof");
   const order = ["zip", "print", "template", "notch", "info", "slip", "customer-proof", "page-proof", "other"];
   const files = [...run.files].sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind) || a.name.localeCompare(b.name));
+  const nPieces = Math.max(2, ...(run.summary.sheets ?? []).map((sh) => sheetPieces(sh).length));
   return (
     <section className="card">
       <div className="row-between">
@@ -263,19 +269,20 @@ function RunResult({ run }: { run: Run }) {
             ))}
           </div>
           <table className="table small">
-            <thead><tr><th>Sheet</th><th>Template</th><th>Haut (top)</th><th>Bas (bottom)</th></tr></thead>
+            <thead><tr><th>Sheet</th><th>Template</th>{pieceNames(nPieces).map((n) => <th key={n}>{n}</th>)}</tr></thead>
             <tbody>
               {(run.summary.sheets ?? []).map((sh) => (
                 <tr key={sh.n}>
                   <td>{sh.n} · {sh.finish}</td><td><code>{sh.layout_id}</code></td>
-                  <td>{sh.top.tag}</td>
-                  <td>{sh.bottom ? <>{sh.bottom.tag}{sh.bottom.bonus && <strong> · bonus</strong>}</> : <span className="muted">blank</span>}</td>
+                  {sheetPieces(sh).map((p, i) => (
+                    <td key={i}>{p ? <>{p.tag}{p.bonus && <strong> · bonus</strong>}</> : <span className="muted">blank</span>}</td>
+                  ))}
                 </tr>
               ))}
             </tbody>
           </table>
           {(run.summary.waiting ?? []).length > 0 && (
-            <Warnings items={(run.summary.waiting ?? []).map((h) => `Waiting for a partner half: ${h.tag}`)} />
+            <Warnings items={(run.summary.waiting ?? []).map((h) => `Waiting for more thirds to fill a sheet: ${h.tag}`)} />
           )}
           <p className="muted small">Cut every sheet with its layout's template (<a href="#/templates">Templates</a>); no X / Y to type.</p>
         </div>

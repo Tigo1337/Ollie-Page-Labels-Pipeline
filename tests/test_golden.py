@@ -21,9 +21,9 @@ GOLDEN = Path(__file__).parent / "golden" / "every_size.json"
 def golden_order():
     lines = []
     for name, l2, font in (("Léo", "", 1), ("Maximilien-Alexandre", "", 3), ("Alexandre", "Tremblay-Gagnon", 7)):
-        lines.append(OrderLine("dino", "school", "gloss", name, l2, font))
-        lines.append(OrderLine("dino", "large22", "gloss", name, l2, font))
-        lines.append(OrderLine("dino", "daycare", "gloss", name, l2, font))
+        lines.append(OrderLine("dino", "school", "matte", name, l2, font))
+        lines.append(OrderLine("dino", "large18", "matte", name, l2, font))
+        lines.append(OrderLine("dino", "daycare", "matte", name, l2, font))
     lines.append(OrderLine("space-cat", "starter", "matte", "Zoë", "", 4))
     return Order("golden", lines)
 
@@ -33,9 +33,7 @@ def snapshot(res, out: Path) -> dict:
     for sh in res.summary["sheets"]:
         snap["pages"].append({"n": sh["n"], "finish": sh["finish"], "layout_id": sh["layout_id"],
                               "pdf": sh["pdf"], "page": sh["page"],
-                              "top": [sh["top"]["name"], sh["top"]["index"], sh["top"]["bonus"]],
-                              "bottom": [sh["bottom"]["name"], sh["bottom"]["index"], sh["bottom"]["bonus"]]
-                              if sh["bottom"] else None,
+                              "pieces": [[p["name"], p["index"], p["bonus"]] if p else None for p in sh["pieces"]],
                               "proof_px": list(Image.open(out / sh["proof"]).size)})
     for key, lab in sorted(res.labels.items()):
         snap["labels"][key] = {"px": list(lab.image.size), "cap_mm": [round(c, 2) for c in lab.cap_mm]}
@@ -68,14 +66,14 @@ def test_golden_every_size(ws, tmp_path):
 
 
 def test_school_pack_under_10_seconds(ws, tmp_path):
-    """The 132-label budget of the spec, on today's biggest pack (96 labels + 8 shoe pairs)."""
+    """The speed budget of the spec, on today's biggest pack (208 labels + 8 shoe pairs, every size)."""
     w = fresh_ws(ws)  # empty render cache
-    order = Order("speed", [OrderLine("fox", "school", "holographic", "Maximilien", "", 2)])
+    order = Order("speed", [OrderLine("fox", "school", "matte", "Maximilien", "", 2)])
     t = time.perf_counter()
     res = w.producer.run([order], tmp_path)
     dt = time.perf_counter() - t
-    # printed alone: each half gets a bonus copy, so 2 × (96 labels + 16 shoe labels)
-    assert res.summary["finishes"]["holographic"] == {"sheets": 5, "labels": 2 * (96 + 16)}
+    # printed alone: 7 full sheets (the empty thirds get bonus copies), one per size
+    assert res.summary["finishes"]["matte"] == {"sheets": 7, "labels": 51 + 57 + 24 + 18 + 102 + 30 + 12 * 2}
     assert dt < 10, f"took {dt:.1f} s"
 
 

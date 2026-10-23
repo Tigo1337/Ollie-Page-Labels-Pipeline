@@ -126,7 +126,7 @@ class Templates:
             st = self.studio3(lay.layout_id, cat)
             rows.append({
                 "layout_id": lay.layout_id, "size": size.id, "size_label": size.label, "dims": size.dims_label,
-                "arrangement": lay.arrangement, "per_half": lay.per_half, "per_sheet": lay.per_sheet,
+                "arrangement": lay.arrangement, "per_piece": lay.per_piece, "per_sheet": lay.per_sheet,
                 "pairs": size.shape == "pair", "rows": lay.rows, "geometry_hash": lay.geometry_hash,
                 "studio3": st.to_json() if st else None,
             })

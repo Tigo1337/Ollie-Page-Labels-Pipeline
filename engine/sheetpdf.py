@@ -25,7 +25,9 @@ from .geometry import PT_PER_MM as PT
 from .layout import Layout, cell_labels
 from .marks import mark_rects
 
-HEADER_AT = (150.0, 212.0)   # header baseline (Studio mm): bottom margin, right of the trim tick, as SCM
+HEADER_END = (181.0, 212.0)  # header baseline end (Studio mm): bottom margin, right-aligned so it ends
+                             # before the upper trim line (X 186.267) and its tick. Calibration sheets only:
+                             # the print sheets carry no text (only marks, art and trim marks)
 
 
 def studio_image(img: Image.Image, rotated: bool) -> Image.Image:
@@ -65,19 +67,20 @@ class SheetPDF:
             self._rect(*r)
 
     def trim(self) -> None:
-        """Black ticks at both edges and a light dashed guide along the trim line."""
+        """Black ticks at both edges and a light dashed guide along every trim line."""
         s, c = self.sheet, self.c
-        T = s.trim_x
         c.saveState()
-        c.setStrokeColorRGB(0, 0, 0)
-        c.setLineWidth(0.6)
-        self._line(T, 0, T, s.trim_ticks)
-        self._line(T, s.paper_h - s.trim_ticks, T, s.paper_h)
-        if s.trim_guide:
-            c.setStrokeColorRGB(0.6, 0.6, 0.65)
-            c.setLineWidth(0.3)
-            c.setDash(3, 3)
-            self._line(T, s.edge_margin - 2, T, s.paper_h - s.edge_margin + 2)
+        for T in s.trims:
+            c.setStrokeColorRGB(0, 0, 0)
+            c.setLineWidth(0.6)
+            c.setDash()
+            self._line(T, 0, T, s.trim_ticks)
+            self._line(T, s.paper_h - s.trim_ticks, T, s.paper_h)
+            if s.trim_guide:
+                c.setStrokeColorRGB(0.6, 0.6, 0.65)
+                c.setLineWidth(0.3)
+                c.setDash(3, 3)
+                self._line(T, s.edge_margin - 2, T, s.paper_h - s.edge_margin + 2)
         c.restoreState()
 
     def header(self, text: str, font: str = "Helvetica") -> None:
@@ -85,7 +88,7 @@ class SheetPDF:
         c.saveState()
         c.setFillColorRGB(0.4, 0.4, 0.45)
         c.setFont(font, 7)
-        c.drawString(HEADER_AT[0] * PT, (self.H - HEADER_AT[1]) * PT, text)
+        c.drawRightString(HEADER_END[0] * PT, (self.H - HEADER_END[1]) * PT, text)
         c.restoreState()
 
     # -- cells -----------------------------------------------------------------

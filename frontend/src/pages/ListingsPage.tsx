@@ -5,7 +5,7 @@ import { ErrorBox, Progress, Warnings } from "../ui";
 
 interface Group { id: string; code: string; name: string; designs: string[]; tags: string[] }
 interface Cfg {
-  shop_name: string; sku_prefix: string; asset_prefix: string; asset_base_url: string; sample_names: string[];
+  shop_name: string; ship_time: string; sku_prefix: string; asset_prefix: string; asset_base_url: string; sample_names: string[];
   pack_short: Record<string, string>; pack_code: Record<string, string>; prices: Record<string, string>;
   csv: Record<string, string>; variation_names: Record<string, string>;
   personalization: { columns: boolean; required: boolean; char_count_max: number; instructions: string };
@@ -187,6 +187,9 @@ export default function ListingsPage() {
         <div className="grid-form">
           <label className="span2">Shop name<small className="muted">used in the description ({"{shop_name}"})</small>
             <input value={cfg.shop_name} onChange={(e) => edit({ shop_name: e.target.value })} />
+          </label>
+          <label className="span2">Shipping time<small className="muted">on the How-to-order image: "Your labels ship flat in an envelope within …"</small>
+            <input value={cfg.ship_time ?? ""} placeholder="3-5 business days" onChange={(e) => edit({ ship_time: e.target.value })} />
           </label>
           {SHOP_FIELDS.map(([k, label, hint]) => (
             <label key={k}>{label}{hint && <small className="muted">{hint}</small>}

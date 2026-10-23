@@ -1,30 +1,33 @@
 {
  "finishes": {
   "matte": {
-   "sheets": 2,
-   "labels": 122
-  },
-  "gloss": {
-   "sheets": 16,
-   "labels": 796
+   "sheets": 28,
+   "labels": 1251
   }
  },
  "pages": [
   {
    "n": 1,
    "finish": "matte",
-   "layout_id": "chels-pencil-v1",
-   "pdf": "golden_matte_chels-pencil-v1_print.pdf",
+   "layout_id": "chels-pencil-v2",
+   "pdf": "golden_matte_chels-pencil-v2_print.pdf",
    "page": 1,
-   "top": [
-    "Zoë",
-    28,
-    false
-   ],
-   "bottom": [
-    "Zoë",
-    28,
-    true
+   "pieces": [
+    [
+     "Léo",
+     1,
+     false
+    ],
+    [
+     "Léo",
+     2,
+     false
+    ],
+    [
+     "Léo",
+     3,
+     false
+    ]
    ],
    "proof_px": [
     1275,
@@ -34,18 +37,25 @@
   {
    "n": 2,
    "finish": "matte",
-   "layout_id": "chels-small-v1",
-   "pdf": "golden_matte_chels-small-v1_print.pdf",
-   "page": 1,
-   "top": [
-    "Zoë",
-    29,
-    false
-   ],
-   "bottom": [
-    "Zoë",
-    29,
-    true
+   "layout_id": "chels-pencil-v2",
+   "pdf": "golden_matte_chels-pencil-v2_print.pdf",
+   "page": 2,
+   "pieces": [
+    [
+     "Maximilien-Alexandre",
+     25,
+     false
+    ],
+    [
+     "Maximilien-Alexandre",
+     26,
+     false
+    ],
+    [
+     "Maximilien-Alexandre",
+     27,
+     false
+    ]
    ],
    "proof_px": [
     1275,
@@ -54,19 +64,26 @@
   },
   {
    "n": 3,
-   "finish": "gloss",
-   "layout_id": "chels-pencil-v1",
-   "pdf": "golden_gloss_chels-pencil-v1_print.pdf",
-   "page": 1,
-   "top": [
-    "Léo",
-    1,
-    false
-   ],
-   "bottom": [
-    "Maximilien-Alexandre",
-    10,
-    false
+   "finish": "matte",
+   "layout_id": "chels-pencil-v2",
+   "pdf": "golden_matte_chels-pencil-v2_print.pdf",
+   "page": 3,
+   "pieces": [
+    [
+     "Alexandre",
+     49,
+     false
+    ],
+    [
+     "Alexandre",
+     50,
+     false
+    ],
+    [
+     "Alexandre",
+     51,
+     false
+    ]
    ],
    "proof_px": [
     1275,
@@ -75,19 +92,26 @@
   },
   {
    "n": 4,
-   "finish": "gloss",
-   "layout_id": "chels-pencil-v1",
-   "pdf": "golden_gloss_chels-pencil-v1_print.pdf",
-   "page": 2,
-   "top": [
-    "Alexandre",
-    19,
-    false
-   ],
-   "bottom": [
-    "Alexandre",
-    19,
-    true
+   "finish": "matte",
+   "layout_id": "chels-pencil-v2",
+   "pdf": "golden_matte_chels-pencil-v2_print.pdf",
+   "page": 4,
+   "pieces": [
+    [
+     "Zoë",
+     73,
+     false
+    ],
+    [
+     "Zoë",
+     73,
+     true
+    ],
+    [
+     "Zoë",
+     73,
+     true
+    ]
    ],
    "proof_px": [
     1275,
@@ -96,19 +120,26 @@
   },
   {
    "n": 5,
-   "finish": "gloss",
-   "layout_id": "chels-small-v1",
-   "pdf": "golden_gloss_chels-small-v1_print.pdf",
+   "finish": "matte",
+   "layout_id": "chels-small-v2",
+   "pdf": "golden_matte_chels-small-v2_print.pdf",
    "page": 1,
-   "top": [
-    "Léo",
-    2,
-    false
-   ],
-   "bottom": [
-    "Léo",
-    8,
-    false
+   "pieces": [
+    [
+     "Léo",
+     4,
+     false
+    ],
+    [
+     "Léo",
+     5,
+     false
+    ],
+    [
+     "Léo",
+     6,
+     false
+    ]
    ],
    "proof_px": [
     1275,
@@ -117,19 +148,26 @@
   },
   {
    "n": 6,
-   "finish": "gloss",
-   "layout_id": "chels-small-v1",
-   "pdf": "golden_gloss_chels-small-v1_print.pdf",
+   "finish": "matte",
+   "layout_id": "chels-small-v2",
+   "pdf": "golden_matte_chels-small-v2_print.pdf",
    "page": 2,
-   "top": [
-    "Maximilien-Alexandre",
-    11,
-    false
-   ],
-   "bottom": [
-    "Maximilien-Alexandre",
-    17,
-    false
+   "pieces": [
+    [
+     "Léo",
+     18,
+     false
+    ],
+    [
+     "Maximilien-Alexandre",
+     28,
+     false
+    ],
+    [
+     "Maximilien-Alexandre",
+     29,
+     false
+    ]
    ],
    "proof_px": [
     1275,
@@ -138,19 +176,26 @@
   },
   {
    "n": 7,
-   "finish": "gloss",
-   "layout_id": "chels-small-v1",
-   "pdf": "golden_gloss_chels-small-v1_print.pdf",
+   "finish": "matte",
+   "layout_id": "chels-small-v2",
+   "pdf": "golden_matte_chels-small-v2_print.pdf",
    "page": 3,
-   "top": [
-    "Alexandre",
-    20,
-    false
-   ],
-   "bottom": [
-    "Alexandre",
-    26,
-    false
+   "pieces": [
+    [
+     "Maximilien-Alexandre",
+     30,
+     false
+    ],
+    [
+     "Maximilien-Alexandre",
+     42,
+     false
+    ],
+    [
+     "Alexandre",
+     52,
+     false
+    ]
    ],
    "proof_px": [
     1275,
@@ -159,19 +204,26 @@
   },
   {
    "n": 8,
-   "finish": "gloss",
-   "layout_id": "chels-medium-v1",
-   "pdf": "golden_gloss_chels-medium-v1_print.pdf",
-   "page": 1,
-   "top": [
-    "Léo",
-    3,
-    false
-   ],
-   "bottom": [
-    "Maximilien-Alexandre",
-    12,
-    false
+   "finish": "matte",
+   "layout_id": "chels-small-v2",
+   "pdf": "golden_matte_chels-small-v2_print.pdf",
+   "page": 4,
+   "pieces": [
+    [
+     "Alexandre",
+     53,
+     false
+    ],
+    [
+     "Alexandre",
+     54,
+     false
+    ],
+    [
+     "Alexandre",
+     66,
+     false
+    ]
    ],
    "proof_px": [
     1275,
@@ -180,19 +232,26 @@
   },
   {
    "n": 9,
-   "finish": "gloss",
-   "layout_id": "chels-medium-v1",
-   "pdf": "golden_gloss_chels-medium-v1_print.pdf",
-   "page": 2,
-   "top": [
-    "Alexandre",
-    21,
-    false
-   ],
-   "bottom": [
-    "Alexandre",
-    21,
-    true
+   "finish": "matte",
+   "layout_id": "chels-small-v2",
+   "pdf": "golden_matte_chels-small-v2_print.pdf",
+   "page": 5,
+   "pieces": [
+    [
+     "Zoë",
+     74,
+     false
+    ],
+    [
+     "Zoë",
+     75,
+     false
+    ],
+    [
+     "Zoë",
+     75,
+     true
+    ]
    ],
    "proof_px": [
     1275,
@@ -201,19 +260,26 @@
   },
   {
    "n": 10,
-   "finish": "gloss",
-   "layout_id": "chels-large-v1",
-   "pdf": "golden_gloss_chels-large-v1_print.pdf",
+   "finish": "matte",
+   "layout_id": "chels-medium-v2",
+   "pdf": "golden_matte_chels-medium-v2_print.pdf",
    "page": 1,
-   "top": [
-    "Léo",
-    6,
-    false
-   ],
-   "bottom": [
-    "Léo",
-    7,
-    false
+   "pieces": [
+    [
+     "Léo",
+     7,
+     false
+    ],
+    [
+     "Léo",
+     8,
+     false
+    ],
+    [
+     "Léo",
+     19,
+     false
+    ]
    ],
    "proof_px": [
     1275,
@@ -222,19 +288,26 @@
   },
   {
    "n": 11,
-   "finish": "gloss",
-   "layout_id": "chels-large-v1",
-   "pdf": "golden_gloss_chels-large-v1_print.pdf",
+   "finish": "matte",
+   "layout_id": "chels-medium-v2",
+   "pdf": "golden_matte_chels-medium-v2_print.pdf",
    "page": 2,
-   "top": [
-    "Maximilien-Alexandre",
-    15,
-    false
-   ],
-   "bottom": [
-    "Maximilien-Alexandre",
-    16,
-    false
+   "pieces": [
+    [
+     "Léo",
+     20,
+     false
+    ],
+    [
+     "Maximilien-Alexandre",
+     31,
+     false
+    ],
+    [
+     "Maximilien-Alexandre",
+     32,
+     false
+    ]
    ],
    "proof_px": [
     1275,
@@ -243,19 +316,26 @@
   },
   {
    "n": 12,
-   "finish": "gloss",
-   "layout_id": "chels-large-v1",
-   "pdf": "golden_gloss_chels-large-v1_print.pdf",
+   "finish": "matte",
+   "layout_id": "chels-medium-v2",
+   "pdf": "golden_matte_chels-medium-v2_print.pdf",
    "page": 3,
-   "top": [
-    "Alexandre",
-    24,
-    false
-   ],
-   "bottom": [
-    "Alexandre",
-    25,
-    false
+   "pieces": [
+    [
+     "Maximilien-Alexandre",
+     43,
+     false
+    ],
+    [
+     "Maximilien-Alexandre",
+     44,
+     false
+    ],
+    [
+     "Alexandre",
+     55,
+     false
+    ]
    ],
    "proof_px": [
     1275,
@@ -264,19 +344,26 @@
   },
   {
    "n": 13,
-   "finish": "gloss",
-   "layout_id": "chels-tag-v1",
-   "pdf": "golden_gloss_chels-tag-v1_print.pdf",
-   "page": 1,
-   "top": [
-    "Léo",
-    9,
-    false
-   ],
-   "bottom": [
-    "Maximilien-Alexandre",
-    18,
-    false
+   "finish": "matte",
+   "layout_id": "chels-medium-v2",
+   "pdf": "golden_matte_chels-medium-v2_print.pdf",
+   "page": 4,
+   "pieces": [
+    [
+     "Alexandre",
+     56,
+     false
+    ],
+    [
+     "Alexandre",
+     67,
+     false
+    ],
+    [
+     "Alexandre",
+     68,
+     false
+    ]
    ],
    "proof_px": [
     1275,
@@ -285,19 +372,26 @@
   },
   {
    "n": 14,
-   "finish": "gloss",
-   "layout_id": "chels-tag-v1",
-   "pdf": "golden_gloss_chels-tag-v1_print.pdf",
-   "page": 2,
-   "top": [
-    "Alexandre",
-    27,
-    false
-   ],
-   "bottom": [
-    "Alexandre",
-    27,
-    true
+   "finish": "matte",
+   "layout_id": "chels-medium-v2",
+   "pdf": "golden_matte_chels-medium-v2_print.pdf",
+   "page": 5,
+   "pieces": [
+    [
+     "Zoë",
+     76,
+     false
+    ],
+    [
+     "Zoë",
+     76,
+     true
+    ],
+    [
+     "Zoë",
+     76,
+     true
+    ]
    ],
    "proof_px": [
     1275,
@@ -306,19 +400,26 @@
   },
   {
    "n": 15,
-   "finish": "gloss",
-   "layout_id": "chels-round-v1",
-   "pdf": "golden_gloss_chels-round-v1_print.pdf",
+   "finish": "matte",
+   "layout_id": "chels-large-v2",
+   "pdf": "golden_matte_chels-large-v2_print.pdf",
    "page": 1,
-   "top": [
-    "Léo",
-    4,
-    false
-   ],
-   "bottom": [
-    "Maximilien-Alexandre",
-    13,
-    false
+   "pieces": [
+    [
+     "Léo",
+     9,
+     false
+    ],
+    [
+     "Léo",
+     15,
+     false
+    ],
+    [
+     "Léo",
+     16,
+     false
+    ]
    ],
    "proof_px": [
     1275,
@@ -327,19 +428,26 @@
   },
   {
    "n": 16,
-   "finish": "gloss",
-   "layout_id": "chels-round-v1",
-   "pdf": "golden_gloss_chels-round-v1_print.pdf",
+   "finish": "matte",
+   "layout_id": "chels-large-v2",
+   "pdf": "golden_matte_chels-large-v2_print.pdf",
    "page": 2,
-   "top": [
-    "Alexandre",
-    22,
-    false
-   ],
-   "bottom": [
-    "Alexandre",
-    22,
-    true
+   "pieces": [
+    [
+     "Léo",
+     17,
+     false
+    ],
+    [
+     "Maximilien-Alexandre",
+     33,
+     false
+    ],
+    [
+     "Maximilien-Alexandre",
+     39,
+     false
+    ]
    ],
    "proof_px": [
     1275,
@@ -348,19 +456,26 @@
   },
   {
    "n": 17,
-   "finish": "gloss",
-   "layout_id": "chels-shoe-v1",
-   "pdf": "golden_gloss_chels-shoe-v1_print.pdf",
-   "page": 1,
-   "top": [
-    "Léo",
-    5,
-    false
-   ],
-   "bottom": [
-    "Maximilien-Alexandre",
-    14,
-    false
+   "finish": "matte",
+   "layout_id": "chels-large-v2",
+   "pdf": "golden_matte_chels-large-v2_print.pdf",
+   "page": 3,
+   "pieces": [
+    [
+     "Maximilien-Alexandre",
+     40,
+     false
+    ],
+    [
+     "Maximilien-Alexandre",
+     41,
+     false
+    ],
+    [
+     "Alexandre",
+     57,
+     false
+    ]
    ],
    "proof_px": [
     1275,
@@ -369,19 +484,306 @@
   },
   {
    "n": 18,
-   "finish": "gloss",
-   "layout_id": "chels-shoe-v1",
-   "pdf": "golden_gloss_chels-shoe-v1_print.pdf",
-   "page": 2,
-   "top": [
-    "Alexandre",
-    23,
-    false
+   "finish": "matte",
+   "layout_id": "chels-large-v2",
+   "pdf": "golden_matte_chels-large-v2_print.pdf",
+   "page": 4,
+   "pieces": [
+    [
+     "Alexandre",
+     63,
+     false
+    ],
+    [
+     "Alexandre",
+     64,
+     false
+    ],
+    [
+     "Alexandre",
+     65,
+     false
+    ]
    ],
-   "bottom": [
-    "Alexandre",
-    23,
-    true
+   "proof_px": [
+    1275,
+    1650
+   ]
+  },
+  {
+   "n": 19,
+   "finish": "matte",
+   "layout_id": "chels-tag-v2",
+   "pdf": "golden_matte_chels-tag-v2_print.pdf",
+   "page": 1,
+   "pieces": [
+    [
+     "Léo",
+     10,
+     false
+    ],
+    [
+     "Léo",
+     11,
+     false
+    ],
+    [
+     "Léo",
+     21,
+     false
+    ]
+   ],
+   "proof_px": [
+    1275,
+    1650
+   ]
+  },
+  {
+   "n": 20,
+   "finish": "matte",
+   "layout_id": "chels-tag-v2",
+   "pdf": "golden_matte_chels-tag-v2_print.pdf",
+   "page": 2,
+   "pieces": [
+    [
+     "Léo",
+     22,
+     false
+    ],
+    [
+     "Maximilien-Alexandre",
+     34,
+     false
+    ],
+    [
+     "Maximilien-Alexandre",
+     35,
+     false
+    ]
+   ],
+   "proof_px": [
+    1275,
+    1650
+   ]
+  },
+  {
+   "n": 21,
+   "finish": "matte",
+   "layout_id": "chels-tag-v2",
+   "pdf": "golden_matte_chels-tag-v2_print.pdf",
+   "page": 3,
+   "pieces": [
+    [
+     "Maximilien-Alexandre",
+     45,
+     false
+    ],
+    [
+     "Maximilien-Alexandre",
+     46,
+     false
+    ],
+    [
+     "Alexandre",
+     58,
+     false
+    ]
+   ],
+   "proof_px": [
+    1275,
+    1650
+   ]
+  },
+  {
+   "n": 22,
+   "finish": "matte",
+   "layout_id": "chels-tag-v2",
+   "pdf": "golden_matte_chels-tag-v2_print.pdf",
+   "page": 4,
+   "pieces": [
+    [
+     "Alexandre",
+     59,
+     false
+    ],
+    [
+     "Alexandre",
+     69,
+     false
+    ],
+    [
+     "Alexandre",
+     70,
+     false
+    ]
+   ],
+   "proof_px": [
+    1275,
+    1650
+   ]
+  },
+  {
+   "n": 23,
+   "finish": "matte",
+   "layout_id": "chels-round-v2",
+   "pdf": "golden_matte_chels-round-v2_print.pdf",
+   "page": 1,
+   "pieces": [
+    [
+     "Léo",
+     12,
+     false
+    ],
+    [
+     "Léo",
+     23,
+     false
+    ],
+    [
+     "Maximilien-Alexandre",
+     36,
+     false
+    ]
+   ],
+   "proof_px": [
+    1275,
+    1650
+   ]
+  },
+  {
+   "n": 24,
+   "finish": "matte",
+   "layout_id": "chels-round-v2",
+   "pdf": "golden_matte_chels-round-v2_print.pdf",
+   "page": 2,
+   "pieces": [
+    [
+     "Maximilien-Alexandre",
+     47,
+     false
+    ],
+    [
+     "Alexandre",
+     60,
+     false
+    ],
+    [
+     "Alexandre",
+     71,
+     false
+    ]
+   ],
+   "proof_px": [
+    1275,
+    1650
+   ]
+  },
+  {
+   "n": 25,
+   "finish": "matte",
+   "layout_id": "chels-round-v2",
+   "pdf": "golden_matte_chels-round-v2_print.pdf",
+   "page": 3,
+   "pieces": [
+    [
+     "Zoë",
+     77,
+     false
+    ],
+    [
+     "Zoë",
+     77,
+     true
+    ],
+    [
+     "Zoë",
+     77,
+     true
+    ]
+   ],
+   "proof_px": [
+    1275,
+    1650
+   ]
+  },
+  {
+   "n": 26,
+   "finish": "matte",
+   "layout_id": "chels-shoe-v2",
+   "pdf": "golden_matte_chels-shoe-v2_print.pdf",
+   "page": 1,
+   "pieces": [
+    [
+     "Léo",
+     13,
+     false
+    ],
+    [
+     "Léo",
+     14,
+     false
+    ],
+    [
+     "Léo",
+     24,
+     false
+    ]
+   ],
+   "proof_px": [
+    1275,
+    1650
+   ]
+  },
+  {
+   "n": 27,
+   "finish": "matte",
+   "layout_id": "chels-shoe-v2",
+   "pdf": "golden_matte_chels-shoe-v2_print.pdf",
+   "page": 2,
+   "pieces": [
+    [
+     "Maximilien-Alexandre",
+     37,
+     false
+    ],
+    [
+     "Maximilien-Alexandre",
+     38,
+     false
+    ],
+    [
+     "Maximilien-Alexandre",
+     48,
+     false
+    ]
+   ],
+   "proof_px": [
+    1275,
+    1650
+   ]
+  },
+  {
+   "n": 28,
+   "finish": "matte",
+   "layout_id": "chels-shoe-v2",
+   "pdf": "golden_matte_chels-shoe-v2_print.pdf",
+   "page": 3,
+   "pieces": [
+    [
+     "Alexandre",
+     61,
+     false
+    ],
+    [
+     "Alexandre",
+     62,
+     false
+    ],
+    [
+     "Alexandre",
+     72,
+     false
+    ]
    ],
    "proof_px": [
     1275,
@@ -390,17 +792,17 @@
   }
  ],
  "labels": {
-  "[\"dino\", \"large\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"gloss\"]": {
+  "[\"dino\", \"large\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"matte\"]": {
    "px": [
     1559,
     659
    ],
    "cap_mm": [
-    5.7,
-    3.35
+    5.07,
+    3.0
    ]
   },
-  "[\"dino\", \"large\", \"Léo\", \"\", 1, \"gloss\"]": {
+  "[\"dino\", \"large\", \"Léo\", \"\", 1, \"matte\"]": {
    "px": [
     1559,
     659
@@ -409,26 +811,26 @@
     11.54
    ]
   },
-  "[\"dino\", \"large\", \"Maximilien-Alexandre\", \"\", 3, \"gloss\"]": {
+  "[\"dino\", \"large\", \"Maximilien-Alexandre\", \"\", 3, \"matte\"]": {
    "px": [
     1559,
     659
    ],
    "cap_mm": [
-    2.6
+    2.3
    ]
   },
-  "[\"dino\", \"medium\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"gloss\"]": {
+  "[\"dino\", \"medium\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"matte\"]": {
    "px": [
     1559,
     508
    ],
    "cap_mm": [
     4.93,
-    3.26
+    3.2
    ]
   },
-  "[\"dino\", \"medium\", \"Léo\", \"\", 1, \"gloss\"]": {
+  "[\"dino\", \"medium\", \"Léo\", \"\", 1, \"matte\"]": {
    "px": [
     1559,
     508
@@ -437,44 +839,44 @@
     8.55
    ]
   },
-  "[\"dino\", \"medium\", \"Maximilien-Alexandre\", \"\", 3, \"gloss\"]": {
+  "[\"dino\", \"medium\", \"Maximilien-Alexandre\", \"\", 3, \"matte\"]": {
    "px": [
     1559,
     508
    ],
    "cap_mm": [
-    2.97
+    2.6
    ]
   },
-  "[\"dino\", \"pencil\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"gloss\"]": {
+  "[\"dino\", \"pencil\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"matte\"]": {
    "px": [
     1406,
     283
    ],
    "cap_mm": [
-    2.37,
-    1.31
+    2.26,
+    1.45
    ]
   },
-  "[\"dino\", \"pencil\", \"Léo\", \"\", 1, \"gloss\"]": {
+  "[\"dino\", \"pencil\", \"Léo\", \"\", 1, \"matte\"]": {
    "px": [
     1406,
     283
    ],
    "cap_mm": [
-    4.14
+    3.94
    ]
   },
-  "[\"dino\", \"pencil\", \"Maximilien-Alexandre\", \"\", 3, \"gloss\"]": {
+  "[\"dino\", \"pencil\", \"Maximilien-Alexandre\", \"\", 3, \"matte\"]": {
    "px": [
     1406,
     283
    ],
    "cap_mm": [
-    2.17
+    2.82
    ]
   },
-  "[\"dino\", \"round\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"gloss\"]": {
+  "[\"dino\", \"round\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"matte\"]": {
    "px": [
     815,
     815
@@ -484,7 +886,7 @@
     1.51
    ]
   },
-  "[\"dino\", \"round\", \"Léo\", \"\", 1, \"gloss\"]": {
+  "[\"dino\", \"round\", \"Léo\", \"\", 1, \"matte\"]": {
    "px": [
     815,
     815
@@ -493,7 +895,7 @@
     3.97
    ]
   },
-  "[\"dino\", \"round\", \"Maximilien-Alexandre\", \"\", 3, \"gloss\"]": {
+  "[\"dino\", \"round\", \"Maximilien-Alexandre\", \"\", 3, \"matte\"]": {
    "px": [
     815,
     815
@@ -502,7 +904,7 @@
     1.53
    ]
   },
-  "[\"dino\", \"shoe\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"gloss\"]": {
+  "[\"dino\", \"shoe\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"matte\"]": {
    "px": [
     1535,
     957
@@ -512,7 +914,7 @@
     1.81
    ]
   },
-  "[\"dino\", \"shoe\", \"Léo\", \"\", 1, \"gloss\"]": {
+  "[\"dino\", \"shoe\", \"Léo\", \"\", 1, \"matte\"]": {
    "px": [
     1535,
     957
@@ -521,7 +923,7 @@
     4.73
    ]
   },
-  "[\"dino\", \"shoe\", \"Maximilien-Alexandre\", \"\", 3, \"gloss\"]": {
+  "[\"dino\", \"shoe\", \"Maximilien-Alexandre\", \"\", 3, \"matte\"]": {
    "px": [
     1535,
     957
@@ -530,7 +932,7 @@
     1.44
    ]
   },
-  "[\"dino\", \"small\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"gloss\"]": {
+  "[\"dino\", \"small\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"matte\"]": {
    "px": [
     1110,
     359
@@ -540,7 +942,7 @@
     2.05
    ]
   },
-  "[\"dino\", \"small\", \"Léo\", \"\", 1, \"gloss\"]": {
+  "[\"dino\", \"small\", \"Léo\", \"\", 1, \"matte\"]": {
    "px": [
     1110,
     359
@@ -549,16 +951,16 @@
     5.59
    ]
   },
-  "[\"dino\", \"small\", \"Maximilien-Alexandre\", \"\", 3, \"gloss\"]": {
+  "[\"dino\", \"small\", \"Maximilien-Alexandre\", \"\", 3, \"matte\"]": {
    "px": [
     1110,
     359
    ],
    "cap_mm": [
-    2.08
+    1.81
    ]
   },
-  "[\"dino\", \"tag\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"gloss\"]": {
+  "[\"dino\", \"tag\", \"Alexandre\", \"Tremblay-Gagnon\", 7, \"matte\"]": {
    "px": [
     659,
     359
@@ -568,7 +970,7 @@
     1.81
    ]
   },
-  "[\"dino\", \"tag\", \"Léo\", \"\", 1, \"gloss\"]": {
+  "[\"dino\", \"tag\", \"Léo\", \"\", 1, \"matte\"]": {
    "px": [
     659,
     359
@@ -577,13 +979,22 @@
     5.98
    ]
   },
-  "[\"dino\", \"tag\", \"Maximilien-Alexandre\", \"\", 3, \"gloss\"]": {
+  "[\"dino\", \"tag\", \"Maximilien-Alexandre\", \"\", 3, \"matte\"]": {
    "px": [
     659,
     359
    ],
    "cap_mm": [
     1.56
+   ]
+  },
+  "[\"space-cat\", \"medium\", \"Zoë\", \"\", 4, \"matte\"]": {
+   "px": [
+    1559,
+    508
+   ],
+   "cap_mm": [
+    8.56
    ]
   },
   "[\"space-cat\", \"pencil\", \"Zoë\", \"\", 4, \"matte\"]": {
@@ -593,6 +1004,15 @@
    ],
    "cap_mm": [
     3.94
+   ]
+  },
+  "[\"space-cat\", \"round\", \"Zoë\", \"\", 4, \"matte\"]": {
+   "px": [
+    815,
+    815
+   ],
+   "cap_mm": [
+    4.3
    ]
   },
   "[\"space-cat\", \"small\", \"Zoë\", \"\", 4, \"matte\"]": {
@@ -606,7 +1026,7 @@
   }
  },
  "pdf_pages": {
-  "golden_gloss_chels-large-v1_print.pdf": [
+  "golden_matte_chels-large-v2_print.pdf": [
    [
     0.0,
     0.0,
@@ -614,86 +1034,6 @@
     612.0,
     270
    ],
-   [
-    0.0,
-    0.0,
-    792.0,
-    612.0,
-    270
-   ],
-   [
-    0.0,
-    0.0,
-    792.0,
-    612.0,
-    270
-   ]
-  ],
-  "golden_gloss_chels-medium-v1_print.pdf": [
-   [
-    0.0,
-    0.0,
-    792.0,
-    612.0,
-    270
-   ],
-   [
-    0.0,
-    0.0,
-    792.0,
-    612.0,
-    270
-   ]
-  ],
-  "golden_gloss_chels-pencil-v1_print.pdf": [
-   [
-    0.0,
-    0.0,
-    792.0,
-    612.0,
-    270
-   ],
-   [
-    0.0,
-    0.0,
-    792.0,
-    612.0,
-    270
-   ]
-  ],
-  "golden_gloss_chels-round-v1_print.pdf": [
-   [
-    0.0,
-    0.0,
-    792.0,
-    612.0,
-    270
-   ],
-   [
-    0.0,
-    0.0,
-    792.0,
-    612.0,
-    270
-   ]
-  ],
-  "golden_gloss_chels-shoe-v1_print.pdf": [
-   [
-    0.0,
-    0.0,
-    792.0,
-    612.0,
-    270
-   ],
-   [
-    0.0,
-    0.0,
-    792.0,
-    612.0,
-    270
-   ]
-  ],
-  "golden_gloss_chels-small-v1_print.pdf": [
    [
     0.0,
     0.0,
@@ -716,7 +1056,28 @@
     270
    ]
   ],
-  "golden_gloss_chels-tag-v1_print.pdf": [
+  "golden_matte_chels-medium-v2_print.pdf": [
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ],
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ],
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ],
    [
     0.0,
     0.0,
@@ -732,7 +1093,28 @@
     270
    ]
   ],
-  "golden_matte_chels-pencil-v1_print.pdf": [
+  "golden_matte_chels-pencil-v2_print.pdf": [
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ],
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ],
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ],
    [
     0.0,
     0.0,
@@ -741,7 +1123,111 @@
     270
    ]
   ],
-  "golden_matte_chels-small-v1_print.pdf": [
+  "golden_matte_chels-round-v2_print.pdf": [
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ],
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ],
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ]
+  ],
+  "golden_matte_chels-shoe-v2_print.pdf": [
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ],
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ],
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ]
+  ],
+  "golden_matte_chels-small-v2_print.pdf": [
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ],
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ],
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ],
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ],
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ]
+  ],
+  "golden_matte_chels-tag-v2_print.pdf": [
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ],
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ],
+   [
+    0.0,
+    0.0,
+    792.0,
+    612.0,
+    270
+   ],
    [
     0.0,
     0.0,
@@ -752,32 +1238,30 @@
   ]
  },
  "files": [
-  "chels-large-v1.dxf",
-  "chels-large-v1.svg",
-  "chels-medium-v1.dxf",
-  "chels-medium-v1.svg",
-  "chels-pencil-v1.dxf",
-  "chels-pencil-v1.svg",
-  "chels-round-v1.dxf",
-  "chels-round-v1.svg",
-  "chels-shoe-v1.dxf",
-  "chels-shoe-v1.svg",
-  "chels-small-v1.dxf",
-  "chels-small-v1.svg",
-  "chels-tag-v1.dxf",
-  "chels-tag-v1.svg",
+  "chels-large-v2.dxf",
+  "chels-large-v2.svg",
+  "chels-medium-v2.dxf",
+  "chels-medium-v2.svg",
+  "chels-pencil-v2.dxf",
+  "chels-pencil-v2.svg",
+  "chels-round-v2.dxf",
+  "chels-round-v2.svg",
+  "chels-shoe-v2.dxf",
+  "chels-shoe-v2.svg",
+  "chels-small-v2.dxf",
+  "chels-small-v2.svg",
+  "chels-tag-v2.dxf",
+  "chels-tag-v2.svg",
   "golden_customer_proof.png",
-  "golden_gloss_chels-large-v1_print.pdf",
-  "golden_gloss_chels-medium-v1_print.pdf",
-  "golden_gloss_chels-pencil-v1_print.pdf",
-  "golden_gloss_chels-round-v1_print.pdf",
-  "golden_gloss_chels-shoe-v1_print.pdf",
-  "golden_gloss_chels-small-v1_print.pdf",
-  "golden_gloss_chels-tag-v1_print.pdf",
   "golden_info_sheet.pdf",
   "golden_info_sheet.txt",
-  "golden_matte_chels-pencil-v1_print.pdf",
-  "golden_matte_chels-small-v1_print.pdf",
+  "golden_matte_chels-large-v2_print.pdf",
+  "golden_matte_chels-medium-v2_print.pdf",
+  "golden_matte_chels-pencil-v2_print.pdf",
+  "golden_matte_chels-round-v2_print.pdf",
+  "golden_matte_chels-shoe-v2_print.pdf",
+  "golden_matte_chels-small-v2_print.pdf",
+  "golden_matte_chels-tag-v2_print.pdf",
   "golden_packing_slip.pdf",
   "golden_packing_slip.txt",
   "golden_sheet01_proof.png",
@@ -798,6 +1282,16 @@
   "golden_sheet16_proof.png",
   "golden_sheet17_proof.png",
   "golden_sheet18_proof.png",
+  "golden_sheet19_proof.png",
+  "golden_sheet20_proof.png",
+  "golden_sheet21_proof.png",
+  "golden_sheet22_proof.png",
+  "golden_sheet23_proof.png",
+  "golden_sheet24_proof.png",
+  "golden_sheet25_proof.png",
+  "golden_sheet26_proof.png",
+  "golden_sheet27_proof.png",
+  "golden_sheet28_proof.png",
   "golden_summary.json",
   "laminate_notches.dxf"
  ]

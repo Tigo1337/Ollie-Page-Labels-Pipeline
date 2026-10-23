@@ -1,0 +1,39 @@
+{
+ "_doc": "Fixed piece layout. Never edit a published layout: a geometry change makes a new version. Cells are [X, Y, W, H, rotated] in mm, Studio frame (landscape Letter, origin top-left, y down). 'pieces' lists the pieces in printed order (top, middle, bottom: printed top = Studio right, highest X). Every piece holds the same arrangement: a middle piece is the top piece translated by whole piece widths, the bottom piece is the top piece mirrored about the page centre (pieces[-1][i] mirrors pieces[0][i]).",
+ "layout_id": "chels-large-v2",
+ "size": "large",
+ "version": 2,
+ "geometry_hash": "eda6b376366ac132cf8c38d31e605d98ace444992108ad9dfec04c5972d8a584",
+ "frame": "studio",
+ "arrangement": "rotated",
+ "per_piece": 6,
+ "per_sheet": 18,
+ "rows": [6],
+ "size_geometry": {"shape": "rrect", "w": 63.5, "h": 25.4, "r": 5},
+ "pieces": [
+  [
+   [198.584, 25.5, 63.5, 25.4, true],
+   [198.584, 53.4, 63.5, 25.4, true],
+   [198.584, 81.3, 63.5, 25.4, true],
+   [198.584, 109.2, 63.5, 25.4, true],
+   [198.584, 137.1, 63.5, 25.4, true],
+   [198.584, 165, 63.5, 25.4, true]
+  ],
+  [
+   [105.451, 25.5, 63.5, 25.4, true],
+   [105.451, 53.4, 63.5, 25.4, true],
+   [105.451, 81.3, 63.5, 25.4, true],
+   [105.451, 109.2, 63.5, 25.4, true],
+   [105.451, 137.1, 63.5, 25.4, true],
+   [105.451, 165, 63.5, 25.4, true]
+  ],
+  [
+   [17.316, 25.5, 63.5, 25.4, true],
+   [17.316, 53.4, 63.5, 25.4, true],
+   [17.316, 81.3, 63.5, 25.4, true],
+   [17.316, 109.2, 63.5, 25.4, true],
+   [17.316, 137.1, 63.5, 25.4, true],
+   [17.316, 165, 63.5, 25.4, true]
+  ]
+ ]
+}

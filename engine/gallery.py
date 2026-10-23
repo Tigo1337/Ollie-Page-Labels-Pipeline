@@ -1,7 +1,7 @@
 """Layout gallery: one preview PNG per layout, in the printed view (portrait, as the sheet is held).
 
 Shows the cut lines (red) over their bleed (pink), the corner ink keep-outs hatched with the
-cut keep-out outlined, the laminate notches (blue), the marks, the trim line with its gutter
+cut keep-out outlined, the laminate notches (blue), the marks, the trim lines with their gutters
 and ticks, and the counts. Drawn in the Studio frame, then turned to the printed view
 (the same 90° turn as the PDF's /Rotate 270).
 """
@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw, ImageFont
 from .config import Sheet, Size
 from .frames import to_printed
 from .geometry import mm_to_px
-from .layout import Layout, cell_labels
+from .layout import Layout, cell_labels, piece_name
 from .marks import mark_rects, notch_corners
 
 RED = (220, 0, 0)
@@ -73,15 +73,16 @@ def studio_canvas(sheet: Sheet, dpi: int) -> tuple[Image.Image, float]:
 
 
 def draw_furniture(d: ImageDraw.ImageDraw, sheet: Sheet, k: float, gutter: bool = True, margin: bool = True) -> None:
-    """Keep-outs (ink hatched, cut outlined), laminate notches, marks and the trim line (Studio frame)."""
+    """Keep-outs (ink hatched, cut outlined), laminate notches, marks and the trim lines (Studio frame)."""
     PW, PH = sheet.paper_w, sheet.paper_h
 
     def box(x0, y0, x1, y1):
         return (x0 * k, y0 * k, x1 * k, y1 * k)
 
-    T, tm, e = sheet.trim_x, sheet.trim_margin, sheet.edge_margin
+    tm, e = sheet.trim_margin, sheet.edge_margin
     if gutter:
-        d.rectangle(box(T - tm, 0, T + tm, PH), fill=(246, 246, 248))
+        for T in sheet.trims:
+            d.rectangle(box(T - tm, 0, T + tm, PH), fill=(246, 246, 248))
     if margin:
         corners = [(e, e), (PW - e, e), (PW - e, PH - e), (e, PH - e)]
         for a, b_ in zip(corners, corners[1:] + corners[:1]):
@@ -94,9 +95,10 @@ def draw_furniture(d: ImageDraw.ImageDraw, sheet: Sheet, k: float, gutter: bool 
         d.rectangle(box(*z), outline=BLUE, width=2)
     for r in mark_rects(sheet):
         d.rectangle(box(*r), fill=(0, 0, 0))
-    _dashed(d, (T * k, 8 * k), (T * k, (PH - 8) * k), 3 * k, GREY, 1)
-    d.line([(T * k, 0), (T * k, sheet.trim_ticks * k)], fill=(0, 0, 0), width=2)
-    d.line([(T * k, (PH - sheet.trim_ticks) * k), (T * k, PH * k)], fill=(0, 0, 0), width=2)
+    for T in sheet.trims:
+        _dashed(d, (T * k, 8 * k), (T * k, (PH - 8) * k), 3 * k, GREY, 1)
+        d.line([(T * k, 0), (T * k, sheet.trim_ticks * k)], fill=(0, 0, 0), width=2)
+        d.line([(T * k, (PH - sheet.trim_ticks) * k), (T * k, PH * k)], fill=(0, 0, 0), width=2)
 
 
 def draw_cuts(d: ImageDraw.ImageDraw, layout: Layout, size: Size, sheet: Sheet, k: float,
@@ -133,7 +135,7 @@ def render_layout(layout: Layout, size: Size, sheet: Sheet, dpi: int = 150,
     d = ImageDraw.Draw(img)
     draw_furniture(d, sheet, k)
     draw_cuts(d, layout, size, sheet, k)
-    PW, T = sheet.paper_w, sheet.trim_x
+    PW = sheet.paper_w
 
     img = to_printed_view(img)
 
@@ -148,19 +150,23 @@ def render_layout(layout: Layout, size: Size, sheet: Sheet, dpi: int = 150,
     unit = " pairs" if size.shape == "pair" else ""
     lines = [(layout.layout_id, f1, (0, 0, 0), 3),
              (f"{size.label} · {size.dims_label} · {layout.arrangement}", f2, (40, 40, 40), 11),
-             (f"{layout.per_half}{unit} per half · {layout.per_sheet}{unit} per sheet · rows "
-              + " + ".join(str(r) for r in layout.rows), f2, (40, 40, 40), 17)]
+             (f"{layout.per_piece}{unit} per piece · {layout.per_sheet}{unit} per sheet "
+              f"({layout.n_pieces} pieces) · rows " + " + ".join(str(r) for r in layout.rows), f2, (40, 40, 40), 17)]
     for txt, f, col, y in lines:
         d.text((4 * k, y * k), fonts.text(txt), font=f, fill=col)
-    trim_y = head + (PW - T) * k
-    for txt, dy in ((f"TOP HALF ({layout.per_half}{unit})", -4.0),
-                    (f"BOTTOM HALF ({layout.per_half}{unit})", 1.2)):
+    # each piece's name beside its own trim line: the top piece above the first one, every other
+    # piece below its upper trim line
+    trims_y = [head + (PW - T) * k for T in reversed(sheet.trims)]       # printed, top to bottom
+    n = layout.n_pieces
+    for i in range(n):
+        txt = f"{piece_name(i, n).upper()} PIECE ({layout.per_piece}{unit})"
+        y = trims_y[0] - 4.0 * k if i == 0 else trims_y[i - 1] + 1.2 * k
         tw = d.textlength(txt, font=f3)
-        d.text(((img.width - tw) / 2, trim_y + dy * k), txt, font=f3, fill=(110, 110, 110))
+        d.text(((img.width - tw) / 2, y), txt, font=f3, fill=(110, 110, 110))
     if size.shape == "pair":                       # gauche / droite, as the shoes sit side by side
         f = fonts.get(int(4 * k))
         for cell in layout.cells:
-            parts = sorted(to_printed(*r, studio_w=PW) for r in cell_labels(cell, size, sheet))  # type: ignore[misc]
+            parts = [to_printed(*r, studio_w=PW) for r in cell_labels(cell, size, sheet)]  # label order: left, right
             for (x, y, w, h), letter in zip(parts, "GD"):
                 tw = d.textlength(letter, font=f)
                 d.text(((x + w / 2) * k - tw / 2, head + (y + h / 2 - 2.5) * k), letter, font=f,

@@ -11,9 +11,9 @@ from fastapi.responses import JSONResponse
 from PIL import Image
 from pydantic import BaseModel, Field
 
-from engine.art import auto_preset, validate_preset
+from engine.art import auto_preset, effective_preset, fixed_name_box, has_fixed_name, validate_preset
 from engine.layout import LayoutError, current_layout
-from engine.packing import PackError, pack_halves, pack_sheets
+from engine.packing import PackError, pack_pieces, pack_sheets
 from engine.config import Preset
 from engine.orders import Order, OrderLine, validate_line
 from engine.proofs import cut_out, font_chart, review_sheet
@@ -112,14 +112,15 @@ def catalog(request: Request):
     for sid, size in cat.sizes.items():
         try:
             lay = current_layout(cat.sheet, size, layouts_dir)
-            per_size[sid] = {"layout_id": lay.layout_id, "per_half": lay.per_half, "per_sheet": lay.per_sheet}
+            per_size[sid] = {"layout_id": lay.layout_id, "per_piece": lay.per_piece, "per_sheet": lay.per_sheet}
         except LayoutError:
-            per_size[sid] = {"layout_id": None, "per_half": 0, "per_sheet": 0}
+            per_size[sid] = {"layout_id": None, "per_piece": 0, "per_sheet": 0}
     for pid, p in cat.packs.items():
         try:
-            per_pack[pid] = {"halves_by_size": pack_halves(p, cat, layouts_dir), **pack_sheets(p, cat, layouts_dir)}
+            per_pack[pid] = {"pieces_by_size": pack_pieces(p, cat, layouts_dir), **pack_sheets(p, cat, layouts_dir)}
         except (LayoutError, PackError) as e:
-            per_pack[pid] = {"halves_by_size": {}, "halves": 0, "batched": 0, "alone": 0, "error": str(e)}
+            per_pack[pid] = {"pieces_by_size": {}, "pieces": 0, "batched": 0, "alone": 0, "envelope": None,
+                             "error": str(e)}
     return {
         "production": prod.__dict__,
         "sheet": {k: v for k, v in cat.sheet.__dict__.items() if k != "raw"},
@@ -245,8 +246,12 @@ def get_presets(design_id: str, request: Request):
             if size.default_source in dims:
                 w, h = dims[size.default_source]
                 auto = auto_preset(design, size, cat.sheet.bleed, w, h).to_dict()
+            fixed = has_fixed_name(design, size)
+            if saved is not None:
+                saved = effective_preset(saved, size, design)
             out.append({"size": sid, "preset": saved.to_dict() if saved else auto, "auto": auto,
-                        "is_auto": saved is None, "review": review.get(sid)})
+                        "is_auto": saved is None, "review": review.get(sid),
+                        "fixed_text": list(fixed_name_box(size)) if fixed else None})
     return {"sizes": out, "art": {k: list(v) for k, v in dims.items()}, "bleed": cat.sheet.bleed,
             "safe": cat.production.safe}
 
@@ -262,6 +267,8 @@ def save_preset(design_id: str, size_id: str, body: dict, request: Request):
         except (KeyError, TypeError, ValueError) as e:
             raise ValueError("That crop could not be read.") from e
         validate_preset(preset, s.assets.art_sources(design_id))
+        # strip sizes: the name box is fixed, only the art's centre and height are saved
+        preset = effective_preset(preset, s.catalog.sizes[size_id], s.renderer.design(design_id))
     repo(request).set_preset(design_id, size_id, preset)
     return {"ok": True, "preset": preset.to_dict()}
 
@@ -303,6 +310,35 @@ def update_shop(body: dict, request: Request):
         shop["default_finish"] = body["default_finish"]
     r.set_setting("shop", shop)
     return shop
+
+
+PRODUCTION_EDITABLE = {"piece_weight_g": (0.1, 100.0), "envelope_weight_g": (0.0, 100.0),
+                       "piece_thickness_mm": (0.01, 5.0)}
+
+
+@router.get("/production")
+def get_production(request: Request):
+    return svc(request).catalog.production.__dict__
+
+
+@router.patch("/production")
+def update_production(body: dict, request: Request):
+    """The envelope-estimate numbers (Settings page); the rest of production.json is not edited here."""
+    r = repo(request)
+    prod = dict(r.setting("production"))
+    for k, v in body.items():
+        if k not in PRODUCTION_EDITABLE:
+            raise ValueError(f"'{k}' cannot be edited here.")
+        lo, hi = PRODUCTION_EDITABLE[k]
+        try:
+            v = float(v)
+        except (TypeError, ValueError):
+            raise ValueError(f"{k} must be a number.") from None
+        if not lo <= v <= hi:
+            raise ValueError(f"{k} must be between {lo:g} and {hi:g}.")
+        prod[k] = v
+    r.set_setting("production", prod)
+    return svc(request).catalog.production.__dict__
 
 
 # ---------------------------------------------------------------- previews
@@ -384,12 +420,12 @@ class MakeBody(BaseModel):
     order_id: str = ""
     design: str
     pack: str
-    finish: str = ""      # empty = the shop's default finish
+    finish: str = ""      # empty = the one finish (matte); an old gloss / holographic is produced in matte
     name: str
     line2: str = ""
     font: int = 1
     lang: str = "en"
-    unpaired: Literal["bonus", "blank"] = "bonus"   # the other half of a sheet printed alone
+    unpaired: Literal["bonus", "blank"] = "bonus"   # the empty pieces of a sheet printed without enough pieces
 
 
 @router.post("/make")

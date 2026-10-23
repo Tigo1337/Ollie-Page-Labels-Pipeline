@@ -1,18 +1,27 @@
-"""Startup migration to the fixed half-sheet geometry (geometry_version 2).
+"""Startup migrations of the geometry (`geometry_version`), run once each, oldest first.
 
-Sizes, packs and production values are seeded into the database only once, so a database made
-before the fixed layouts still holds the old geometry (mini / square sizes, 12 mm margin...).
-When `geometry_version` is below 2 this, once:
+Sizes, packs and production values are seeded into the database only once, so an older database
+still holds the old geometry. Each migration first backs up the database (a copy of the SQLite file,
+and a JSON dump of the settings, designs and presets in blob storage under backups/), then records
+the new `geometry_version` and its change log (setting `migration_log`).
 
-1. backs up the database (a copy of the SQLite file, and a JSON dump of the settings, designs and
-   presets in blob storage under backups/),
-2. replaces the `production`, `sizes` and `packs` settings with config/*.json, turns the laminate
+To 2, the fixed half-sheet layouts:
+1. replaces the `production`, `sizes` and `packs` settings with config/*.json, turns the laminate
    notch on for every finish and updates the size names in the proof wording,
-3. keeps the presets of sizes that still exist (small, medium, large, round) flagged "à revoir",
+2. keeps the presets of sizes that still exist (small, medium, large, round) flagged "à revoir",
    and archives (never deletes) the presets of sizes that are gone (mini, square),
-4. adds the designs from config/designs.json that are missing, fills in their scene settings
-   (mini_start, square_text, no_character_sizes) and their saved crop presets,
-5. records geometry_version = 2 and the change log (setting `migration_log`).
+3. adds the designs from config/designs.json that are missing, fills in their scene settings
+   (mini_start, square_text, no_character_sizes) and their saved crop presets.
+
+To 3, thirds, one finish and the fixed name position:
+1. replaces the `sizes`, `packs` and `finishes` settings with config/*.json, sets the shop's finish
+   to matte, adds the new production numbers (envelope estimate) and drops the holographic note
+   from the proof wording,
+2. updates the Listings settings: the new pack ids in pack_short / pack_code / prices (a price is
+   kept when its pack id still exists), the shop name when empty, ship_time,
+3. archives (never deletes) every saved crop preset of the strip sizes with a fixed name position
+   (pencil, small, medium, large); tag, round and shoe presets stay.
+Runs and files made before stay downloadable as they are (their finish text is not touched).
 """
 from __future__ import annotations
 
@@ -27,11 +36,17 @@ from sqlalchemy import select
 from engine.config import load_catalog
 
 from .db import ArchivedPresetRow, DesignRow, PresetRow, Setting
-from .repo import GEOMETRY_VERSION, Repo, design_row_from
+from .repo import FIXED_NAME_NOTE, GEOMETRY_VERSION, Repo, design_row_from
 
 log = logging.getLogger(__name__)
 REVIEW_SIZES = ("small", "medium", "large", "round")
 REVIEW_NOTE = "à revoir : la taille a changé avec les mises en page fixes (géométrie v2)"
+FIXED_NAME_SIZES = ("pencil", "small", "medium", "large")
+OLD_PROOF_FOOTERS = {
+    "en": "Colours can look slightly different on screen. The holographic shimmer is a simulation of the real finish.",
+    "fr": "Les couleurs peuvent paraître légèrement différentes à l'écran. L'effet holographique est une simulation "
+          "du fini réel.",
+}
 
 
 def geometry_version(repo: Repo) -> int:
@@ -45,11 +60,16 @@ def migrate(repo: Repo, config_dir: Path, database_url: str, data_dir: Path) -> 
     if geometry_version(repo) >= GEOMETRY_VERSION:
         return []
     stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-    changes = backup(repo, database_url, data_dir, stamp)
-    changes += _to_v2(repo, config_dir)
+    start = geometry_version(repo)
+    changes = backup(repo, database_url, data_dir, stamp, GEOMETRY_VERSION)
+    if start < 2:
+        changes += _to_v2(repo, config_dir)
+    if start < 3:
+        changes += _to_v3(repo, config_dir)
     with repo.Session() as s:
         for key, value in (("geometry_version", {"version": GEOMETRY_VERSION}),
-                           ("migration_log", {"at": stamp, "to": GEOMETRY_VERSION, "changes": changes})):
+                           ("migration_log", {"at": stamp, "from": start, "to": GEOMETRY_VERSION,
+                                              "changes": changes})):
             row = s.get(Setting, key)
             if row is None:
                 s.add(Setting(key=key, value=value))
@@ -62,12 +82,12 @@ def migrate(repo: Repo, config_dir: Path, database_url: str, data_dir: Path) -> 
     return changes
 
 
-def backup(repo: Repo, database_url: str, data_dir: Path, stamp: str) -> list[str]:
+def backup(repo: Repo, database_url: str, data_dir: Path, stamp: str, to: int = GEOMETRY_VERSION) -> list[str]:
     out = []
     if database_url.startswith("sqlite:///"):
         db = Path(database_url[len("sqlite:///"):])
         if db.exists():
-            dest = data_dir / "backups" / f"{db.stem}-before-geometry-v2-{stamp}{db.suffix}"
+            dest = data_dir / "backups" / f"{db.stem}-before-geometry-v{to}-{stamp}{db.suffix}"
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(db, dest)
             out.append(f"backed up the database to {dest}")
@@ -79,10 +99,15 @@ def backup(repo: Repo, database_url: str, data_dir: Path, stamp: str) -> list[st
             "presets": [{"design_id": r.design_id, "size_id": r.size_id, "data": r.data}
                         for r in s.scalars(select(PresetRow))],
         }
-    key = f"backups/before-geometry-v2-{stamp}.json"
+    key = f"backups/before-geometry-v{to}-{stamp}.json"
     repo.store.put(key, json.dumps(dump, indent=1, ensure_ascii=False, default=str).encode())
     out.append(f"saved settings, designs and presets to storage: {key}")
     return out
+
+
+def _cfg(config_dir: Path, name: str):
+    v = json.loads((config_dir / name).read_text(encoding="utf-8"))
+    return {k: x for k, x in v.items() if not k.startswith("_")} if isinstance(v, dict) else v
 
 
 def _to_v2(repo: Repo, config_dir: Path) -> list[str]:
@@ -90,8 +115,7 @@ def _to_v2(repo: Repo, config_dir: Path) -> list[str]:
     changes: list[str] = []
 
     def cfg(name: str):
-        v = json.loads((config_dir / name).read_text(encoding="utf-8"))
-        return {k: x for k, x in v.items() if not k.startswith("_")} if isinstance(v, dict) else v
+        return _cfg(config_dir, name)
 
     with repo.Session() as s:
         settings = {r.key: r for r in s.scalars(select(Setting))}
@@ -162,5 +186,73 @@ def _to_v2(repo: Repo, config_dir: Path) -> list[str]:
                 if (d.id, sid) not in have_presets:
                     s.add(PresetRow(design_id=d.id, size_id=sid, data=pr.to_dict()))
                     changes.append(f"preset {d.id}/{sid}: imported from the reference crops")
+        s.commit()
+    return changes
+
+
+def _to_v3(repo: Repo, config_dir: Path) -> list[str]:
+    changes: list[str] = []
+    with repo.Session() as s:
+        settings = {r.key: r for r in s.scalars(select(Setting))}
+
+        def put(key: str, value) -> None:
+            if key in settings:
+                settings[key].value = value
+            else:
+                settings[key] = Setting(key=key, value=value)
+                s.add(settings[key])
+
+        for key in ("sizes", "packs", "finishes"):
+            new = _cfg(config_dir, f"{key}.json")
+            before = [x["id"] for x in settings[key].value or []] if key in settings else []
+            put(key, new)
+            changes.append(f"{key}: {', '.join(before) or '-'} -> {', '.join(x['id'] for x in new)}")
+        shop = dict(settings["shop"].value) if "shop" in settings else {}
+        if shop.get("default_finish") != "matte":
+            changes.append(f"shop: finish {shop.get('default_finish', '-')} -> matte (the only finish)")
+        put("shop", {**shop, "default_finish": "matte"})
+        if "production" in settings:
+            prod = dict(settings["production"].value)
+            added = {k: v for k, v in _cfg(config_dir, "production.json").items() if k not in prod}
+            if added:
+                put("production", {**prod, **added})
+                changes.append("production: added " + ", ".join(f"{k} = {v}" for k, v in added.items()))
+        if "texts" in settings:
+            texts = json.loads(json.dumps(settings["texts"].value))
+            new_texts = _cfg(config_dir, "texts.json")
+            for lang, t in texts.items():
+                if lang in new_texts and t.get("proof_footer") == OLD_PROOF_FOOTERS.get(lang):
+                    t["proof_footer"] = new_texts[lang]["proof_footer"]
+                    changes.append(f"texts ({lang}): holographic note removed from the proof footer")
+                if lang in new_texts and isinstance(t.get("finishes"), dict):
+                    t["finishes"] = {**t["finishes"], "matte": new_texts[lang]["finishes"]["matte"]}
+            put("texts", texts)
+
+        # Listings: new pack ids, kept prices, shop name, shipping time
+        if "listings" in settings:
+            new = _cfg(config_dir, "listings.json")
+            cur = dict(settings["listings"].value)
+            old_prices = cur.get("prices") or {}
+            cur["pack_short"] = dict(new["pack_short"])
+            cur["pack_code"] = dict(new["pack_code"])
+            cur["prices"] = {pid: str(old_prices.get(pid, "")) for pid in new["prices"]}
+            kept = [pid for pid in new["prices"] if str(old_prices.get(pid, "")).strip()]
+            changes.append("listings: bundles " + ", ".join(new["prices"])
+                           + (f" (prices kept: {', '.join(kept)})" if kept else " (no prices to keep)"))
+            if not str(cur.get("shop_name", "")).strip():
+                cur["shop_name"] = new["shop_name"]
+                changes.append(f"listings: shop name set to {new['shop_name']}")
+            if "ship_time" not in cur:
+                cur["ship_time"] = new["ship_time"]
+                changes.append(f"listings: shipping time added ({new['ship_time']})")
+            put("listings", cur)
+
+        # presets: the strip sizes now have a fixed name position, so their saved crops are archived
+        for p in list(s.scalars(select(PresetRow))):
+            if p.size_id in FIXED_NAME_SIZES:
+                s.add(ArchivedPresetRow(design_id=p.design_id, size_id=p.size_id, data=p.data,
+                                        reason=FIXED_NAME_NOTE))
+                s.delete(p)
+                changes.append(f"preset {p.design_id}/{p.size_id}: archived ({FIXED_NAME_NOTE})")
         s.commit()
     return changes

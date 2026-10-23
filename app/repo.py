@@ -19,12 +19,13 @@ from engine.art import ArtError, trim_white_bands
 from engine.config import (Catalog, Design, Finish, FontSpec, Pack, Preset, Production, Size, design_to_dict,
                            load_catalog)
 
-from .db import DesignRow, PresetRow, Setting
+from .db import ArchivedPresetRow, DesignRow, PresetRow, Setting
 from .storage import BlobStore
 
 SETTING_KEYS = ("production", "sizes", "packs", "finishes", "fonts", "texts", "shop", "listings")
-GEOMETRY_VERSION = 2   # 2 = fixed half-sheet layouts (sheet.json); see app/migrate.py
+GEOMETRY_VERSION = 3   # 2 = fixed half-sheet layouts, 3 = thirds, one finish, fixed name position; app/migrate.py
 SHOP_DEFAULTS = {"default_finish": "matte"}
+FIXED_NAME_NOTE = "fixed name position (geometry v3)"   # why the strip sizes' crop presets were archived
 # changes to text the first listings seed put in the database: (key, old text, new text)
 LISTINGS_FIXUPS = (
     ("description_template", "• Labels arrive on half sheets that fit flat in a letter envelope\n", ""),
@@ -77,6 +78,11 @@ class Repo:
             for d in cat.designs.values():
                 for sid, pr in d.presets.items():
                     s.add(PresetRow(design_id=d.id, size_id=sid, data=pr.to_dict()))
+            # reference crops made for the old name position: kept in the archive, never used
+            for x in json.loads((config_dir / "designs.json").read_text(encoding="utf-8")):
+                for sid, data in (x.get("archived_presets") or {}).items():
+                    s.add(ArchivedPresetRow(design_id=x["id"], size_id=sid, data=data,
+                                            reason=FIXED_NAME_NOTE))
             s.commit()
         self._bump()
         return True

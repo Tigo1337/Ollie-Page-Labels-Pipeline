@@ -20,9 +20,12 @@ The `PORT` environment variable can override the default port.
 - Fonts download in the background at startup. Real design artwork must be
   uploaded before generating production labels.
 - Keep the existing Python/FastAPI and React/Vite structure. At startup the app
-  migrates a database made before the fixed half-sheet layouts (geometry v2): it
-  backs it up first (`data/backups/` and `backups/` in blob storage) and logs every
-  change. Review persistent database and blob storage configuration separately
+  migrates an older database once to the current geometry (`geometry_version` 3:
+  thirds, one matte finish, the new bundles and Listings settings, the strip sizes'
+  crop presets archived for the fixed name position): it backs it up first
+  (`data/backups/` and `backups/` in blob storage) and logs every change. Runs made
+  before stay downloadable as they are.
+- The shop is Mazie Page Creations: the logo and favicon are served from `brand/`. Review persistent database and blob storage configuration separately
   before publishing.
 
 ## Checks

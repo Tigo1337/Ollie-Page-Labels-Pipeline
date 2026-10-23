@@ -1,12 +1,16 @@
-"""Fixed, maximum-density half-sheet layouts: one per label size, two identical halves per sheet.
+"""Fixed, maximum-density piece layouts: one per label size, `pieces` identical pieces per sheet.
 
-Port of reference/sheet_opt.py (the prototype that produced the counts in
-reference/sheet-layout-plan.md). The optimizer reasons in the printed view (portrait,
-see `frames.py`) and only for the printed **top** half; the bottom half is every top cell
-mirrored about the trim line. Cells are then converted to the Studio frame, which is what
-the layout files, PDFs and cut templates use.
+The sheet is trimmed into equal pieces (sheet.json `trim.pieces`: 3 = thirds, each ships flat in
+a #10 envelope). Port of reference/sheet_opt.py. The optimizer reasons in the printed view
+(portrait, see `frames.py`) and only for the printed **top** piece; every other piece repeats it:
+  * a middle piece is every top cell translated down by i piece heights (printed y + i × 279.4 / n);
+  * the bottom piece is every top cell mirrored about the page centre (printed y' = 279.4 − y − h),
+    so the top corners' keep-outs land on the bottom corners.
+With `pieces: 2` this is the half-sheet rule (top + its mirror). Every piece holds the same
+arrangement and count (a middle piece could hold a few more labels; it does not). Cells are then
+converted to the Studio frame, which is what the layout files, PDFs and cut templates use.
 
-Candidates for the top half (keep the one with the most cells):
+Candidates for the top piece (keep the one with the most cells):
   * normal grid, rotated grid (non-square sizes), and for circles a row-wise hex packing;
     rows sit at a fixed pitch, the block is centred vertically (shifted ±5 mm in 0.25 mm
     steps) and each row is centred on its own in the x-range the corner zones leave free
@@ -37,6 +41,19 @@ LAYOUT_PREFIX = "chels"
 ROUND_MARGIN = 0.002  # added to diagonal row pitches so cells rounded to 0.001 mm keep the full gap
 
 PRect = tuple[float, float, float, float]  # x0, y0, x1, y1
+Cell = tuple[float, float, float, float, bool]  # Studio X, Y, W, H, rotated
+
+PIECE_NAMES = {2: ["top", "bottom"], 3: ["top", "middle", "bottom"]}
+PIECE_NAMES_FR = {2: ["haut", "bas"], 3: ["haut", "milieu", "bas"]}
+
+
+def piece_name(i: int, n: int, lang: str = "en") -> str:
+    """"top" / "middle" / "bottom" (French "haut" / "milieu" / "bas"); "middle 2" etc. beyond thirds."""
+    names = (PIECE_NAMES_FR if lang == "fr" else PIECE_NAMES).get(n)
+    if names:
+        return names[i]
+    first, mid, last = ("haut", "milieu", "bas") if lang == "fr" else ("top", "middle", "bottom")
+    return first if i == 0 else last if i == n - 1 else f"{mid} {i}"
 
 
 def _hit(r: PRect, z: PRect) -> bool:
@@ -44,15 +61,15 @@ def _hit(r: PRect, z: PRect) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Optimizer (printed view, top half)
+# Optimizer (printed view, top piece)
 # ---------------------------------------------------------------------------
-class _TopHalf:
-    """The printed top half of one sheet for one size: the search space and its rules."""
+class _TopPiece:
+    """The printed top piece of one sheet for one size: the search space and its rules."""
 
     def __init__(self, sheet: Sheet, size: Size):
         self.size = size
         self.PW, self.PH = sheet.paper_h, sheet.paper_w          # printed page (portrait)
-        self.trim_y = self.PH - sheet.trim_x                      # Studio X = trim  ->  printed y
+        self.trim_y = self.PH - sheet.trims[-1]                   # first trim line (Studio X) -> printed y
         self.ink_k, self.cut_k = sheet.ink_keepout, sheet.cut_keepout
         self.bleed = sheet.bleed
         self.gap = size.gap_on(sheet)
@@ -60,7 +77,7 @@ class _TopHalf:
         self.box = (e, e, self.PW - e, self.trim_y - sheet.trim_margin)  # where cut boxes may go
 
     def corners(self, k: float) -> list[PRect]:
-        """Corner squares on the top half's edge (printed top-left and top-right)."""
+        """Corner squares on the top piece's edge (printed top-left and top-right)."""
         return [(0.0, 0.0, k, k), (self.PW - k, 0.0, self.PW, k)]
 
     # -- rectangles ----------------------------------------------------------
@@ -183,8 +200,9 @@ class _TopHalf:
 class Layout:
     """One size's fixed layout. Cells are Studio-frame (X, Y, W, H, rotated) in mm.
 
-    `rotated` is about the printed view: True when the label is turned 90° from how it reads
-    (e.g. pencil labels standing upright on the printed sheet).
+    `pieces` lists each piece's cells in printed order (top, middle, bottom); every piece holds
+    the same arrangement. `rotated` is about the printed view: True when the label is turned 90°
+    from how it reads (e.g. pencil labels standing upright on the printed sheet).
     """
     layout_id: str
     size: str
@@ -192,24 +210,27 @@ class Layout:
     geometry_hash: str
     arrangement: str
     rows: list[int]
-    top: list[tuple[float, float, float, float, bool]]
-    bottom: list[tuple[float, float, float, float, bool]]
+    pieces: list[list[Cell]]
     size_geometry: dict = field(default_factory=dict)
 
     @property
-    def per_half(self) -> int:
-        return len(self.top)
+    def n_pieces(self) -> int:
+        return len(self.pieces)
+
+    @property
+    def per_piece(self) -> int:
+        return len(self.pieces[0])
 
     @property
     def per_sheet(self) -> int:
-        return len(self.top) + len(self.bottom)
+        return sum(len(p) for p in self.pieces)
 
     @property
-    def cells(self) -> list[tuple[float, float, float, float, bool]]:
-        return self.top + self.bottom
+    def cells(self) -> list[Cell]:
+        return [c for p in self.pieces for c in p]
 
     def same_cells(self, other: "Layout", tol: float = 1e-6) -> bool:
-        if len(self.top) != len(other.top) or len(self.bottom) != len(other.bottom):
+        if [len(p) for p in self.pieces] != [len(p) for p in other.pieces]:
             return False
         return all(a[4] == b[4] and all(abs(p - q) <= tol for p, q in zip(a[:4], b[:4]))
                    for a, b in zip(self.cells, other.cells))
@@ -219,29 +240,32 @@ class Layout:
         def cell(c):
             return "[" + ", ".join(f"{v:g}" if not isinstance(v, bool) else str(v).lower() for v in c) + "]"
         head = {
-            "_doc": "Fixed half-sheet layout. Never edit a published layout: a geometry change makes a new "
-                    "version. Cells are [X, Y, W, H, rotated] in mm, Studio frame (landscape Letter, origin "
-                    "top-left, y down); 'top'/'bottom' are the halves as the printed sheet is held (printed "
-                    "top = Studio right half, X > trim). bottom[i] mirrors top[i] about the trim line.",
+            "_doc": "Fixed piece layout. Never edit a published layout: a geometry change makes a new version. "
+                    "Cells are [X, Y, W, H, rotated] in mm, Studio frame (landscape Letter, origin top-left, "
+                    "y down). 'pieces' lists the pieces in printed order (top, middle, bottom: printed top = "
+                    "Studio right, highest X). Every piece holds the same arrangement: a middle piece is the "
+                    "top piece translated by whole piece widths, the bottom piece is the top piece mirrored "
+                    "about the page centre (pieces[-1][i] mirrors pieces[0][i]).",
             "layout_id": self.layout_id, "size": self.size, "version": self.version,
             "geometry_hash": self.geometry_hash, "frame": "studio", "arrangement": self.arrangement,
-            "per_half": self.per_half, "per_sheet": self.per_sheet, "rows": self.rows,
+            "per_piece": self.per_piece, "per_sheet": self.per_sheet, "rows": self.rows,
             "size_geometry": self.size_geometry,
         }
         parts = ["{"] + [f" {json.dumps(k)}: {json.dumps(v, ensure_ascii=False)}," for k, v in head.items()]
-        for name in ("top", "bottom"):
-            cells = getattr(self, name)
-            parts.append(f' "{name}": [\n' + ",\n".join("  " + cell(c) for c in cells) + "\n ]"
-                         + ("," if name == "top" else ""))
+        parts.append(' "pieces": [\n' + ",\n".join("  [\n" + ",\n".join("   " + cell(c) for c in p) + "\n  ]"
+                                                     for p in self.pieces) + "\n ]")
         return "\n".join(parts) + "\n}\n"
 
     @staticmethod
     def from_dict(d: dict) -> "Layout":
+        """Reads both formats: `pieces` (v2 and later) and the half-sheet files' `top` / `bottom` (v1,
+        read as two pieces)."""
         def cells(v):
             return [(float(c[0]), float(c[1]), float(c[2]), float(c[3]), bool(c[4])) for c in v]
+        pieces = [cells(p) for p in d["pieces"]] if "pieces" in d else [cells(d["top"]), cells(d["bottom"])]
         return Layout(layout_id=d["layout_id"], size=d["size"], version=int(d["version"]),
                       geometry_hash=d["geometry_hash"], arrangement=d["arrangement"], rows=list(d["rows"]),
-                      top=cells(d["top"]), bottom=cells(d["bottom"]), size_geometry=d.get("size_geometry", {}))
+                      pieces=pieces, size_geometry=d.get("size_geometry", {}))
 
     @staticmethod
     def load(path: Path) -> "Layout":
@@ -253,8 +277,9 @@ def layout_id(size_id: str, version: int) -> str:
 
 
 def optimize(sheet: Sheet, size: Size, version: int = 1) -> Layout:
-    """Search the candidates and return the densest layout (printed top half + its mirror)."""
-    t = _TopHalf(sheet, size)
+    """Search the candidates and return the densest layout: the printed top piece, repeated in every
+    piece (translated for the middle pieces, mirrored about the page centre for the bottom one)."""
+    t = _TopPiece(sheet, size)
     w, h = size.w, size.h
     rnd = size.shape == "circle"
     cands = [("normal", w, h, False, False)]
@@ -291,11 +316,13 @@ def optimize(sheet: Sheet, size: Size, version: int = 1) -> Layout:
         X, Y, W, H = to_studio(x, y, cw, ch, studio_w=sheet.paper_w)  # type: ignore[misc]
         return round(X, 3), round(Y, 3), round(W, 3), round(H, 3), rot
 
-    top = [studio(x, y) for x, y in cs]
-    bottom = [studio(x, round(2 * t.trim_y - y - ch, 3)) for x, y in cs]
+    n, ph = sheet.pieces, sheet.piece_w                         # printed piece height
+    pieces = [[studio(x, y) for x, y in cs]]
+    pieces += [[studio(x, round(y + i * ph, 3)) for x, y in cs] for i in range(1, n - 1)]
+    pieces.append([studio(x, round(t.PH - y - ch, 3)) for x, y in cs])
     return Layout(layout_id=layout_id(size.id, version), size=size.id, version=version,
                   geometry_hash=geometry_hash(sheet, size), arrangement=name, rows=list(rows.values()),
-                  top=top, bottom=bottom, size_geometry=size.geometry())
+                  pieces=pieces, size_geometry=size.geometry())
 
 
 # ---------------------------------------------------------------------------
@@ -305,28 +332,41 @@ def check_layout(layout: Layout, size: Size, sheet: Sheet) -> list[str]:
     """Every rule a layout must keep. Returns the problems (empty = good)."""
     problems: list[str] = []
     b, gap, e = sheet.bleed, size.gap_on(sheet), sheet.edge_margin
-    W, H, T, tm = sheet.paper_w, sheet.paper_h, sheet.trim_x, sheet.trim_margin
+    W, H, tm, n = sheet.paper_w, sheet.paper_h, sheet.trim_margin, sheet.pieces
     ink, cut = sheet.corner_squares(sheet.ink_keepout), sheet.corner_squares(sheet.cut_keepout)
     rnd = size.shape == "circle"
     dims = {(c[2], c[3], c[4]) for c in layout.cells}
     if len(dims) != 1:
         problems.append("cells do not all have the same size and orientation")
-    if len(layout.top) != len(layout.bottom):
-        problems.append("the halves hold different counts")
-    for i, (a, m) in enumerate(zip(layout.top, layout.bottom)):
-        if not (abs(m[0] - (2 * T - a[0] - a[2])) <= 0.01 and abs(m[1] - a[1]) <= 0.01
-                and abs(m[2] - a[2]) <= 0.01 and abs(m[3] - a[3]) <= 0.01 and m[4] == a[4]):
-            problems.append(f"bottom cell {i} is not the mirror of top cell {i}")
-    for half, cells in (("top", layout.top), ("bottom", layout.bottom)):
+    if len(layout.pieces) != n:
+        problems.append(f"the layout has {len(layout.pieces)} pieces, the sheet is trimmed into {n}")
+    if len({len(p) for p in layout.pieces}) > 1:
+        problems.append("the pieces hold different counts")
+
+    def same(m, X, a) -> bool:
+        return (abs(m[0] - X) <= 0.01 and abs(m[1] - a[1]) <= 0.01 and abs(m[2] - a[2]) <= 0.01
+                and abs(m[3] - a[3]) <= 0.01 and m[4] == a[4])
+
+    top = layout.pieces[0]
+    for k, piece in enumerate(layout.pieces[1:], 1):
+        last = k == len(layout.pieces) - 1
+        for i, (a, m) in enumerate(zip(top, piece)):
+            if last and not same(m, W - a[0] - a[2], a):          # Studio: mirror about X = W / 2
+                problems.append(f"bottom cell {i} is not the mirror of top cell {i}")
+            elif not last and not same(m, a[0] - k * sheet.piece_w, a):
+                problems.append(f"{piece_name(k, len(layout.pieces))} cell {i} is not top cell {i} translated")
+    for k, cells in enumerate(layout.pieces):
+        x0, x1 = sheet.piece_span(k) if k < n else (0.0, W)
+        pname = piece_name(k, max(len(layout.pieces), 2))
         for i, (X, Y, w, h, _) in enumerate(cells):
-            tag = f"{half} cell {i} at ({X:g}, {Y:g})"
+            tag = f"{pname} cell {i} at ({X:g}, {Y:g})"
             cutb, inkb = (X, Y, X + w, Y + h), (X - b, Y - b, X + w + b, Y + h + b)
             if rnd:
                 cx, cy, r = X + w / 2, Y + h / 2, w / 2
-                for k, rad, what in ((sheet.ink_keepout, r + b, "bleed in an ink keep-out"),
-                                     (sheet.cut_keepout, r, "cut line in a cut keep-out")):
+                for kk, rad, what in ((sheet.ink_keepout, r + b, "bleed in an ink keep-out"),
+                                      (sheet.cut_keepout, r, "cut line in a cut keep-out")):
                     for qx, qy in itertools.product((cx, W - cx), (cy, H - cy)):
-                        if math.hypot(max(0.0, qx - k), max(0.0, qy - k)) < rad - EPS:
+                        if math.hypot(max(0.0, qx - kk), max(0.0, qy - kk)) < rad - EPS:
                             problems.append(f"{tag}: {what}")
                             break
             else:
@@ -336,12 +376,13 @@ def check_layout(layout: Layout, size: Size, sheet: Sheet) -> list[str]:
                     problems.append(f"{tag}: cut line in a cut keep-out")
             if X < e - EPS or Y < e - EPS or X + w > W - e + EPS or Y + h > H - e + EPS:
                 problems.append(f"{tag}: cut line inside the {e:g} mm edge margin")
-            if X < T + tm - EPS and X + w > T - tm + EPS:
-                problems.append(f"{tag}: cut line inside the trim gutter")
-            if inkb[0] < T < inkb[2]:
-                problems.append(f"{tag}: bleed crosses the trim line")
-            if (half == "top") != (X > T):
-                problems.append(f"{tag}: on the wrong side of the trim line")
+            for T in sheet.trims:
+                if X < T + tm - EPS and X + w > T - tm + EPS:
+                    problems.append(f"{tag}: cut line within {tm:g} mm of the trim line at X {T:g}")
+                if inkb[0] < T < inkb[2]:
+                    problems.append(f"{tag}: bleed crosses the trim line at X {T:g}")
+            if X < x0 - EPS or X + w > x1 + EPS:
+                problems.append(f"{tag}: outside its own piece")
     cells = layout.cells
     for (i, a), (j, c) in itertools.combinations(enumerate(cells), 2):
         if rnd:
@@ -362,8 +403,8 @@ def cell_labels(cell: tuple[float, float, float, float, bool], size: Size,
     px_, py, _, _ = to_printed(X, Y, W, H, studio_w=sheet.paper_w)  # type: ignore[misc]
     out = []
     for lx, ly, lw, lh in size.label_rects():
-        if rot:                                   # label turned 90° on the printed sheet
-            lx, ly, lw, lh = ly, lx, lh, lw
+        if rot:                                   # label turned 90° counter-clockwise on the printed sheet:
+            lx, ly, lw, lh = ly, size.w - lx - lw, lh, lw   # its left end at the bottom (as sheetpdf places the art)
         r = to_studio(px_ + lx, py + ly, lw, lh, studio_w=sheet.paper_w)
         out.append(tuple(round(v, 3) for v in r))  # type: ignore[union-attr]
     return out  # type: ignore[return-value]

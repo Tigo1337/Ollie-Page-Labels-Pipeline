@@ -20,6 +20,15 @@ exactement là où le PDF imprime son étiquette. On supprime ensuite les ancrag
 
 Toutes les mesures sont en millimètres : réglez Studio en **mm**.
 
+## Passage aux tiers : refaire les 7 modèles (v2)
+
+Les planches sont maintenant coupées en **trois tiers** (traits de coupe à X 93.133 et 186.267 mm en
+paysage) : chaque taille a une nouvelle mise en page `chels-<taille>-v2`, avec trois tiers identiques. Les
+modèles `-v1` (demi-planches) ne servent plus : la page **Templates** de l'appli les affiche en rouge,
+**périmés**, et ne les met plus dans les lots. Refaites **une fois** chacun des 7 modèles
+ci-dessous avec les étapes suivantes (fichiers `templates/chels-*-v2.*`), puis téléversez chaque
+`chels-<taille>-v2.studio3` dans la page **Templates**. Les fichiers `-v1` ne sont jamais modifiés ni effacés.
+
 ## Étapes (une fois par mise en page)
 
 1. **DXF seulement** (Studio Basic) : **Édition** (Edit) → **Préférences…** (Preferences…) ⚠ → onglet **Importer** (Import) ⚠ :
@@ -57,13 +66,13 @@ Toutes les mesures sont en millimètres : réglez Studio en **mm**.
 
 | Mise en page | Découpes | X | Y | L | H |
 |---|---:|---:|---:|---:|---:|
-| `chels-pencil-v1` | 60 | 14.10 | 13.20 | 251.20 | 189.50 |
-| `chels-small-v1` | 62 | 12.80 | 15.20 | 253.80 | 185.50 |
-| `chels-medium-v1` | 30 | 23.60 | 10.20 | 232.20 | 195.50 |
-| `chels-large-v1` | 22 | 17.80 | 10.20 | 243.80 | 195.50 |
-| `chels-tag-v1` | 110 | 12.80 | 11.55 | 253.80 | 192.80 |
-| `chels-round-v1` | 40 | 10.00 | 10.00 | 259.40 | 182.20 |
-| `chels-shoe-v1` | 32 | 12.85 | 11.70 | 253.70 | 192.50 |
+| `chels-pencil-v2` | 51 | 14.32 | 19.95 | 250.77 | 176.00 |
+| `chels-small-v2` | 57 | 12.32 | 15.20 | 254.77 | 185.50 |
+| `chels-medium-v2` | 24 | 18.07 | 10.20 | 243.27 | 195.50 |
+| `chels-large-v2` | 18 | 17.32 | 25.50 | 244.77 | 164.90 |
+| `chels-tag-v2` | 102 | 12.32 | 11.55 | 254.77 | 192.80 |
+| `chels-round-v2` | 30 | 16.07 | 23.95 | 247.27 | 168.00 |
+| `chels-shoe-v2` | 24 | 17.82 | 28.20 | 243.77 | 159.50 |
 
 (mm, repère de Studio en paysage, ancrages exclus)
 
@@ -81,9 +90,9 @@ python dxf_to_studio3.py single <layout_id>.dxf <layout_id>.studio3 --paper_size
 * `--no_center` est obligatoire : nos grilles ne sont pas centrées sur la page.
 * **Attention :** le script retourne toujours la sélection verticalement après l'import (pour corriger le
   remplissage d'image de leurs cartes). Avec nos ancrages, cela fait un miroir de la mise en page autour du
-  centre de la page : sans effet pour les grilles symétriques, mais **faux pour `chels-round`** (rangées
-  décalées). Après le script, faites toujours les vérifications des étapes 8 et 11 ; pour le rond, un Y de
-  23,70 au lieu de 10,00 signale le miroir.
+  centre de la page : sans effet pour les mises en page actuelles (toutes symétriques de haut en bas en
+  paysage ; c'était faux pour l'ancien `chels-round-v1` en quinconce). Après le script, faites toujours les
+  vérifications des étapes 8 et 11.
 
 ## Libellés à confirmer
 

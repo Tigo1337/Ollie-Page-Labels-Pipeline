@@ -1,0 +1,41 @@
+{
+ "layout_id": "chels-shoe-v2",
+ "size": "shoe",
+ "geometry_hash": "3e98146c2bad547b753b303304d51da9643b311955270718959a8f2fee819a38",
+ "cells": 12,
+ "cut_labels": 24,
+ "page": {
+  "w": 279.4,
+  "h": 215.9,
+  "orientation": "landscape"
+ },
+ "cut_bbox": {
+  "x": 17.816,
+  "y": 28.2,
+  "w": 243.768,
+  "h": 159.5
+ },
+ "anchors": [
+  [
+   0.0,
+   0.0
+  ],
+  [
+   279.4,
+   215.9
+  ]
+ ],
+ "registration": {
+  "type": 1,
+  "marks": 3,
+  "length": 10.0,
+  "thickness": 1.0,
+  "inset": 10.0
+ },
+ "files": {
+  "svg": "chels-shoe-v2.svg",
+  "dxf": "chels-shoe-v2.dxf",
+  "json": "chels-shoe-v2.json",
+  "calibration.pdf": "chels-shoe-v2_calibration.pdf"
+ }
+}

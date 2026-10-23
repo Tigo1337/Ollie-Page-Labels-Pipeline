@@ -1,13 +1,13 @@
-"""Half-sheet batching: orders fill whole halves of fixed layouts; two halves make a sheet.
+"""Piece batching: orders fill whole pieces of fixed layouts; a sheet is `pieces` pieces (3 = thirds).
 
-* A pack is a whole number of single-size halves (pencil60 = 2 pencil halves, school = one
-  half each of pencil, small, medium, round and shoe). Every half carries its order, line,
+* A pack is a whole number of single-size pieces (pencil51 = 3 pencil pieces, starter = one piece
+  each of pencil, medium and round + two small pieces). Every piece carries its order, line,
   size, design, name, font and finish; all its cells hold that one label.
-* A sheet is two halves with the same layout (size) and the same finish. Halves are paired
-  oldest first and may come from different orders (two `starter` orders = one pencil sheet
-  and one small sheet).
-* A half without a partner either waits for one, or is printed alone: its other half is a
-  free bonus copy of the same half, or left blank.
+* A sheet is three pieces with the same layout (size) and the same finish. Sheets are filled
+  oldest piece first, and the pieces may come from different orders (three `starter` orders =
+  one pencil sheet, two small sheets, one medium sheet and one round sheet).
+* A sheet left with only 1 or 2 pieces either waits for more orders, or is printed: its empty
+  pieces get free bonus copies of the last real piece, or are left blank.
 
 Strategies sit behind `PackingStrategy` so the batching can change later.
 """
@@ -17,7 +17,7 @@ import math
 from dataclasses import dataclass, field, replace
 from typing import Literal, Protocol, Sequence
 
-from .config import Catalog, Pack
+from .config import Catalog, Pack, Production
 
 Unpaired = Literal["wait", "bonus", "blank"]
 
@@ -27,8 +27,8 @@ class PackError(ValueError):
 
 
 @dataclass(frozen=True)
-class Half:
-    """One half-sheet: one size, one label repeated in every cell of the half."""
+class Piece:
+    """One piece of a sheet (French: tiers): one size, one label repeated in every cell of the piece."""
     order_id: str
     line: int                # order line index (0-based)
     size: str
@@ -38,53 +38,52 @@ class Half:
     name: str = ""
     design: str = ""
     font: int = 1
-    index: int = 1           # this half's number within its order (1-based) ...
-    of: int = 1              # ... out of the order's halves
-    seq: int = 0             # age: lower = older (pairing order)
-    bonus: bool = False      # a free copy filling the other half of a sheet printed alone
+    index: int = 1           # this piece's number within its order (1-based) ...
+    of: int = 1              # ... out of the order's pieces
+    seq: int = 0             # age: lower = older (filling order)
+    bonus: bool = False      # a free copy filling an empty piece of a sheet printed without enough pieces
 
     @property
     def tag(self) -> str:
-        return f"#{self.order_id} · {self.name} · {self.finish} · half {self.index}/{self.of}"
+        return f"#{self.order_id} · {self.name} · tiers {self.index}/{self.of}"
 
 
 @dataclass
 class SheetPlan:
-    n: int                   # sheet number in the run (1-based)
+    n: int                        # sheet number in the run (1-based)
     layout_id: str
     size: str
     finish: str
-    top: Half
-    bottom: Half | None      # None = printed blank
+    pieces: list[Piece | None]    # printed order (top, middle, bottom); None = printed blank
 
     @property
-    def halves(self) -> list[Half]:
-        return [self.top] + ([self.bottom] if self.bottom is not None else [])
+    def filled(self) -> list[Piece]:
+        return [p for p in self.pieces if p is not None]
 
 
 @dataclass
 class BatchPlan:
     sheets: list[SheetPlan] = field(default_factory=list)
-    waiting: list[Half] = field(default_factory=list)
+    waiting: list[Piece] = field(default_factory=list)
 
 
 class PackingStrategy(Protocol):
     name: str
 
-    def plan(self, halves: Sequence[Half], unpaired: Unpaired, size_order: Sequence[str],
-             finish_order: Sequence[str]) -> BatchPlan:
+    def plan(self, pieces: Sequence[Piece], unpaired: Unpaired, size_order: Sequence[str],
+             finish_order: Sequence[str], per_sheet: int = 3) -> BatchPlan:
         ...
 
 
-class HalfSheetBatcher:
-    """Pair halves of the same layout and finish, oldest first."""
-    name = "half-sheets"
+class PieceBatcher:
+    """Fill sheets with pieces of the same layout and finish, oldest first."""
+    name = "pieces"
 
-    def plan(self, halves: Sequence[Half], unpaired: Unpaired = "bonus", size_order: Sequence[str] = (),
-             finish_order: Sequence[str] = ()) -> BatchPlan:
-        groups: dict[tuple[str, str], list[Half]] = {}
-        for h in sorted(halves, key=lambda h: h.seq):
-            groups.setdefault((h.finish, h.layout_id), []).append(h)
+    def plan(self, pieces: Sequence[Piece], unpaired: Unpaired = "bonus", size_order: Sequence[str] = (),
+             finish_order: Sequence[str] = (), per_sheet: int = 3) -> BatchPlan:
+        groups: dict[tuple[str, str], list[Piece]] = {}
+        for p in sorted(pieces, key=lambda p: p.seq):
+            groups.setdefault((p.finish, p.layout_id), []).append(p)
         f_rank = {f: i for i, f in enumerate(finish_order)}
         s_rank = {s: i for i, s in enumerate(size_order)}
         out = BatchPlan()
@@ -92,22 +91,23 @@ class HalfSheetBatcher:
                                                                s_rank.get(groups[k][0].size, 99), k)):
             todo = groups[(finish, layout_id)]
             size = todo[0].size
-            for i in range(0, len(todo) - 1, 2):
-                out.sheets.append(SheetPlan(0, layout_id, size, finish, todo[i], todo[i + 1]))
-            if len(todo) % 2:
-                last = todo[-1]
-                if unpaired == "wait":
-                    out.waiting.append(last)
-                else:
-                    other = replace(last, bonus=True) if unpaired == "bonus" else None
-                    out.sheets.append(SheetPlan(0, layout_id, size, finish, last, other))
+            for i in range(0, len(todo), per_sheet):
+                chunk: list[Piece | None] = list(todo[i:i + per_sheet])
+                if len(chunk) < per_sheet:
+                    if unpaired == "wait":
+                        out.waiting += [p for p in chunk if p is not None]
+                        continue
+                    last = chunk[-1]
+                    fill = replace(last, bonus=True) if unpaired == "bonus" else None
+                    chunk += [fill] * (per_sheet - len(chunk))
+                out.sheets.append(SheetPlan(0, layout_id, size, finish, chunk))
         for n, sh in enumerate(out.sheets, 1):
             sh.n = n
         return out
 
 
-STRATEGIES: dict[str, PackingStrategy] = {s.name: s for s in (HalfSheetBatcher(),)}
-DEFAULT_STRATEGY = HalfSheetBatcher.name
+STRATEGIES: dict[str, PackingStrategy] = {s.name: s for s in (PieceBatcher(),)}
+DEFAULT_STRATEGY = PieceBatcher.name
 
 
 def get_strategy(name: str | None = None) -> PackingStrategy:
@@ -115,35 +115,55 @@ def get_strategy(name: str | None = None) -> PackingStrategy:
 
 
 # ---------------------------------------------------------------------------
-# Packs in halves
+# Packs in pieces
 # ---------------------------------------------------------------------------
-def per_half(cat: Catalog, size_id: str, layouts_dir) -> int:
+def per_piece(cat: Catalog, size_id: str, layouts_dir) -> int:
     from .layout import current_layout
-    return current_layout(cat.sheet, cat.sizes[size_id], layouts_dir).per_half
+    return current_layout(cat.sheet, cat.sizes[size_id], layouts_dir).per_piece
 
 
-def pack_halves(pack: Pack, cat: Catalog, layouts_dir) -> dict[str, int]:
-    """{size: number of halves}. Every quantity must fill whole halves of its layout."""
-    return pack_halves_from(pack, cat, {sid: per_half(cat, sid, layouts_dir) for sid in pack.contents
+def pack_pieces(pack: Pack, cat: Catalog, layouts_dir) -> dict[str, int]:
+    """{size: number of pieces}. Every quantity must fill whole pieces of its layout."""
+    return pack_pieces_from(pack, cat, {sid: per_piece(cat, sid, layouts_dir) for sid in pack.contents
                                         if sid in cat.sizes})
 
 
-def pack_halves_from(pack: Pack, cat: Catalog, per_half_of: dict[str, int]) -> dict[str, int]:
+def pack_pieces_from(pack: Pack, cat: Catalog, per_piece_of: dict[str, int]) -> dict[str, int]:
     out = {}
     for sid, q in pack.contents.items():
-        if sid not in cat.sizes or sid not in per_half_of:
+        if sid not in cat.sizes or sid not in per_piece_of:
             raise PackError(f"Pack '{pack.id}' uses unknown size '{sid}'.")
-        n = per_half_of[sid]
+        n = per_piece_of[sid]
         if q % n:
-            raise PackError(f"Pack '{pack.id}': {q} {sid} labels is not a whole number of halves "
-                            f"({n} per half).")
+            raise PackError(f"Pack '{pack.id}': {q} {sid} labels is not a whole number of pieces "
+                            f"({n} per piece).")
         out[sid] = q // n
     return out
 
 
+LETTERMAIL_MAX_PIECES = 12      # above this, warn: standard Lettermail is at most 5 mm thick
+LETTERMAIL_MAX_THICKNESS = 5.0
+LETTERMAIL_CLASSES = ((30.0, "Lettermail, up to 30 g"), (50.0, "Lettermail, up to 50 g"))
+
+
+def envelope(pieces: int, production: Production) -> dict:
+    """The #10 envelope for an order of `pieces` pieces: estimated weight (pieces × piece_weight_g +
+    envelope_weight_g), its Canada Post Lettermail class, the thickness, and a warning above 12 pieces."""
+    weight = round(pieces * production.piece_weight_g + production.envelope_weight_g, 1)
+    lettermail = next((name for limit, name in LETTERMAIL_CLASSES if weight <= limit), "Over 50 g (oversized)")
+    thickness = round(pieces * production.piece_thickness_mm, 2)
+    warning = ""
+    if pieces > LETTERMAIL_MAX_PIECES:
+        warning = (f"{pieces} pieces (about {thickness:g} mm thick): standard Lettermail is limited to "
+                   f"{LETTERMAIL_MAX_THICKNESS:g} mm, check the envelope's thickness.")
+    return {"weight_g": weight, "lettermail": lettermail, "thickness_mm": thickness, "warning": warning}
+
+
 def pack_sheets(pack: Pack, cat: Catalog, layouts_dir) -> dict[str, float]:
-    """Material per pack, in sheets: halves / 2 when batched with other orders, and the sheets
-    used when the order is printed on its own (each odd half takes a whole sheet)."""
-    halves = pack_halves(pack, cat, layouts_dir)
-    return {"halves": sum(halves.values()), "batched": sum(halves.values()) / 2,
-            "alone": sum(math.ceil(n / 2) for n in halves.values())}
+    """Material per pack, in sheets: pieces / pieces-per-sheet when batched with other orders, and
+    the sheets used when the order is printed on its own (Σ ceil(pieces of a size / pieces-per-sheet))."""
+    pieces = pack_pieces(pack, cat, layouts_dir)
+    n = cat.sheet.pieces
+    total = sum(pieces.values())
+    return {"pieces": total, "batched": round(total / n, 3), "alone": sum(math.ceil(k / n) for k in pieces.values()),
+            "envelope": envelope(total, cat.production)}

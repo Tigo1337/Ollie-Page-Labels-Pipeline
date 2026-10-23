@@ -1,0 +1,41 @@
+{
+ "layout_id": "chels-round-v2",
+ "size": "round",
+ "geometry_hash": "152691afd24f8717366252ff773444e93a266ba01875a3df0a24dbaf6ef16459",
+ "cells": 30,
+ "cut_labels": 30,
+ "page": {
+  "w": 279.4,
+  "h": 215.9,
+  "orientation": "landscape"
+ },
+ "cut_bbox": {
+  "x": 16.066,
+  "y": 23.95,
+  "w": 247.268,
+  "h": 168.0
+ },
+ "anchors": [
+  [
+   0.0,
+   0.0
+  ],
+  [
+   279.4,
+   215.9
+  ]
+ ],
+ "registration": {
+  "type": 1,
+  "marks": 3,
+  "length": 10.0,
+  "thickness": 1.0,
+  "inset": 10.0
+ },
+ "files": {
+  "svg": "chels-round-v2.svg",
+  "dxf": "chels-round-v2.dxf",
+  "json": "chels-round-v2.json",
+  "calibration.pdf": "chels-round-v2_calibration.pdf"
+ }
+}

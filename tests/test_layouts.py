@@ -1,4 +1,4 @@
-"""Fixed half-sheet layouts (engine/layout.py): counts, mirroring, keep-outs, gaps, frames, versions."""
+"""Fixed piece layouts (engine/layout.py): counts, translating / mirroring, keep-outs, gaps, frames, versions."""
 import dataclasses
 import json
 import math
@@ -17,10 +17,14 @@ CAT = load_catalog(REPO / "config")
 SHEET = CAT.sheet
 LAYOUTS = REPO / "layouts"
 
-# the minimum the optimizer must reach (reference/sheet-layout-plan.md)
-PER_HALF = {"pencil": 30, "small": 31, "medium": 15, "large": 11, "tag": 55, "round": 20, "shoe": 8}
-ROWS = {"pencil": [14, 16], "small": [3] + [4] * 7, "medium": [3] * 5, "large": [2, 3, 3, 3],
-        "tag": [6] + [7] * 7, "round": [5] * 4, "shoe": [2, 3, 3]}
+# the minimum the optimizer must reach on the top third (reference/sheet-layout-plan.md)
+PER_PIECE = {"pencil": 17, "small": 19, "medium": 8, "large": 6, "tag": 34, "round": 10, "shoe": 4}
+ROWS = {"pencil": [2, 3, 3, 3, 3, 3], "small": [3, 4, 4, 4, 4], "medium": [2, 3, 3], "large": [6],
+        "tag": [6, 7, 7, 7, 7], "round": [5, 5], "shoe": [4]}
+ARRANGEMENT = {"pencil": "normal", "small": "normal", "medium": "normal", "large": "rotated", "tag": "normal",
+               "round": "normal", "shoe": "rotated"}
+# the half-sheet layouts (v1), for `pieces: 2`
+PER_HALF_V1 = {"pencil": 30, "small": 31, "medium": 15, "large": 11, "tag": 55, "round": 20, "shoe": 8}
 
 
 def lay(sid):
@@ -33,19 +37,50 @@ def with_marks(n):
     return Sheet.from_dict(raw)
 
 
-@pytest.mark.parametrize("sid", list(PER_HALF))
+def with_pieces(n):
+    raw = json.loads(json.dumps(SHEET.raw))
+    raw["trim"]["pieces"] = n
+    return Sheet.from_dict(raw)
+
+
+def test_trim_lines_are_computed_thirds():
+    assert SHEET.pieces == 3
+    assert SHEET.trims == [93.133, 186.267]
+    assert "x" not in SHEET.raw["trim"]                       # never typed in
+    assert with_pieces(2).trims == [139.7]
+    assert with_pieces(4).trims == [69.85, 139.7, 209.55]
+    with pytest.raises(ValueError):
+        with_pieces(1)
+
+
+@pytest.mark.parametrize("sid", list(PER_PIECE))
 def test_counts_match_or_beat_the_plan(sid):
     L = lay(sid)
-    assert L.per_half >= PER_HALF[sid]
-    assert L.per_sheet == 2 * L.per_half
+    assert L.layout_id == f"chels-{sid}-v2"
+    assert L.n_pieces == 3
+    assert L.per_piece >= PER_PIECE[sid]
+    assert all(len(p) == L.per_piece for p in L.pieces)       # every piece holds the same count
+    assert L.per_sheet == 3 * L.per_piece
     assert L.rows == ROWS[sid]
+    assert L.arrangement == ARRANGEMENT[sid]
 
 
-def test_round_is_the_staggered_grid():
-    L = lay("round")
+@pytest.mark.parametrize("sid", list(PER_PIECE))
+def test_two_pieces_reproduce_the_v1_half_sheet_layouts(sid):
+    """`pieces: 2` gives exactly today's half layouts (same cells as the published v1 files)."""
+    v1 = Layout.load(LAYOUTS / f"chels-{sid}-v1.json")
+    assert v1.n_pieces == 2 and v1.per_piece == PER_HALF_V1[sid]             # v1 files read as two pieces
+    two = with_pieces(2)
+    L = optimize(two, CAT.sizes[sid], 1)
+    assert L.same_cells(v1, tol=1e-9)
+    assert check_layout(v1, CAT.sizes[sid], two) == []
+
+
+def test_round_v1_is_the_staggered_grid():
+    L = Layout.load(LAYOUTS / "chels-round-v1.json")
     assert L.arrangement == "stagger"
     rows = {}
-    for x, y, w, h in sorted(to_printed(*c[:4]) for c in L.top):
+    for x, y, w, h in sorted(to_printed(*c[:4]) for c in L.pieces[0]):
         rows.setdefault(round(y, 3), []).append(x)
     ys = sorted(rows)
     pitch = ys[1] - ys[0]
@@ -56,41 +91,66 @@ def test_round_is_the_staggered_grid():
     assert first + row_w / 2 == pytest.approx(SHEET.paper_h / 2, abs=1.0)
 
 
-@pytest.mark.parametrize("sid", list(PER_HALF))
+@pytest.mark.parametrize("sid", list(PER_PIECE))
 def test_published_layout_matches_the_optimizer(sid):
     """The committed file is what the optimizer gives today (so the port is deterministic)."""
     L = lay(sid)
     assert optimize(SHEET, CAT.sizes[sid], L.version).same_cells(L, tol=1e-3)
 
 
-@pytest.mark.parametrize("sid", list(PER_HALF))
-def test_bottom_half_mirrors_top_half(sid):
+@pytest.mark.parametrize("sid", list(PER_PIECE))
+def test_middle_is_top_translated_and_bottom_is_top_mirrored(sid):
     L = lay(sid)
-    assert len(L.top) == len(L.bottom)
-    T = SHEET.trim_x
-    for a, b in zip(L.top, L.bottom):
-        assert b[0] == pytest.approx(2 * T - a[0] - a[2], abs=0.01)  # Studio: mirror about X = trim
-        assert b[1:4] == pytest.approx(a[1:4], abs=0.01)
-        assert b[4] == a[4]
-        # printed view: y_bottom = 279.4 − y_top − h, x unchanged
-        pa, pb = to_printed(*a[:4]), to_printed(*b[:4])
+    top, middle, bottom = L.pieces
+    assert len(top) == len(middle) == len(bottom)
+    for a, m, b in zip(top, middle, bottom):
+        pa, pm, pb = to_printed(*a[:4]), to_printed(*m[:4]), to_printed(*b[:4])
+        # middle: printed y + 93.133, x unchanged
+        assert pm[1] == pytest.approx(pa[1] + 93.133, abs=0.01)
+        assert (pm[0], pm[2], pm[3]) == pytest.approx((pa[0], pa[2], pa[3]), abs=0.01)
+        # bottom: printed y' = 279.4 − y − h, x unchanged
         assert pb[1] == pytest.approx(SHEET.paper_w - pa[1] - pa[3], abs=0.01)
-        assert pb[0] == pytest.approx(pa[0], abs=0.01)
+        assert (pb[0], pb[2], pb[3]) == pytest.approx((pa[0], pa[2], pa[3]), abs=0.01)
+        assert a[4] == m[4] == b[4]
+        # Studio frame: middle is X − one piece, bottom mirrors about X = W / 2
+        assert m[0] == pytest.approx(a[0] - SHEET.paper_w / 3, abs=0.01)
+        assert b[0] == pytest.approx(SHEET.paper_w - a[0] - a[2], abs=0.01)
+
+
+@pytest.mark.parametrize("sid", list(PER_PIECE))
+def test_cuts_are_symmetric_top_to_bottom_in_studio(sid):
+    """docs/studio-template-setup.md relies on this: SCM's dxf_to_studio3.py flips the selection vertically
+    (Studio frame), which leaves every current layout unchanged."""
+    from engine.layout import cell_labels
+    L, size, H = lay(sid), CAT.sizes[sid], SHEET.paper_h
+    cuts = sorted((round(x, 2), round(y, 2), round(w, 2), round(h, 2))
+                  for c in L.cells for x, y, w, h in cell_labels(c, size, SHEET))
+    flipped = sorted((x, round(H - y - h, 2), w, h) for x, y, w, h in cuts)
+    assert all(a == pytest.approx(b, abs=0.02) for a, b in zip(cuts, flipped))
+
+
+@pytest.mark.parametrize("sid", list(PER_PIECE))
+def test_every_cell_lies_inside_its_own_piece(sid):
+    L = lay(sid)
+    for i, cells in enumerate(L.pieces):
+        lo, hi = (SHEET.paper_w * (2 - i) / 3, SHEET.paper_w * (3 - i) / 3)   # printed top = Studio right
+        for X, _, w, _, _ in cells:
+            assert lo - 1e-6 <= X and X + w <= hi + 1e-6
 
 
 @pytest.mark.parametrize("marks", [3, 4])
-@pytest.mark.parametrize("sid", list(PER_HALF))
+@pytest.mark.parametrize("sid", list(PER_PIECE))
 def test_rules_hold_with_3_and_4_marks(sid, marks):
     sheet = with_marks(marks)
     L = lay(sid)
     assert check_layout(L, CAT.sizes[sid], sheet) == []
 
 
-@pytest.mark.parametrize("sid", list(PER_HALF))
+@pytest.mark.parametrize("sid", list(PER_PIECE))
 def test_rules_independently(sid):
     """Re-check the main rules here with plain geometry, apart from check_layout."""
     L, size = lay(sid), CAT.sizes[sid]
-    b, e, T, tm = SHEET.bleed, SHEET.edge_margin, SHEET.trim_x, SHEET.trim_margin
+    b, e, tm = SHEET.bleed, SHEET.edge_margin, SHEET.trim_margin
     W, H = SHEET.paper_w, SHEET.paper_h
 
     def overlaps(r, z):
@@ -98,9 +158,10 @@ def test_rules_independently(sid):
 
     for X, Y, w, h, _ in L.cells:
         assert e - 1e-6 <= X and X + w <= W - e + 1e-6 and e - 1e-6 <= Y and Y + h <= H - e + 1e-6
-        assert X + w <= T - tm + 1e-6 or X >= T + tm - 1e-6               # nothing cut in the trim gutter
+        for T in (W / 3, 2 * W / 3):
+            assert X + w <= T - tm + 1e-3 or X >= T + tm - 1e-3           # nothing cut within 5 mm of a trim line
+            assert not (X - b < T < X + w + b)                           # bleed never crosses a trim line
         assert X - b >= 0 and X + w + b <= W and Y - b >= 0 and Y + h + b <= H  # bleed stays on the page
-        assert not (X - b < T < X + w + b)                               # bleed never crosses the trim line
         if size.shape == "circle":
             cx, cy, r = X + w / 2, Y + h / 2, w / 2
             for k, rad in ((SHEET.ink_keepout, r + b), (SHEET.cut_keepout, r)):
@@ -126,23 +187,38 @@ def test_rules_independently(sid):
 
 def test_round_gap_is_2mm_and_others_use_the_sheet_gap():
     assert CAT.sizes["round"].gap_on(SHEET) == 2.0
-    assert all(CAT.sizes[s].gap_on(SHEET) == 2.5 for s in PER_HALF if s != "round")
+    assert all(CAT.sizes[s].gap_on(SHEET) == 2.5 for s in PER_PIECE if s != "round")
 
 
 def test_check_layout_catches_broken_layouts():
     size = CAT.sizes["small"]
     L = lay("small")
-    bad = dataclasses.replace(L, top=[(10.0, 10.0) + L.top[0][2:]] + L.top[1:])   # into the marked corner
+    top, mid, bot = L.pieces
+
+    def with_pieces_(*p):
+        return dataclasses.replace(L, pieces=list(p))
+    bad = with_pieces_([(10.0, 10.0) + top[0][2:]] + top[1:], mid, bot)          # into the marked corner
     assert any("keep-out" in p for p in check_layout(bad, size, SHEET))
-    bad = dataclasses.replace(L, bottom=L.bottom[:-1])
+    bad = with_pieces_(top, mid, bot[:-1])
     assert any("different counts" in p for p in check_layout(bad, size, SHEET))
-    X, Y, w, h, r = L.top[0]
-    bad = dataclasses.replace(L, top=[(X, Y + 0.5, w, h, r)] + L.top[1:])
+    X, Y, w, h, r = top[0]
+    bad = with_pieces_(top, mid, [(bot[0][0], bot[0][1] + 0.5) + bot[0][2:]] + bot[1:])
     assert any("mirror" in p for p in check_layout(bad, size, SHEET))
+    bad = with_pieces_(top, [(mid[0][0] + 0.5,) + mid[0][1:]] + mid[1:], bot)
+    assert any("translated" in p for p in check_layout(bad, size, SHEET))
+    # a cell up against the lower trim line (inside its 5 mm), on the middle piece
+    T = SHEET.trims[0]
+    bad = with_pieces_(top, [(T + 2.0, mid[0][1]) + mid[0][2:]] + mid[1:], bot)
+    assert any("within 5 mm of the trim line at X 93.133" in p for p in check_layout(bad, size, SHEET))
+    bad = with_pieces_(top, [(T - 20.0, mid[0][1]) + mid[0][2:]] + mid[1:], bot)
+    assert any("outside its own piece" in p for p in check_layout(bad, size, SHEET))
+    bad = with_pieces_(top, bot)
+    assert any("2 pieces" in p for p in check_layout(bad, size, SHEET))
     rnd = lay("round")
-    X, Y, w, h, r = rnd.top[1]
+    rt = rnd.pieces[0]
+    X, Y, w, h, r = rt[1]
     near = (X, Y - 1.0, w, h, r)
-    bad = dataclasses.replace(rnd, top=[rnd.top[0], near] + rnd.top[2:])
+    bad = dataclasses.replace(rnd, pieces=[[rt[0], near] + rt[2:]] + rnd.pieces[1:])
     assert any("circles closer" in p for p in check_layout(bad, CAT.sizes["round"], SHEET))
 
 
@@ -161,9 +237,9 @@ def test_frames_round_trip_and_mark_corners():
     assert printed_corner(W - 10, 10) == "top-left"           # L (┌)
     assert printed_corner(10, H - 10) == "bottom-right"       # L (┘)
     assert printed_corner(W - 10, H - 10) == "top-right"      # no mark
-    # printed top half = Studio right half
-    top = lay("small").top
-    assert all(c[0] > SHEET.trim_x for c in top)
+    # printed top piece = Studio right third
+    top = lay("small").pieces[0]
+    assert all(c[0] > SHEET.trims[-1] for c in top)
 
 
 def test_keepouts_add_up():
@@ -177,8 +253,10 @@ def test_layout_file_round_trip(tmp_path):
     p.write_text(L.to_json())
     assert Layout.load(p).same_cells(L, tol=0)
     d = json.loads(p.read_text())
-    assert d["layout_id"] == "chels-shoe-v1" and d["frame"] == "studio"
-    assert all(len(c) == 5 and isinstance(c[4], bool) for c in d["top"] + d["bottom"])
+    assert d["layout_id"] == "chels-shoe-v2" and d["frame"] == "studio"
+    assert d["per_piece"] == 4 and d["per_sheet"] == 12 and len(d["pieces"]) == 3
+    assert all(len(c) == 5 and isinstance(c[4], bool) for p in d["pieces"] for c in p)
+    assert "top" not in d and "bottom" not in d
 
 
 def test_every_size_has_a_current_layout():
@@ -214,11 +292,11 @@ def test_rebuild_writes_a_new_version_and_never_touches_published_files(tmp_path
     raw["edge_margin"] = 10.5
     changed = Sheet.from_dict(raw)
     rows = rebuild(changed, CAT.sizes, d)
-    assert all(r.status == "new" and r.layout.layout_id.endswith("-v2") for r in rows)
+    assert all(r.status == "new" and r.layout.layout_id.endswith("-v3") for r in rows)
     for name, data in before.items():
         assert (d / name).read_bytes() == data
-    assert current_layout(changed, CAT.sizes["small"], d).layout_id == "chels-small-v2"
-    assert current_layout(SHEET, CAT.sizes["small"], d).layout_id == "chels-small-v1"
+    assert current_layout(changed, CAT.sizes["small"], d).layout_id == "chels-small-v3"
+    assert current_layout(SHEET, CAT.sizes["small"], d).layout_id == "chels-small-v2"
 
 
 def test_cli_layouts_and_gallery(tmp_path, capsys):
@@ -226,7 +304,7 @@ def test_cli_layouts_and_gallery(tmp_path, capsys):
     shutil.copytree(LAYOUTS, d)
     assert main(["layouts", "--layouts", str(d)]) == 0
     out = capsys.readouterr().out
-    assert "chels-round-v1" in out and "stagger" in out
+    assert "chels-round-v2" in out and "5 + 5" in out
     assert main(["layout-gallery", "--layouts", str(d), "--out", str(tmp_path / "g"), "--dpi", "60"]) == 0
     pngs = sorted(p.name for p in (tmp_path / "g").glob("*.png"))
-    assert pngs == sorted(f"chels-{s}-v1.png" for s in CAT.sizes)
+    assert pngs == sorted(f"chels-{s}-v2.png" for s in CAT.sizes)

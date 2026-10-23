@@ -14,14 +14,14 @@ SHEETS
 Every sheet of a layout is cut with that layout's template: there is no X / Y to type,
 the template is already positioned.
 
- Sheet | Finish      | Template to open        | Print file (page)
+ Sheet | Finish         | Template to open        | Print file (page)
 {% for s in sheets -%}
- {{ "%5d"|format(s.n) }} | {{ "%-11s"|format(s.finish) }} | {{ "%-23s"|format(s.template) }} | {{ s.pdf }} (p. {{ s.page }})
-        haut (top):    {{ s.top }}
-        bas (bottom):  {{ s.bottom }}
+ {{ "%5d"|format(s.n) }} | {{ "%-14s"|format(s.finish) }} | {{ "%-23s"|format(s.template) }} | {{ s.pdf }} (p. {{ s.page }})
+{% for p in s.pieces %}        {{ "%-8s"|format(p.where ~ ":") }} {{ p.tag }}
 {% endfor %}
+{%- endfor %}
 {%- if waiting %}
-WAITING (not printed: no partner half yet)
+WAITING (not printed: not enough pieces to fill a sheet yet)
 {% for w in waiting %}  - {{ w }}
 {% endfor %}
 {%- endif %}
@@ -33,7 +33,7 @@ STEPS (for each sheet)
   1. Print the page from the print PDF at 100 % ({{ L('pdf_actual_size') }}, no "fit to page"),
      one sheet at a time. The PDF turns itself to portrait: do not change the orientation.
   2. Let the ink dry, ideally overnight (dye ink).
-  3. Notch the laminate first, for every finish: cut {{ notch_dxf }} on the laminate sheet
+  3. Notch the laminate first: cut {{ notch_dxf }} on the laminate sheet
      (plain cut, no registration marks, placed at X 0 / Y 0), so the three
      {{ "%g"|format(sheet.notch) }} × {{ "%g"|format(sheet.notch) }} mm corners are open. Lay the laminate with its
      notches over the three registration marks, then laminate.
@@ -43,7 +43,9 @@ STEPS (for each sheet)
      Load the sheet on the mat in landscape, like the card proxies: the filled square mark
      at the top left.
   5. {{ L('send') }}: kiss cut through the laminate and the vinyl, not the backing
-     with the finish's {{ L('material') }} (a {{ L('test_cut') }} first on each new finish or roll;
+     with the {{ L('material') }} "Chels – vinyle + lam. mat" (a {{ L('test_cut') }} first on each new roll;
      starting settings in docs/cut-settings.md).
-  6. Trim the sheet at the trim ticks into its two halves (haut / bas) and pack them with the
-     packing slip.
+  6. Couper la feuille aux traits de coupe en trois tiers (haut / milieu / bas).
+     (Trim the sheet at the trim ticks into its three pieces. Nothing but the labels, the marks
+     and the trim marks is printed on the sheet: the table above and the packing slip say which
+     order each piece (haut / milieu / bas) belongs to. Every piece ships flat in a #10 envelope.)

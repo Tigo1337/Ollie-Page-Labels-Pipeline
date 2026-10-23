@@ -1,0 +1,51 @@
+{
+ "_doc": "Fixed piece layout. Never edit a published layout: a geometry change makes a new version. Cells are [X, Y, W, H, rotated] in mm, Studio frame (landscape Letter, origin top-left, y down). 'pieces' lists the pieces in printed order (top, middle, bottom: printed top = Studio right, highest X). Every piece holds the same arrangement: a middle piece is the top piece translated by whole piece widths, the bottom piece is the top piece mirrored about the page centre (pieces[-1][i] mirrors pieces[0][i]).",
+ "layout_id": "chels-round-v2",
+ "size": "round",
+ "version": 2,
+ "geometry_hash": "152691afd24f8717366252ff773444e93a266ba01875a3df0a24dbaf6ef16459",
+ "frame": "studio",
+ "arrangement": "normal",
+ "per_piece": 10,
+ "per_sheet": 30,
+ "rows": [5, 5],
+ "size_geometry": {"shape": "circle", "w": 32, "h": 32, "r": 16, "gap": 2.0},
+ "pieces": [
+  [
+   [231.334, 23.95, 32, 32, false],
+   [231.334, 57.95, 32, 32, false],
+   [231.334, 91.95, 32, 32, false],
+   [231.334, 125.95, 32, 32, false],
+   [231.334, 159.95, 32, 32, false],
+   [197.334, 23.95, 32, 32, false],
+   [197.334, 57.95, 32, 32, false],
+   [197.334, 91.95, 32, 32, false],
+   [197.334, 125.95, 32, 32, false],
+   [197.334, 159.95, 32, 32, false]
+  ],
+  [
+   [138.201, 23.95, 32, 32, false],
+   [138.201, 57.95, 32, 32, false],
+   [138.201, 91.95, 32, 32, false],
+   [138.201, 125.95, 32, 32, false],
+   [138.201, 159.95, 32, 32, false],
+   [104.201, 23.95, 32, 32, false],
+   [104.201, 57.95, 32, 32, false],
+   [104.201, 91.95, 32, 32, false],
+   [104.201, 125.95, 32, 32, false],
+   [104.201, 159.95, 32, 32, false]
+  ],
+  [
+   [16.066, 23.95, 32, 32, false],
+   [16.066, 57.95, 32, 32, false],
+   [16.066, 91.95, 32, 32, false],
+   [16.066, 125.95, 32, 32, false],
+   [16.066, 159.95, 32, 32, false],
+   [50.066, 23.95, 32, 32, false],
+   [50.066, 57.95, 32, 32, false],
+   [50.066, 91.95, 32, 32, false],
+   [50.066, 125.95, 32, 32, false],
+   [50.066, 159.95, 32, 32, false]
+  ]
+ ]
+}

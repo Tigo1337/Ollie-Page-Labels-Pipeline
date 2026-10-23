@@ -17,17 +17,15 @@ Ce sont des **points de départ**, pas des valeurs garanties. Le but est une **d
 | {{ L('speed') }} | 4 |
 | {{ L('passes') }} | 1 |
 
-## Un matériau personnalisé par finition
+## Un seul matériau personnalisé
 
-Chaque finition commence par un {{ L('test_cut') }}, puis ses réglages sont enregistrés comme un
-{{ L('material') }} personnalisé ({{ L('add_material') }}), pour ne plus avoir à les chercher :
-
-| Finition | Nom du matériau |
-|---|---|
-{% for f in finishes -%}
-| {{ f.label }} | `Chels – vinyle + lam. {{ f.short }}` |
+Toutes les étiquettes ont la même finition : vinyle blanc imprimable jet d'encre + laminé transparent mat.
+Commencez par un {{ L('test_cut') }}, puis enregistrez les réglages comme un {{ L('material') }}
+personnalisé ({{ L('add_material') }}), pour ne plus avoir à les chercher :
+{% for f in finishes %}
+**`Chels – vinyle + lam. {{ f.short }}`** ({{ f.label }})
 {% endfor %}
-1. Panneau {{ L('send') }} : choisissez le matériau de la finition.
+1. Panneau {{ L('send') }} : choisissez ce matériau.
 2. Faites un {{ L('test_cut') }} dans un coin libre (hors des zones des repères).
 3. Le petit carré doit se décoller proprement **sans** marquer le support. Trop léger : montez la
    {{ L('force') }} ; le support est coupé : baissez la {{ L('force') }} ou la {{ L('depth') }}.
@@ -35,7 +33,6 @@ Chaque finition commence par un {{ L('test_cut') }}, puis ses réglages sont enr
 
 ## Notes
 
-* Le laminé **holographique** demande en général plus de {{ L('force') }} : montez de 2 à la fois.
 * Utilisez une lame neuve de bonne qualité.
 * Le tapis doit bien coller ; s'il est fatigué, scotchez les bords de la feuille.
 * Si le bord gauche est mal coupé, vérifiez d'abord l'adhérence du tapis et la position des
@@ -43,14 +40,15 @@ Chaque finition commence par un {{ L('test_cut') }}, puis ses réglages sont enr
 * Un décalage de toutes les découpes dans une même direction n'est pas un réglage de lame : voir
   le {{ L('calibration') }} dans `docs/studio-template-setup.md`.
 
-## Option : couper la feuille en deux à la machine (désactivée par défaut)
+## Option : couper la feuille en trois tiers à la machine (désactivée par défaut)
 
-`templates/trim_line.svg` (et `.dxf`) contient une seule ligne de coupe traversante sur la ligne de
-coupe des moitiés (X {{ "%g"|format(sheet.trim_x) }} mm en paysage), en **bleu** sur le calque `TRIM`.
+`templates/trim_line.svg` (et `.dxf`) contient une ligne de coupe traversante sur chacune des
+{{ sheet.trims | length }} lignes de coupe des tiers (X {% for t in sheet.trims %}{{ "%g"|format(t) }}{{ " et " if not loop.last }}{% endfor %} mm
+en paysage), en **bleu** sur le calque `TRIM`.
 Pour l'utiliser : {{ L('file_menu') }} → {{ L('merge') }} ce fichier dans le modèle, placez-le à X 0 / Y 0
 (les points d'ancrage), supprimez les ancrages, puis dans {{ L('send') }} choisissez
 {{ L('cut_by_line_colour') }} et donnez au bleu des réglages de coupe complète (plus de
 {{ L('depth') }} et de {{ L('force') }}, 2 {{ L('passes') }}).
 
 **Attention :** une coupe traversante marque le tapis à chaque feuille. Sans elle, coupez aux
-ciseaux ou au massicot entre les repères de coupe imprimés.
+ciseaux ou au massicot aux repères de coupe imprimés.

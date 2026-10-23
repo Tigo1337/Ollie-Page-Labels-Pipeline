@@ -3,8 +3,8 @@
   "customer": "Example buyer",
   "lang": "en",
   "lines": [
-    {"design": "dino", "pack": "school", "finish": "holographic", "name": "Maximilien", "line2": "", "font": 1},
-    {"design": "unicorn", "pack": "starter", "finish": "matte", "name": "Zoë", "line2": "", "font": 4},
-    {"design": "space-cat", "pack": "large22", "finish": "matte", "name": "Alexandre", "line2": "Tremblay-Gagnon", "font": 3}
+    {"design": "dino", "pack": "school", "name": "Maximilien", "line2": "", "font": 1},
+    {"design": "unicorn", "pack": "starter", "name": "Zoë", "line2": "", "font": 4},
+    {"design": "space-cat", "pack": "large18", "name": "Alexandre", "line2": "Tremblay-Gagnon", "font": 3}
   ]
 }

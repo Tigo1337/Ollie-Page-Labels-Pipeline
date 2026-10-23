@@ -1,0 +1,41 @@
+{
+ "layout_id": "chels-tag-v2",
+ "size": "tag",
+ "geometry_hash": "dfdb6c03b16fbc2ec246953241bf87db21ded7fd5dfb8198222e409c9088e9f2",
+ "cells": 102,
+ "cut_labels": 102,
+ "page": {
+  "w": 279.4,
+  "h": 215.9,
+  "orientation": "landscape"
+ },
+ "cut_bbox": {
+  "x": 12.316,
+  "y": 11.55,
+  "w": 254.768,
+  "h": 192.8
+ },
+ "anchors": [
+  [
+   0.0,
+   0.0
+  ],
+  [
+   279.4,
+   215.9
+  ]
+ ],
+ "registration": {
+  "type": 1,
+  "marks": 3,
+  "length": 10.0,
+  "thickness": 1.0,
+  "inset": 10.0
+ },
+ "files": {
+  "svg": "chels-tag-v2.svg",
+  "dxf": "chels-tag-v2.dxf",
+  "json": "chels-tag-v2.json",
+  "calibration.pdf": "chels-tag-v2_calibration.pdf"
+ }
+}

@@ -52,8 +52,11 @@ def test_crop_window_clamped_inside_image():
 
 
 def test_auto_preset_rect_is_left_anchored(ws):
+    """A strip size without a fixed name position (no `name_start`): the strip anchored left, the name
+    box from the character's end."""
+    import dataclasses
     cat = ws.catalog
-    size, b = cat.sizes["medium"], cat.sheet.bleed
+    size, b = dataclasses.replace(cat.sizes["medium"], name_start=None), cat.sheet.bleed
     p = auto_preset(cat.designs["dino"], size, b, 2752, 680)
     x0, y0, x1, y1 = crop_window(p, 2752, 680, bleed_aspect(size, b))
     assert x0 == pytest.approx(0) and y0 == pytest.approx(0) and y1 == pytest.approx(680)
@@ -120,10 +123,13 @@ def test_shoe_pair_is_one_picture_split_into_two_labels(ws):
 
 def test_saved_preset_is_used_and_survives_same_shape_art(ws):
     preset = Preset("wide", (0.6, 0.5), 0.8, (0.3, 0.1, 0.95, 0.9))
-    lab = ws.renderer.render(LabelSpec("fox", "small", "Léo", "", 1), preset=preset)
+    lab = ws.renderer.render(LabelSpec("fox", "tag", "Léo", "", 1), preset=preset)
     assert lab.preset == preset
     k = lab.dpi / 25.4
-    assert lab.text_box_px[0] == pytest.approx((ws.catalog.sheet.bleed + 0.3 * ws.catalog.sizes["small"].w) * k)
+    assert lab.text_box_px[0] == pytest.approx((ws.catalog.sheet.bleed + 0.3 * ws.catalog.sizes["tag"].w) * k)
+    # a strip size with a fixed name position keeps the preset's art, not its name box
+    lab = ws.renderer.render(LabelSpec("fox", "small", "Léo", "", 1), preset=preset)
+    assert lab.preset.center == preset.center and lab.preset.text[0] == ws.catalog.sizes["small"].name_start
 
 # ---------------------------------------------------------------- text
 

@@ -1,11 +1,12 @@
-"""Startup migration from the old free-packing geometry to the fixed half-sheet layouts."""
+"""Startup migrations: the old free-packing geometry -> fixed half-sheet layouts (v2) -> thirds, one finish
+and the fixed name position (v3)."""
 import json
 import sqlite3
 
 from sqlalchemy import select
 
 from app.db import ArchivedPresetRow, DesignRow, PresetRow, Setting, make_session_factory
-from app.migrate import REVIEW_NOTE, geometry_version, migrate
+from app.migrate import FIXED_NAME_NOTE, REVIEW_NOTE, geometry_version, migrate
 from app.repo import Repo
 from app.settings import REPO
 from app.storage import LocalBlobStore
@@ -41,8 +42,10 @@ def old_database(tmp_path):
     old_texts = json.loads((REPO / "config" / "texts.json").read_text())
     for lang in old_texts.values():
         lang["sizes"] = {"mini": "Mini", "square": "Square"}
-    finishes = json.loads((REPO / "config" / "finishes.json").read_text())
-    finishes[0].update(notch=False, cost_per_sheet=1.25)
+    finishes = [{"id": "matte", "label": "Matte", "media": "white inkjet printable vinyl",
+                 "laminate": "matte clear overlaminate", "notch": False, "cost_per_sheet": 1.25},
+                {"id": "gloss", "label": "Glossy", "media": "white inkjet printable vinyl",
+                 "laminate": "gloss clear overlaminate", "notch": False, "cost_per_sheet": None}]
     for key, val in (("production", OLD_PRODUCTION), ("sizes", OLD_SIZES), ("packs", OLD_PACKS),
                      ("finishes", finishes), ("texts", old_texts),
                      ("fonts", json.loads((REPO / "config" / "fonts.json").read_text()))):
@@ -66,7 +69,7 @@ def test_old_database_is_migrated_once(tmp_path):
     assert geometry_version(repo) == 1
     changes = migrate(repo, REPO / "config", url, tmp_path)
     assert any("backed up the database" in c for c in changes)
-    assert list((tmp_path / "backups").glob("app-before-geometry-v2-*.db"))
+    assert list((tmp_path / "backups").glob("app-before-geometry-v3-*.db"))
     assert repo.store.list("backups/")
     with repo.Session() as s:
         settings = {r.key: r.value for r in s.scalars(select(Setting))}
@@ -74,23 +77,27 @@ def test_old_database_is_migrated_once(tmp_path):
         archived = {(a.design_id, a.size_id) for a in s.scalars(select(ArchivedPresetRow))}
         designs = {d.id: d for d in s.scalars(select(DesignRow))}
     assert [x["id"] for x in settings["sizes"]] == ["pencil", "small", "medium", "large", "tag", "round", "shoe"]
-    assert "starter" in [x["id"] for x in settings["packs"]] and "margin" not in settings["production"]
-    assert all(f["notch"] for f in settings["finishes"]) and settings["finishes"][0]["cost_per_sheet"] == 1.25
+    assert [x["id"] for x in settings["packs"]][:2] == ["pencil51", "small57"]
+    assert "margin" not in settings["production"] and settings["production"]["piece_weight_g"] == 6.0
+    assert [f["id"] for f in settings["finishes"]] == ["matte"] and settings["finishes"][0]["notch"]
+    assert settings["shop"]["default_finish"] == "matte"
     assert settings["texts"]["fr"]["sizes"]["shoe"] == "Souliers"
-    assert settings["geometry_version"] == {"version": 2} and settings["migration_log"]["changes"] == changes
-    # kept and flagged à revoir / archived, never deleted
-    assert presets[("dino", "small")].review == REVIEW_NOTE and presets[("fox", "round")].review == REVIEW_NOTE
-    assert presets[("fox", "large")].review == REVIEW_NOTE
-    assert archived == {("dino", "mini"), ("dino", "square")}
+    assert "holographic" not in settings["texts"]["en"]["proof_footer"]
+    assert settings["geometry_version"] == {"version": 3} and settings["migration_log"]["changes"] == changes
+    assert settings["migration_log"]["from"] == 1
+    # round kept and flagged à revoir; gone sizes and the strip sizes archived, never deleted
+    assert presets[("fox", "round")].review == REVIEW_NOTE
+    assert archived == {("dino", "mini"), ("dino", "square"), ("dino", "small"), ("fox", "large")} | {
+        (d, s) for d, s in archived if s in ("pencil", "small", "medium", "large")}
+    assert not any(s in ("pencil", "small", "medium", "large") for _, s in presets)
     assert ("dino", "mini") not in presets
     # designs: all 100, scene settings filled, user edits kept, reference crops imported
     assert len(designs) == 100 and designs["fox"].name.endswith("(edited)")
     assert designs["dino"].mini_start == 0.24 and designs["dino"].no_character_sizes == ["tag"]
     assert designs["moon-stars"].square_text is not None
-    assert ("dino", "pencil") in presets and ("sakura", "small") in presets
     # the catalogue now builds and only once
     cat = repo.catalog()
-    assert cat.production.min_cap_mm == 1.7 and "shoe" in cat.sizes
+    assert cat.production.min_cap_mm == 1.7 and "shoe" in cat.sizes and list(cat.finishes) == ["matte"]
     assert migrate(repo, REPO / "config", url, tmp_path) == []
 
 
@@ -100,14 +107,101 @@ def test_saving_a_preset_clears_the_review_flag(tmp_path):
     url = f"sqlite:///{db}"
     repo = Repo(make_session_factory(url), LocalBlobStore(tmp_path / "blobs"))
     migrate(repo, REPO / "config", url, tmp_path)
-    repo.set_preset("dino", "small", Preset.from_dict(PRESET))
     with repo.Session() as s:
-        assert s.get(PresetRow, ("dino", "small")).review is None
+        assert s.get(PresetRow, ("fox", "round")).review == REVIEW_NOTE
+    repo.set_preset("fox", "round", Preset.from_dict({**PRESET, "source": "square"}))
+    with repo.Session() as s:
+        assert s.get(PresetRow, ("fox", "round")).review is None
 
 
 def test_fresh_database_needs_no_migration(tmp_path):
     url = f"sqlite:///{tmp_path / 'new.db'}"
     repo = Repo(make_session_factory(url), LocalBlobStore(tmp_path / "blobs"))
     assert repo.seed(REPO / "config")
-    assert geometry_version(repo) == 2
+    assert geometry_version(repo) == 3
     assert migrate(repo, REPO / "config", url, tmp_path) == []
+
+
+def v2_database(tmp_path):
+    """A database as the half-sheet app (geometry v2) left it: v2 packs, three finishes, saved presets for
+    every kind of size, Listings settings with prices, a run made before v3."""
+    url = f"sqlite:///{tmp_path / 'v2.db'}"
+    repo = Repo(make_session_factory(url), LocalBlobStore(tmp_path / "blobs"))
+    repo.seed(REPO / "config")
+    old_packs = [{"id": "pencil60", "label": "60 Skinny pencil labels", "contents": {"pencil": 60}},
+                 {"id": "starter", "label": "Starter pack (61)", "contents": {"pencil": 30, "small": 31}},
+                 {"id": "school", "label": "Back-to-school pack", "contents": {"pencil": 30}}]
+    finishes = [{"id": f, "label": f.title(), "media": "white inkjet printable vinyl", "laminate": f"{f} laminate",
+                 "notch": True, "cost_per_sheet": None} for f in ("matte", "gloss", "holographic")]
+    listings = json.loads((REPO / "config" / "listings.json").read_text())
+    listings = {k: v for k, v in listings.items() if not k.startswith("_") and k != "ship_time"}
+    listings.update(shop_name="", pack_short={"pencil60": "60 Skinny", "starter": "Starter (61)"},
+                    pack_code={"pencil60": "PEN60", "starter": "START"},
+                    prices={"pencil60": "9.50", "starter": "14.00", "school": "29.99"})
+    from app.db import RunRow
+    with repo.Session() as s:
+        for key, val in (("packs", old_packs), ("finishes", finishes), ("listings", listings),
+                         ("shop", {"default_finish": "holographic"}), ("geometry_version", {"version": 2})):
+            row = s.get(Setting, key)
+            if row is None:
+                s.add(Setting(key=key, value=val))
+            else:
+                row.value = val
+        s.query(PresetRow).delete()
+        for design, size in (("dino", "pencil"), ("dino", "small"), ("dino", "medium"), ("fox", "large"),
+                             ("fox", "tag"), ("fox", "round"), ("dino", "shoe")):
+            s.add(PresetRow(design_id=design, size_id=size,
+                            data={**PRESET, "source": "square" if size in ("round", "shoe") else "wide"}))
+        s.add(RunRow(id="old-run", title="old", prefix="old", request={"finish": "gloss"}, files=[],
+                     summary={"finishes": {"gloss": {"sheets": 1, "labels": 60}},
+                              "sheets": [{"n": 1, "finish": "gloss", "top": {"tag": "a"}, "bottom": None}]},
+                     warnings=[]))
+        s.commit()
+    return repo, url
+
+
+def test_v2_database_is_migrated_to_v3(tmp_path):
+    repo, url = v2_database(tmp_path)
+    assert geometry_version(repo) == 2
+    changes = migrate(repo, REPO / "config", url, tmp_path)
+    assert any("backed up the database" in c for c in changes)
+    assert list((tmp_path / "backups").glob("v2-before-geometry-v3-*.db"))
+    assert any(k.startswith("backups/before-geometry-v3-") for k in repo.store.list("backups/"))
+    from app.db import RunRow
+    with repo.Session() as s:
+        settings = {r.key: r.value for r in s.scalars(select(Setting))}
+        presets = {(p.design_id, p.size_id) for p in s.scalars(select(PresetRow))}
+        archived = {(a.design_id, a.size_id): a.reason for a in s.scalars(select(ArchivedPresetRow))}
+        run = s.get(RunRow, "old-run")
+    cfg = {x["id"]: x for x in json.loads((REPO / "config" / "packs.json").read_text())}
+    assert [x["id"] for x in settings["packs"]] == list(cfg)
+    assert [x["id"] for x in settings["sizes"]] == ["pencil", "small", "medium", "large", "tag", "round", "shoe"]
+    assert settings["finishes"] == json.loads((REPO / "config" / "finishes.json").read_text())
+    assert settings["shop"]["default_finish"] == "matte"
+    # Listings: new pack ids, prices kept where the pack still exists, shop name, ship_time
+    lst = settings["listings"]
+    assert list(lst["pack_short"]) == list(cfg) and lst["pack_short"]["starter"] == "Starter (73)"
+    assert lst["pack_code"]["pencil51"] == "PEN51" and lst["pack_code"]["shoe12"] == "SHOE12"
+    assert lst["prices"] == {**{pid: "" for pid in cfg}, "starter": "14.00", "school": "29.99"}
+    assert lst["shop_name"] == "Mazie Page Creations" and lst["ship_time"] == "[X] business days"
+    # presets: strip sizes archived with the note, tag / round / shoe kept
+    assert presets == {("fox", "tag"), ("fox", "round"), ("dino", "shoe")}
+    want = (("dino", "pencil"), ("dino", "small"), ("dino", "medium"), ("fox", "large"))
+    assert set(want) <= set(archived) and set(archived.values()) == {FIXED_NAME_NOTE}
+    # (the rest are the old reference crops from config/designs.json, archived when the database was seeded)
+    assert all(s in ("pencil", "small", "medium", "large") for _, s in archived)
+    # history untouched; the catalogue builds; only once
+    assert run.summary["finishes"] == {"gloss": {"sheets": 1, "labels": 60}} and run.request["finish"] == "gloss"
+    assert settings["geometry_version"] == {"version": 3} and settings["migration_log"]["from"] == 2
+    assert repo.catalog().packs["school"].total == 216
+    assert migrate(repo, REPO / "config", url, tmp_path) == []
+
+
+def test_v3_migration_keeps_a_shop_name_that_was_set(tmp_path):
+    repo, url = v2_database(tmp_path)
+    with repo.Session() as s:
+        row = s.get(Setting, "listings")
+        row.value = {**row.value, "shop_name": "My Shop"}
+        s.commit()
+    migrate(repo, REPO / "config", url, tmp_path)
+    assert repo.setting("listings")["shop_name"] == "My Shop"
