@@ -227,8 +227,36 @@ def escape_field(value: str) -> str:
     return value
 
 
-def listing_row(cfg: dict, cat: Catalog, g: Group, asset_base: str) -> list[str]:
+ENVELOPE_10_CM = (24.1, 10.5)    # a #10 envelope, 4 1/8 × 9 1/2 in: every piece ships flat in one
+ITEM_KEYS = ("item_weight", "item_weight_unit", "item_length", "item_width", "item_height", "item_dimensions_unit")
+
+
+def item_fields(cat: Catalog, layouts_dir: Path | None = None) -> dict:
+    """The CSV's item weight and size: the #10 envelope of the heaviest bundle (Etsy has one weight per
+    listing and every listing offers every bundle, so postage is never under-estimated). From the
+    bundles and the envelope estimate (Settings: weight and thickness of a piece, the envelope)."""
+    import math
+
+    from .packing import PackError, pack_sheets
+    layouts_dir = Path(layouts_dir) if layouts_dir else Path(__file__).resolve().parent.parent / "layouts"
+    best = None
+    for pid, p in cat.packs.items():
+        try:
+            env = pack_sheets(p, cat, layouts_dir)["envelope"]
+        except (PackError, ValueError):
+            continue
+        if best is None or env["weight_g"] > best[1]["weight_g"]:
+            best = (pid, env)
+    weight_g, thick_mm = (best[1]["weight_g"], best[1]["thickness_mm"]) if best else (cat.production.envelope_weight_g, 0)
+    return {"item_weight": f"{math.ceil(weight_g) / 1000:.3f}", "item_weight_unit": "kg",
+            "item_length": f"{ENVELOPE_10_CM[0]:g}", "item_width": f"{ENVELOPE_10_CM[1]:g}",
+            "item_height": f"{max(1, math.ceil(thick_mm)) / 10:g}", "item_dimensions_unit": "cm",
+            "basis": best[0] if best else None, "postage": best[1]["lettermail"] if best else None}
+
+
+def listing_row(cfg: dict, cat: Catalog, g: Group, asset_base: str, item: dict | None = None) -> list[str]:
     c = cfg["csv"]
+    item = item or item_fields(cat)
     packs = list(cat.packs)
     prices = [str(cfg["prices"][p]).strip() for p in packs]
     base = asset_base.rstrip("/")
@@ -246,6 +274,7 @@ def listing_row(cfg: dict, cat: Catalog, g: Group, asset_base: str) -> list[str]
         "variation_skus": "|".join(variation_sku(cfg, g, p) for p in packs),
         "variation2_name": cfg["variation_names"]["design"],
         "variation2_values": "|".join(cat.designs[d].name for d in g.designs),
+        **{k: item[k] for k in ITEM_KEYS},
     }
     row = [values[k] if k in values else str(c.get(k, "")) for k in CSV_HEADER]
     pz = cfg["personalization"]
@@ -255,13 +284,15 @@ def listing_row(cfg: dict, cat: Catalog, g: Group, asset_base: str) -> list[str]
     return row
 
 
-def build_csv(cfg: dict, cat: Catalog, asset_base: str, group_ids: list[str] | None = None) -> str:
+def build_csv(cfg: dict, cat: Catalog, asset_base: str, group_ids: list[str] | None = None,
+              layouts_dir: Path | None = None) -> str:
     errs = problems(cfg, cat, asset_base)
     if errs:
         raise ListingError("The listings are not ready: " + " ".join(errs[:8]) + (" …" if len(errs) > 8 else ""))
     header = CSV_HEADER + (PERSONALIZATION_HEADER if cfg["personalization"].get("columns") else [])
     lines = [",".join(header)]
+    item = item_fields(cat, layouts_dir)
     for g in groups_of(cfg):
         if group_ids is None or g.id in group_ids:
-            lines.append(",".join(escape_field(v) for v in listing_row(cfg, cat, g, asset_base)))
+            lines.append(",".join(escape_field(v) for v in listing_row(cfg, cat, g, asset_base, item)))
     return "﻿" + "\n".join(lines) + "\n"

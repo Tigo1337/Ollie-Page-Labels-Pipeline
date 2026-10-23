@@ -171,7 +171,7 @@ def cmd_layout_gallery(args) -> int:
     from .layout import current_layout
     cat = load_catalog(args.config)
     lays = [(current_layout(cat.sheet, s, _layouts_dir(args)), s) for s in cat.sizes.values()]
-    font = Path(args.data) / "fonts" / "_ui" / "Nunito-UI-bold.ttf"
+    font = Path(args.data) / "fonts" / "_ui" / "NunitoUI-bold.ttf"
     for p in write_gallery(lays, cat.sheet, Path(args.out), dpi=args.dpi, font_path=font if font.exists() else None):
         print(p)
     return 0
@@ -234,7 +234,7 @@ def cmd_listings(args) -> int:
     if errs:
         print("CSV not written:\n  " + "\n  ".join(errs))
         return 1
-    (out / "etsy_import_labels.csv").write_text(build_csv(cfg, ws.catalog, base, args.group or None),
+    (out / "etsy_import_labels.csv").write_text(build_csv(cfg, ws.catalog, base, args.group or None, _layouts_dir(args)),
                                                 encoding="utf-8", newline="")
     print(out / "etsy_import_labels.csv")
     return 0

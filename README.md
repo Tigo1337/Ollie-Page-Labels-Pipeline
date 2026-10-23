@@ -235,8 +235,10 @@ Les libellés marqués ⚠ sont à confirmer dans votre Studio.*
 5. **Découper** : **Envoyer** (Send), le **Matériau** (Material) ⚠ `Chels – vinyle + lam. mat` (réglages et
    **Test de découpe** (Test Cut) : `docs/cut-settings.md`). Découpe à mi-chair : laminé et vinyle, pas le support.
 6. **Couper** la feuille aux traits de coupe en trois tiers (haut / milieu / bas), puis rangez
-   chaque tiers selon le bordereau (`packing_slip`) : rien n'est imprimé sur la feuille à part les
-   étiquettes, les repères et les traits de coupe ; le bordereau et l'aperçu de chaque feuille disent
-   quelle commande va dans chaque tiers (numéro de feuille = ordre des pages, puis haut / milieu / bas).
-   Chaque tiers part à plat dans une enveloppe n° 10.
+   chaque tiers dans son enveloppe avec le guide d'emballage (`packing_guide.pdf`) : rien n'est imprimé
+   sur la feuille à part les étiquettes, les repères et les traits de coupe ; le guide montre l'image de
+   chaque tiers, sa feuille et sa place (haut / milieu / bas), l'affranchissement de chaque enveloppe, et
+   les tiers qui se ressemblent d'une commande à l'autre. Les copies bonus ne vont dans l'enveloppe que si
+   elles ne changent pas l'affranchissement ; sinon, gardez-les de côté. Chaque tiers part à plat dans
+   une enveloppe n° 10.
 <!-- /generated:print-and-cut -->

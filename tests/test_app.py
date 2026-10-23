@@ -90,7 +90,7 @@ def test_seeded_catalog(client):
     assert (school["pieces"], school["alone"]) == (14, 7)
     assert school["pieces_by_size"] == {"pencil": 3, "small": 3, "medium": 2, "large": 1, "round": 1, "tag": 2,
                                         "shoe": 2}
-    assert school["envelope"]["weight_g"] == 89.0 and "5 mm" in school["envelope"]["warning"]
+    assert school["envelope"]["weight_g"] == 89.0 and school["envelope"]["kind"] == "oversized"
     tag = next(s for s in cat["sizes"] if s["id"] == "tag")
     assert (tag["layout_id"], tag["per_piece"], tag["per_sheet"]) == ("chels-tag-v2", 34, 102)
     assert [f["id"] for f in cat["finishes"]] == ["matte"] and cat["finishes"][0]["label"] == "Matte laminate"

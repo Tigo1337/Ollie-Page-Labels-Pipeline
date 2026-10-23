@@ -33,9 +33,10 @@ LISTINGS_FIXUPS = (
     ("description_template", "At Ollie Page Creations, we prepay", "We prepay"),
     ("description_template", "Ollie Page Creations © ", "{shop_name} © "),
 )
-# the CSV's item size, from the half-sheet envelope (23 × 16 × 1 cm) to the #10 envelope the thirds ship in
-# (4 1/8 × 9 1/2 in, 5 mm Lettermail limit): (csv key, old seeded value, new value), changed only if unedited
-LISTINGS_CSV_FIXUPS = (("item_length", "23", "24.1"), ("item_width", "16", "10.5"), ("item_height", "1", "0.5"))
+# the CSV's item weight and size are computed from the bundles now (engine.listings.item_fields): the
+# values a database stored before are dropped
+LISTINGS_CSV_COMPUTED = ("item_weight", "item_weight_unit", "item_length", "item_width", "item_height",
+                         "item_dimensions_unit")
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
 MAX_IMAGE_PIXELS = 40_000_000
 
@@ -103,8 +104,7 @@ class Repo:
                     if isinstance(val.get(key), str):
                         val[key] = new if key == "asset_base_url" and val[key] == old else val[key].replace(old, new)
                 if isinstance(val.get("csv"), dict):
-                    val["csv"] = {**val["csv"], **{k: new for k, old, new in LISTINGS_CSV_FIXUPS
-                                                   if str(val["csv"].get(k, "")).strip() == old}}
+                    val["csv"] = {k: v for k, v in val["csv"].items() if k not in LISTINGS_CSV_COMPUTED}
                 if val != listings.value:
                     listings.value = val
             row = s.get(Setting, "shop")
